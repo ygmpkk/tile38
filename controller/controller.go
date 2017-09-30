@@ -70,9 +70,9 @@ type Controller struct {
 
 	// atomics
 	followc                aint // counter increases when follow property changes
-	statsTotalConns        aint
-	statsTotalCommands     aint
-	statsExpired           aint
+	statsTotalConns        aint // counter for total connections
+	statsTotalCommands     aint // counter for total commands
+	statsExpired           aint // item expiration counter
 	lastShrinkDuration     aint
 	currentShrinkStart     atime
 	stopBackgroundExpiring abool
@@ -215,9 +215,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 			// -h address
 			return false
 		}
-		c.mu.RLock()
 		is := c.config.protectedMode() != "no" && c.config.requirePass() == ""
-		c.mu.RUnlock()
 		return is
 	}
 
@@ -298,18 +296,13 @@ func (c *Controller) watchMemory() {
 	var mem runtime.MemStats
 	for range t.C {
 		func() {
-			c.mu.RLock()
 			if c.stopWatchingMemory.on() {
-				c.mu.RUnlock()
 				return
 			}
 			oom := c.outOfMemory.on()
-			c.mu.RUnlock()
 			if c.config.maxMemory() == 0 {
 				if oom {
-					c.mu.Lock()
 					c.outOfMemory.set(false)
-					c.mu.Unlock()
 				}
 				return
 			}
@@ -317,9 +310,7 @@ func (c *Controller) watchMemory() {
 				runtime.GC()
 			}
 			runtime.ReadMemStats(&mem)
-			c.mu.Lock()
 			c.outOfMemory.set(int(mem.HeapAlloc) > c.config.maxMemory())
-			c.mu.Unlock()
 		}()
 	}
 }
@@ -497,6 +488,10 @@ func (c *Controller) handleInputCommand(conn *server.Conn, msg *server.Message, 
 		// dev operation
 		c.mu.Lock()
 		defer c.mu.Unlock()
+	case "sleep":
+		// dev operation
+		c.mu.RLock()
+		defer c.mu.RUnlock()
 	case "shutdown":
 		// dev operation
 		c.mu.Lock()
@@ -596,6 +591,12 @@ func (c *Controller) command(
 			return
 		}
 		res, err = c.cmdMassInsert(msg)
+	case "sleep":
+		if !core.DevMode {
+			err = fmt.Errorf("unknown command '%s'", msg.Values[0])
+			return
+		}
+		res, err = c.cmdSleep(msg)
 	case "follow":
 		res, err = c.cmdFollow(msg)
 	case "readonly":
