@@ -64,6 +64,7 @@ type Controller struct {
 	host    string
 	port    int
 	http    bool
+	dir     string
 	started time.Time
 	config  *Config
 	epc     *endpoint.EndpointManager
@@ -81,15 +82,19 @@ type Controller struct {
 	outOfMemory            abool
 
 	connsmu sync.RWMutex
-	conns2  map[*server.Conn]*clientConn
+	conns   map[*server.Conn]*clientConn
 
-	mu        sync.RWMutex
-	f         *os.File
-	qdb       *buntdb.DB // hook queue log
-	qidx      uint64     // hook queue log last idx
-	cols      *btree.BTree
-	aofsz     int
-	dir       string
+	exlistmu sync.RWMutex
+	exlist   []exitem
+
+	mu      sync.RWMutex
+	aof     *os.File                        // active aof file
+	aofsz   int                             // active size of the aof file
+	qdb     *buntdb.DB                      // hook queue log
+	qidx    uint64                          // hook queue log last idx
+	cols    *btree.BTree                    // data collections
+	expires map[string]map[string]time.Time // synced with cols
+
 	follows   map[*bytes.Buffer]bool
 	fcond     *sync.Cond
 	lstack    []*commandDetailsT
@@ -102,8 +107,6 @@ type Controller struct {
 	hooks     map[string]*Hook            // hook name
 	hookcols  map[string]map[string]*Hook // col key
 	aofconnM  map[net.Conn]bool
-	expires   map[string]map[string]time.Time
-	exlist    []exitem
 }
 
 // ListenAndServe starts a new tile38 server
@@ -126,7 +129,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		aofconnM: make(map[net.Conn]bool),
 		expires:  make(map[string]map[string]time.Time),
 		started:  time.Now(),
-		conns2:   make(map[*server.Conn]*clientConn),
+		conns:    make(map[*server.Conn]*clientConn),
 		epc:      endpoint.NewEndpointManager(),
 		http:     http,
 	}
@@ -161,6 +164,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err != nil {
 		return err
 	}
+
 	c.qdb = qdb
 	c.qidx = qidx
 	if err := c.migrateAOF(); err != nil {
@@ -170,7 +174,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err != nil {
 		return err
 	}
-	c.f = f
+	c.aof = f
 	if err := c.loadAOF(); err != nil {
 		return err
 	}
@@ -192,7 +196,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	}()
 	handler := func(conn *server.Conn, msg *server.Message, rd *server.AnyReaderWriter, w io.Writer, websocket bool) error {
 		c.connsmu.RLock()
-		if cc, ok := c.conns2[conn]; ok {
+		if cc, ok := c.conns[conn]; ok {
 			cc.last.set(time.Now())
 		}
 		c.connsmu.RUnlock()
@@ -236,7 +240,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		cc.conn = conn
 
 		c.connsmu.Lock()
-		c.conns2[conn] = cc
+		c.conns[conn] = cc
 		c.connsmu.Unlock()
 
 		c.statsTotalConns.add(1)
@@ -244,9 +248,10 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 
 	closed := func(conn *server.Conn) {
 		c.connsmu.Lock()
-		delete(c.conns2, conn)
+		delete(c.conns, conn)
 		c.connsmu.Unlock()
 	}
+
 	return server.ListenAndServe(host, port, protected, handler, opened, closed, ln, http)
 }
 

@@ -82,7 +82,7 @@ func (c *Controller) cmdClient(msg *server.Message, conn *server.Conn) (string, 
 		}
 		var list []*clientConn
 		c.connsmu.RLock()
-		for _, cc := range c.conns2 {
+		for _, cc := range c.conns {
 			list = append(list, cc)
 		}
 		c.connsmu.RUnlock()
@@ -115,7 +115,7 @@ func (c *Controller) cmdClient(msg *server.Message, conn *server.Conn) (string, 
 		}
 		name := ""
 		c.connsmu.RLock()
-		if cc, ok := c.conns2[conn]; ok {
+		if cc, ok := c.conns[conn]; ok {
 			name = cc.name.get()
 		}
 		c.connsmu.RUnlock()
@@ -141,7 +141,7 @@ func (c *Controller) cmdClient(msg *server.Message, conn *server.Conn) (string, 
 			}
 		}
 		c.connsmu.RLock()
-		if cc, ok := c.conns2[conn]; ok {
+		if cc, ok := c.conns[conn]; ok {
 			cc.name.set(name)
 		}
 		c.connsmu.RUnlock()
@@ -187,7 +187,7 @@ func (c *Controller) cmdClient(msg *server.Message, conn *server.Conn) (string, 
 		}
 		var cclose *clientConn
 		c.connsmu.RLock()
-		for _, cc := range c.conns2 {
+		for _, cc := range c.conns {
 			if useID && fmt.Sprintf("%d", cc.id) == id {
 				cclose = cc
 				break

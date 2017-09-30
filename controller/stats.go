@@ -146,7 +146,7 @@ func (c *Controller) writeInfoServer(w *bytes.Buffer) {
 }
 func (c *Controller) writeInfoClients(w *bytes.Buffer) {
 	c.connsmu.RLock()
-	fmt.Fprintf(w, "connected_clients:%d\r\n", len(c.conns2)) // Number of client connections (excluding connections from slaves)
+	fmt.Fprintf(w, "connected_clients:%d\r\n", len(c.conns)) // Number of client connections (excluding connections from slaves)
 	c.connsmu.RUnlock()
 }
 func (c *Controller) writeInfoMemory(w *bytes.Buffer) {

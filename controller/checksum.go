@@ -19,7 +19,7 @@ func (c *Controller) checksum(pos, size int64) (sum string, err error) {
 		return "", io.EOF
 	}
 	var f *os.File
-	f, err = os.Open(c.f.Name())
+	f, err = os.Open(c.aof.Name())
 	if err != nil {
 		return
 	}
@@ -186,10 +186,10 @@ func (c *Controller) followCheckSome(addr string, followc int) (pos int64, err e
 		}
 	}
 	fullpos := pos
-	fname := c.f.Name()
+	fname := c.aof.Name()
 	if pos == 0 {
-		c.f.Close()
-		c.f, err = os.Create(fname)
+		c.aof.Close()
+		c.aof, err = os.Create(fname)
 		if err != nil {
 			log.Fatalf("could not recreate aof, possible data loss. %s", err.Error())
 			return 0, err
@@ -199,7 +199,7 @@ func (c *Controller) followCheckSome(addr string, followc int) (pos int64, err e
 
 	// we want to truncate at a command location
 	// search for nearest command
-	pos, err = getEndOfLastValuePositionInFile(c.f.Name(), fullpos)
+	pos, err = getEndOfLastValuePositionInFile(c.aof.Name(), fullpos)
 	if err != nil {
 		return 0, err
 	}
@@ -211,12 +211,12 @@ func (c *Controller) followCheckSome(addr string, followc int) (pos int64, err e
 	}
 	log.Warnf("truncating aof to %d", pos)
 	// any errror below are fatal.
-	c.f.Close()
+	c.aof.Close()
 	if err := os.Truncate(fname, pos); err != nil {
 		log.Fatalf("could not truncate aof, possible data loss. %s", err.Error())
 		return 0, err
 	}
-	c.f, err = os.OpenFile(fname, os.O_CREATE|os.O_RDWR, 0600)
+	c.aof, err = os.OpenFile(fname, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		log.Fatalf("could not create aof, possible data loss. %s", err.Error())
 		return 0, err
