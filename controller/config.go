@@ -66,16 +66,17 @@ type Config struct {
 }
 
 func loadConfig(path string) (*Config, error) {
+	var json string
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			config := &Config{path: path, _serverID: randomKey(16)}
-			config.write(true)
-			return config, nil
+			json = `{"` + ServerID + `":"` + randomKey(16) + `"}`
+		} else {
+			return nil, err
 		}
-		return nil, err
+	} else {
+		json = string(data)
 	}
-	json := string(data)
 	config := &Config{
 		path:            path,
 		_followHost:     gjson.Get(json, FollowHost).String(),
@@ -99,7 +100,6 @@ func loadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	if err := config.setProperty(ProtectedMode, config._protectedModeP, true); err != nil {
-		println(2)
 		return nil, err
 	}
 	if err := config.setProperty(MaxMemory, config._maxMemoryP, true); err != nil {
@@ -187,140 +187,6 @@ func (config *Config) write(writeProperties bool) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (config *Config) followHost() string {
-	config.mu.RLock()
-	v := config._followHost
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) followPort() int {
-	config.mu.RLock()
-	v := config._followPort
-	config.mu.RUnlock()
-	return int(v)
-}
-func (config *Config) followID() string {
-	config.mu.RLock()
-	v := config._followID
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) followPos() int64 {
-	config.mu.RLock()
-	v := config._followPos
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) serverID() string {
-	config.mu.RLock()
-	v := config._serverID
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) readOnly() bool {
-	config.mu.RLock()
-	v := config._readOnly
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) requirePass() string {
-	config.mu.RLock()
-	v := config._requirePass
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) leaderAuth() string {
-	config.mu.RLock()
-	v := config._leaderAuth
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) protectedMode() string {
-	config.mu.RLock()
-	v := config._protectedMode
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) maxMemory() int {
-	config.mu.RLock()
-	v := config._maxMemory
-	config.mu.RUnlock()
-	return int(v)
-}
-func (config *Config) autoGC() uint64 {
-	config.mu.RLock()
-	v := config._autoGC
-	config.mu.RUnlock()
-	return v
-}
-func (config *Config) keepAlive() int64 {
-	config.mu.RLock()
-	v := config._keepAlive
-	config.mu.RUnlock()
-	return v
-}
-
-func (config *Config) setFollowHost(v string) {
-	config.mu.Lock()
-	config._followHost = v
-	config.mu.Unlock()
-}
-func (config *Config) setFollowPort(v int) {
-	config.mu.Lock()
-	config._followPort = int64(v)
-	config.mu.Unlock()
-}
-func (config *Config) setFollowID(v string) {
-	config.mu.Lock()
-	config._followID = v
-	config.mu.Unlock()
-}
-func (config *Config) setFollowPos(v int64) {
-	config.mu.Lock()
-	config._followPos = v
-	config.mu.Unlock()
-}
-func (config *Config) setServerID(v string) {
-	config.mu.Lock()
-	config._serverID = v
-	config.mu.Unlock()
-}
-func (config *Config) setReadOnly(v bool) {
-	config.mu.Lock()
-	config._readOnly = v
-	config.mu.Unlock()
-}
-func (config *Config) setRequirePass(v string) {
-	config.mu.Lock()
-	config._requirePass = v
-	config.mu.Unlock()
-}
-func (config *Config) setLeaderAuth(v string) {
-	config.mu.Lock()
-	config._leaderAuth = v
-	config.mu.Unlock()
-}
-func (config *Config) setProtectedMode(v string) {
-	config.mu.Lock()
-	config._protectedMode = v
-	config.mu.Unlock()
-}
-func (config *Config) setMaxMemory(v int) {
-	config.mu.Lock()
-	config._maxMemory = int64(v)
-	config.mu.Unlock()
-}
-func (config *Config) setAutoGC(v uint64) {
-	config.mu.Lock()
-	config._autoGC = v
-	config.mu.Unlock()
-}
-func (config *Config) setKeepAlive(v int64) {
-	config.mu.Lock()
-	config._keepAlive = v
-	config.mu.Unlock()
 }
 
 func parseMemSize(s string) (bytes int64, ok bool) {
@@ -519,4 +385,137 @@ func (c *Controller) cmdConfigRewrite(msg *server.Message) (res string, err erro
 	}
 	c.config.write(true)
 	return server.OKMessage(msg, start), nil
+}
+
+func (config *Config) followHost() string {
+	config.mu.RLock()
+	v := config._followHost
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) followPort() int {
+	config.mu.RLock()
+	v := config._followPort
+	config.mu.RUnlock()
+	return int(v)
+}
+func (config *Config) followID() string {
+	config.mu.RLock()
+	v := config._followID
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) followPos() int64 {
+	config.mu.RLock()
+	v := config._followPos
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) serverID() string {
+	config.mu.RLock()
+	v := config._serverID
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) readOnly() bool {
+	config.mu.RLock()
+	v := config._readOnly
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) requirePass() string {
+	config.mu.RLock()
+	v := config._requirePass
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) leaderAuth() string {
+	config.mu.RLock()
+	v := config._leaderAuth
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) protectedMode() string {
+	config.mu.RLock()
+	v := config._protectedMode
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) maxMemory() int {
+	config.mu.RLock()
+	v := config._maxMemory
+	config.mu.RUnlock()
+	return int(v)
+}
+func (config *Config) autoGC() uint64 {
+	config.mu.RLock()
+	v := config._autoGC
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) keepAlive() int64 {
+	config.mu.RLock()
+	v := config._keepAlive
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) setFollowHost(v string) {
+	config.mu.Lock()
+	config._followHost = v
+	config.mu.Unlock()
+}
+func (config *Config) setFollowPort(v int) {
+	config.mu.Lock()
+	config._followPort = int64(v)
+	config.mu.Unlock()
+}
+func (config *Config) setFollowID(v string) {
+	config.mu.Lock()
+	config._followID = v
+	config.mu.Unlock()
+}
+func (config *Config) setFollowPos(v int64) {
+	config.mu.Lock()
+	config._followPos = v
+	config.mu.Unlock()
+}
+func (config *Config) setServerID(v string) {
+	config.mu.Lock()
+	config._serverID = v
+	config.mu.Unlock()
+}
+func (config *Config) setReadOnly(v bool) {
+	config.mu.Lock()
+	config._readOnly = v
+	config.mu.Unlock()
+}
+func (config *Config) setRequirePass(v string) {
+	config.mu.Lock()
+	config._requirePass = v
+	config.mu.Unlock()
+}
+func (config *Config) setLeaderAuth(v string) {
+	config.mu.Lock()
+	config._leaderAuth = v
+	config.mu.Unlock()
+}
+func (config *Config) setProtectedMode(v string) {
+	config.mu.Lock()
+	config._protectedMode = v
+	config.mu.Unlock()
+}
+func (config *Config) setMaxMemory(v int) {
+	config.mu.Lock()
+	config._maxMemory = int64(v)
+	config.mu.Unlock()
+}
+func (config *Config) setAutoGC(v uint64) {
+	config.mu.Lock()
+	config._autoGC = v
+	config.mu.Unlock()
+}
+func (config *Config) setKeepAlive(v int64) {
+	config.mu.Lock()
+	config._keepAlive = v
+	config.mu.Unlock()
 }

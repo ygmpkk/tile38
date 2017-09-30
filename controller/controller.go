@@ -232,8 +232,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.mu.RUnlock()
 		return is
 	}
-
-	var clientId uint64
+	var clientID uint64
 	opened := func(conn *server.Conn) {
 		c.mu.Lock()
 		if c.config.keepAlive() > 0 {
@@ -244,9 +243,9 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 					conn.RemoteAddr().String())
 			}
 		}
-		clientId++
+		clientID++
 		c.conns[conn] = &clientConn{
-			id:     clientId,
+			id:     clientID,
 			opened: time.Now(),
 			conn:   conn,
 		}
