@@ -78,7 +78,7 @@ type Controller struct {
 	aofsz     int
 	dir       string
 	config    *Config
-	followc   uint64 // counter increases when follow property changes
+	followc   aint // counter increases when follow property changes
 	follows   map[*bytes.Buffer]bool
 	fcond     *sync.Cond
 	lstack    []*commandDetailsT
@@ -183,12 +183,10 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	}
 	c.fillExpiresList()
 	if c.config.followHost() != "" {
-		go c.follow(c.config.followHost(), c.config.followPort(), c.followc)
+		go c.follow(c.config.followHost(), c.config.followPort(), c.followc.get())
 	}
 	defer func() {
-		c.mu.Lock()
-		c.followc++ // this will force any follow communication to die
-		c.mu.Unlock()
+		c.followc.add(1) // this will force any follow communication to die
 	}()
 	go c.processLives()
 	go c.watchMemory()
@@ -204,8 +202,8 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		if cc, ok := c.conns[conn]; ok {
 			cc.last = time.Now()
 		}
-		c.statsTotalCommands.add(1)
 		c.mu.Unlock()
+		c.statsTotalCommands.add(1)
 		err := c.handleInputCommand(conn, msg, w)
 		if err != nil {
 			if err.Error() == "going live" {

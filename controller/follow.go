@@ -85,10 +85,10 @@ func (c *Controller) cmdFollow(msg *server.Message) (res string, err error) {
 	}
 	c.config.write(false)
 	if update {
-		c.followc++
+		c.followc.add(1)
 		if c.config.followHost() != "" {
 			log.Infof("following new host '%s' '%s'.", host, sport)
-			go c.follow(c.config.followHost(), c.config.followPort(), c.followc)
+			go c.follow(c.config.followHost(), c.config.followPort(), c.followc.get())
 		} else {
 			log.Infof("following no one")
 		}
@@ -112,10 +112,10 @@ func doServer(conn *Conn) (map[string]string, error) {
 	return m, err
 }
 
-func (c *Controller) followHandleCommand(values []resp.Value, followc uint64, w io.Writer) (int, error) {
+func (c *Controller) followHandleCommand(values []resp.Value, followc int, w io.Writer) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.followc != followc {
+	if c.followc.get() != followc {
 		return c.aofsz, errNoLongerFollowing
 	}
 	msg := &server.Message{
@@ -148,12 +148,11 @@ func (c *Controller) followDoLeaderAuth(conn *Conn, auth string) error {
 	return nil
 }
 
-func (c *Controller) followStep(host string, port int, followc uint64) error {
-	c.mu.Lock()
-	if c.followc != followc {
-		c.mu.Unlock()
+func (c *Controller) followStep(host string, port int, followc int) error {
+	if c.followc.get() != followc {
 		return errNoLongerFollowing
 	}
+	c.mu.Lock()
 	c.fcup = false
 	auth := c.config.leaderAuth()
 	c.mu.Unlock()
@@ -247,7 +246,7 @@ func (c *Controller) followStep(host string, port int, followc uint64) error {
 	}
 }
 
-func (c *Controller) follow(host string, port int, followc uint64) {
+func (c *Controller) follow(host string, port int, followc int) {
 	for {
 		err := c.followStep(host, port, followc)
 		if err == errNoLongerFollowing {
