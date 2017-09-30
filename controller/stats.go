@@ -145,7 +145,9 @@ func (c *Controller) writeInfoServer(w *bytes.Buffer) {
 	fmt.Fprintf(w, "uptime_in_seconds:%d\r\n", time.Now().Sub(c.started)/time.Second) //Number of seconds since Redis server start
 }
 func (c *Controller) writeInfoClients(w *bytes.Buffer) {
-	fmt.Fprintf(w, "connected_clients:%d\r\n", len(c.conns)) // Number of client connections (excluding connections from slaves)
+	c.connsmu.RLock()
+	fmt.Fprintf(w, "connected_clients:%d\r\n", len(c.conns2)) // Number of client connections (excluding connections from slaves)
+	c.connsmu.RUnlock()
 }
 func (c *Controller) writeInfoMemory(w *bytes.Buffer) {
 	var mem runtime.MemStats
@@ -160,12 +162,13 @@ func boolInt(t bool) int {
 }
 func (c *Controller) writeInfoPersistence(w *bytes.Buffer) {
 	fmt.Fprintf(w, "aof_enabled:1\r\n")
-	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(c.shrinking))               // Flag indicating a AOF rewrite operation is on-going
-	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", c.lastShrinkDuration/time.Second) // Duration of the last AOF rewrite operation in seconds
-	if c.currentShrinkStart.IsZero() {
+	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(c.shrinking))                          // Flag indicating a AOF rewrite operation is on-going
+	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", c.lastShrinkDuration.get()/int(time.Second)) // Duration of the last AOF rewrite operation in seconds
+	currentShrinkStart := c.currentShrinkStart.get()
+	if currentShrinkStart.IsZero() {
 		fmt.Fprintf(w, "aof_current_rewrite_time_sec:0\r\n") // Duration of the on-going AOF rewrite operation if any
 	} else {
-		fmt.Fprintf(w, "aof_current_rewrite_time_sec:%d\r\n", time.Now().Sub(c.currentShrinkStart)/time.Second) // Duration of the on-going AOF rewrite operation if any
+		fmt.Fprintf(w, "aof_current_rewrite_time_sec:%d\r\n", time.Now().Sub(currentShrinkStart)/time.Second) // Duration of the on-going AOF rewrite operation if any
 	}
 }
 

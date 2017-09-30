@@ -58,27 +58,38 @@ func (col *collectionT) Less(item btree.Item, ctx interface{}) bool {
 	return col.Key < item.(*collectionT).Key
 }
 
-type clientConn struct {
-	id     uint64
-	name   string
-	opened time.Time
-	last   time.Time
-	conn   *server.Conn
-}
-
 // Controller is a tile38 controller
 type Controller struct {
+	// static values
+	host    string
+	port    int
+	http    bool
+	started time.Time
+	config  *Config
+	epc     *endpoint.EndpointManager
+
+	// atomics
+	followc                aint // counter increases when follow property changes
+	statsTotalConns        aint
+	statsTotalCommands     aint
+	statsExpired           aint
+	lastShrinkDuration     aint
+	currentShrinkStart     atime
+	stopBackgroundExpiring abool
+	stopWatchingMemory     abool
+	stopWatchingAutoGC     abool
+	outOfMemory            abool
+
+	connsmu sync.RWMutex
+	conns2  map[*server.Conn]*clientConn
+
 	mu        sync.RWMutex
-	host      string
-	port      int
 	f         *os.File
 	qdb       *buntdb.DB // hook queue log
 	qidx      uint64     // hook queue log last idx
 	cols      *btree.BTree
 	aofsz     int
 	dir       string
-	config    *Config
-	followc   aint // counter increases when follow property changes
 	follows   map[*bytes.Buffer]bool
 	fcond     *sync.Cond
 	lstack    []*commandDetailsT
@@ -93,24 +104,6 @@ type Controller struct {
 	aofconnM  map[net.Conn]bool
 	expires   map[string]map[string]time.Time
 	exlist    []exitem
-	conns     map[*server.Conn]*clientConn
-	started   time.Time
-	http      bool
-
-	epc *endpoint.EndpointManager
-
-	// counters
-	statsTotalConns    aint
-	statsTotalCommands aint
-	statsExpired       aint
-
-	lastShrinkDuration time.Duration
-	currentShrinkStart time.Time
-
-	stopBackgroundExpiring abool
-	stopWatchingMemory     abool
-	stopWatchingAutoGC     abool
-	outOfMemory            abool
 }
 
 // ListenAndServe starts a new tile38 server
@@ -133,7 +126,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		aofconnM: make(map[net.Conn]bool),
 		expires:  make(map[string]map[string]time.Time),
 		started:  time.Now(),
-		conns:    make(map[*server.Conn]*clientConn),
+		conns2:   make(map[*server.Conn]*clientConn),
 		epc:      endpoint.NewEndpointManager(),
 		http:     http,
 	}
@@ -198,11 +191,11 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.stopWatchingAutoGC.set(true)
 	}()
 	handler := func(conn *server.Conn, msg *server.Message, rd *server.AnyReaderWriter, w io.Writer, websocket bool) error {
-		c.mu.Lock()
-		if cc, ok := c.conns[conn]; ok {
-			cc.last = time.Now()
+		c.connsmu.RLock()
+		if cc, ok := c.conns2[conn]; ok {
+			cc.last.set(time.Now())
 		}
-		c.mu.Unlock()
+		c.connsmu.RUnlock()
 		c.statsTotalCommands.add(1)
 		err := c.handleInputCommand(conn, msg, w)
 		if err != nil {
@@ -228,9 +221,8 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		return is
 	}
 
-	var clientID uint64
+	var clientID aint
 	opened := func(conn *server.Conn) {
-		c.mu.Lock()
 		if c.config.keepAlive() > 0 {
 			err := conn.SetKeepAlive(
 				time.Duration(c.config.keepAlive()) * time.Second)
@@ -239,20 +231,23 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 					conn.RemoteAddr().String())
 			}
 		}
-		clientID++
-		c.conns[conn] = &clientConn{
-			id:     clientID,
-			opened: time.Now(),
-			conn:   conn,
-		}
+
+		cc := &clientConn{}
+		cc.id = clientID.add(1)
+		cc.opened.set(time.Now())
+		cc.conn = conn
+
+		c.connsmu.Lock()
+		c.conns2[conn] = cc
+		c.connsmu.Unlock()
+
 		c.statsTotalConns.add(1)
-		c.mu.Unlock()
 	}
 
 	closed := func(conn *server.Conn) {
-		c.mu.Lock()
-		delete(c.conns, conn)
-		c.mu.Unlock()
+		c.connsmu.Lock()
+		delete(c.conns2, conn)
+		c.connsmu.Unlock()
 	}
 	return server.ListenAndServe(host, port, protected, handler, opened, closed, ln, http)
 }
