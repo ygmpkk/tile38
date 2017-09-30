@@ -170,9 +170,9 @@ func (c *Controller) writeInfoPersistence(w *bytes.Buffer) {
 }
 
 func (c *Controller) writeInfoStats(w *bytes.Buffer) {
-	fmt.Fprintf(w, "total_connections_received:%d\r\n", c.statsTotalConns)  // Total number of connections accepted by the server
-	fmt.Fprintf(w, "total_commands_processed:%d\r\n", c.statsTotalCommands) // Total number of commands processed by the server
-	fmt.Fprintf(w, "expired_keys:%d\r\n", c.statsExpired)                   // Total number of key expiration events
+	fmt.Fprintf(w, "total_connections_received:%d\r\n", c.statsTotalConns.get())  // Total number of connections accepted by the server
+	fmt.Fprintf(w, "total_commands_processed:%d\r\n", c.statsTotalCommands.get()) // Total number of commands processed by the server
+	fmt.Fprintf(w, "expired_keys:%d\r\n", c.statsExpired.get())                   // Total number of key expiration events
 }
 func (c *Controller) writeInfoReplication(w *bytes.Buffer) {
 	fmt.Fprintf(w, "connected_slaves:%d\r\n", len(c.aofconnM)) // Number of connected slaves

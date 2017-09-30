@@ -109,7 +109,7 @@ func (c *Controller) backgroundExpiring() {
 	rand.Seed(time.Now().UnixNano())
 	for {
 		c.mu.Lock()
-		if c.stopBackgroundExpiring {
+		if c.stopBackgroundExpiring.on() {
 			c.mu.Unlock()
 			return
 		}

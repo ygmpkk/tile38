@@ -99,17 +99,18 @@ type Controller struct {
 
 	epc *endpoint.EndpointManager
 
-	statsTotalConns    int
-	statsTotalCommands int
-	statsExpired       int
+	// counters
+	statsTotalConns    aint
+	statsTotalCommands aint
+	statsExpired       aint
 
 	lastShrinkDuration time.Duration
 	currentShrinkStart time.Time
 
-	stopBackgroundExpiring bool
-	stopWatchingMemory     bool
-	stopWatchingAutoGC     bool
-	outOfMemory            bool
+	stopBackgroundExpiring abool
+	stopWatchingMemory     abool
+	stopWatchingAutoGC     abool
+	outOfMemory            abool
 }
 
 // ListenAndServe starts a new tile38 server
@@ -180,12 +181,10 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err := c.loadAOF(); err != nil {
 		return err
 	}
-	c.mu.Lock()
 	c.fillExpiresList()
 	if c.config.followHost() != "" {
 		go c.follow(c.config.followHost(), c.config.followPort(), c.followc)
 	}
-	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()
 		c.followc++ // this will force any follow communication to die
@@ -196,18 +195,16 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	go c.watchGC()
 	go c.backgroundExpiring()
 	defer func() {
-		c.mu.Lock()
-		c.stopBackgroundExpiring = true
-		c.stopWatchingMemory = true
-		c.stopWatchingAutoGC = true
-		c.mu.Unlock()
+		c.stopBackgroundExpiring.set(true)
+		c.stopWatchingMemory.set(true)
+		c.stopWatchingAutoGC.set(true)
 	}()
 	handler := func(conn *server.Conn, msg *server.Message, rd *server.AnyReaderWriter, w io.Writer, websocket bool) error {
 		c.mu.Lock()
 		if cc, ok := c.conns[conn]; ok {
 			cc.last = time.Now()
 		}
-		c.statsTotalCommands++
+		c.statsTotalCommands.add(1)
 		c.mu.Unlock()
 		err := c.handleInputCommand(conn, msg, w)
 		if err != nil {
@@ -232,6 +229,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.mu.RUnlock()
 		return is
 	}
+
 	var clientID uint64
 	opened := func(conn *server.Conn) {
 		c.mu.Lock()
@@ -249,9 +247,10 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 			opened: time.Now(),
 			conn:   conn,
 		}
-		c.statsTotalConns++
+		c.statsTotalConns.add(1)
 		c.mu.Unlock()
 	}
+
 	closed := func(conn *server.Conn) {
 		c.mu.Lock()
 		delete(c.conns, conn)
@@ -268,7 +267,7 @@ func (c *Controller) watchGC() {
 	for range t.C {
 		c.mu.RLock()
 
-		if c.stopWatchingAutoGC {
+		if c.stopWatchingAutoGC.on() {
 			c.mu.RUnlock()
 			return
 		}
@@ -307,16 +306,16 @@ func (c *Controller) watchMemory() {
 	for range t.C {
 		func() {
 			c.mu.RLock()
-			if c.stopWatchingMemory {
+			if c.stopWatchingMemory.on() {
 				c.mu.RUnlock()
 				return
 			}
-			oom := c.outOfMemory
+			oom := c.outOfMemory.on()
 			c.mu.RUnlock()
 			if c.config.maxMemory() == 0 {
 				if oom {
 					c.mu.Lock()
-					c.outOfMemory = false
+					c.outOfMemory.set(false)
 					c.mu.Unlock()
 				}
 				return
@@ -326,7 +325,7 @@ func (c *Controller) watchMemory() {
 			}
 			runtime.ReadMemStats(&mem)
 			c.mu.Lock()
-			c.outOfMemory = int(mem.HeapAlloc) > c.config.maxMemory()
+			c.outOfMemory.set(int(mem.HeapAlloc) > c.config.maxMemory())
 			c.mu.Unlock()
 		}()
 	}
