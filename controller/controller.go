@@ -182,8 +182,8 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.followc.add(1) // this will force any follow communication to die
 	}()
 	go c.processLives()
-	go c.watchMemory()
-	go c.watchGC()
+	go c.watchOutOfMemory()
+	go c.watchAutoGC()
 	go c.backgroundExpiring()
 	defer func() {
 		c.stopBackgroundExpiring.set(true)
@@ -250,29 +250,21 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	return server.ListenAndServe(host, port, protected, handler, opened, closed, ln, http)
 }
 
-func (c *Controller) watchGC() {
+func (c *Controller) watchAutoGC() {
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
-
 	s := time.Now()
 	for range t.C {
-		c.mu.RLock()
-
 		if c.stopWatchingAutoGC.on() {
-			c.mu.RUnlock()
 			return
 		}
-
-		c.mu.RUnlock()
-
-		if c.config.autoGC() == 0 {
+		autoGC := c.config.autoGC()
+		if autoGC == 0 {
 			continue
 		}
-
-		if time.Now().Sub(s) < time.Second*time.Duration(c.config.autoGC()) {
+		if time.Now().Sub(s) < time.Second*time.Duration(autoGC) {
 			continue
 		}
-
 		var mem1, mem2 runtime.MemStats
 		runtime.ReadMemStats(&mem1)
 		log.Debugf("autogc(before): "+
@@ -281,7 +273,6 @@ func (c *Controller) watchGC() {
 
 		runtime.GC()
 		debug.FreeOSMemory()
-
 		runtime.ReadMemStats(&mem2)
 		log.Debugf("autogc(after): "+
 			"alloc: %v, heap_alloc: %v, heap_released: %v",
@@ -290,7 +281,7 @@ func (c *Controller) watchGC() {
 	}
 }
 
-func (c *Controller) watchMemory() {
+func (c *Controller) watchOutOfMemory() {
 	t := time.NewTicker(time.Second * 2)
 	defer t.Stop()
 	var mem runtime.MemStats
