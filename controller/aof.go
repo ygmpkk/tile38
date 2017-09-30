@@ -166,7 +166,7 @@ func (c *Controller) writeAOF(value resp.Value, d *commandDetailsT) error {
 		if !d.updated {
 			return nil // just ignore writes if the command did not update
 		}
-		if c.config.FollowHost == "" {
+		if c.config.followHost() == "" {
 			// process hooks, for leader only
 			if d.parent {
 				// process children only

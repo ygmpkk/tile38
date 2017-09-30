@@ -76,9 +76,9 @@ func (c *Controller) cmdServer(msg *server.Message) (res string, err error) {
 		return "", errInvalidNumberOfArguments
 	}
 	m := make(map[string]interface{})
-	m["id"] = c.config.ServerID
-	if c.config.FollowHost != "" {
-		m["following"] = fmt.Sprintf("%s:%d", c.config.FollowHost, c.config.FollowPort)
+	m["id"] = c.config.serverID()
+	if c.config.followHost() != "" {
+		m["following"] = fmt.Sprintf("%s:%d", c.config.followHost(), c.config.followPort())
 		m["caught_up"] = c.fcup
 		m["caught_up_once"] = c.fcuponce
 	}
@@ -116,10 +116,10 @@ func (c *Controller) cmdServer(msg *server.Message) (res string, err error) {
 	m["mem_alloc"] = mem.Alloc
 	m["heap_size"] = mem.HeapAlloc
 	m["heap_released"] = mem.HeapReleased
-	m["max_heap_size"] = c.config.MaxMemory
+	m["max_heap_size"] = c.config.maxMemory()
 	m["avg_item_size"] = avgsz
 	m["pointer_size"] = (32 << uintptr(uint64(^uintptr(0))>>63)) / 8
-	m["read_only"] = c.config.ReadOnly
+	m["read_only"] = c.config.readOnly()
 
 	switch msg.OutputType {
 	case server.JSON:

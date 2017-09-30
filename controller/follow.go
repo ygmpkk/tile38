@@ -36,19 +36,18 @@ func (c *Controller) cmdFollow(msg *server.Message) (res string, err error) {
 	host = strings.ToLower(host)
 	sport = strings.ToLower(sport)
 	var update bool
-	pconfig := c.config
 	if host == "no" && sport == "one" {
-		update = c.config.FollowHost != "" || c.config.FollowPort != 0
-		c.config.FollowHost = ""
-		c.config.FollowPort = 0
+		update = c.config.followHost() != "" || c.config.followPort() != 0
+		c.config.setFollowHost("")
+		c.config.setFollowPort(0)
 	} else {
 		n, err := strconv.ParseUint(sport, 10, 64)
 		if err != nil {
 			return "", errInvalidArgument(sport)
 		}
 		port := int(n)
-		update = c.config.FollowHost != host || c.config.FollowPort != port
-		auth := c.config.LeaderAuth
+		update = c.config.followHost() != host || c.config.followPort() != port
+		auth := c.config.leaderAuth()
 		if update {
 			c.mu.Unlock()
 			conn, err := DialTimeout(fmt.Sprintf("%s:%d", host, port), time.Second*2)
@@ -71,7 +70,7 @@ func (c *Controller) cmdFollow(msg *server.Message) (res string, err error) {
 				c.mu.Lock()
 				return "", fmt.Errorf("cannot follow: invalid id")
 			}
-			if m["id"] == c.config.ServerID {
+			if m["id"] == c.config.serverID() {
 				c.mu.Lock()
 				return "", fmt.Errorf("cannot follow self")
 			}
@@ -81,18 +80,15 @@ func (c *Controller) cmdFollow(msg *server.Message) (res string, err error) {
 			}
 			c.mu.Lock()
 		}
-		c.config.FollowHost = host
-		c.config.FollowPort = port
+		c.config.setFollowHost(host)
+		c.config.setFollowPort(port)
 	}
-	if err := c.writeConfig(false); err != nil {
-		c.config = pconfig // revert
-		return "", err
-	}
+	c.config.write(false)
 	if update {
 		c.followc++
-		if c.config.FollowHost != "" {
+		if c.config.followHost() != "" {
 			log.Infof("following new host '%s' '%s'.", host, sport)
-			go c.follow(c.config.FollowHost, c.config.FollowPort, c.followc)
+			go c.follow(c.config.followHost(), c.config.followPort(), c.followc)
 		} else {
 			log.Infof("following no one")
 		}
@@ -159,7 +155,7 @@ func (c *Controller) followStep(host string, port int, followc uint64) error {
 		return errNoLongerFollowing
 	}
 	c.fcup = false
-	auth := c.config.LeaderAuth
+	auth := c.config.leaderAuth()
 	c.mu.Unlock()
 	addr := fmt.Sprintf("%s:%d", host, port)
 
@@ -182,7 +178,7 @@ func (c *Controller) followStep(host string, port int, followc uint64) error {
 	if m["id"] == "" {
 		return fmt.Errorf("cannot follow: invalid id")
 	}
-	if m["id"] == c.config.ServerID {
+	if m["id"] == c.config.serverID() {
 		return fmt.Errorf("cannot follow self")
 	}
 	if m["following"] != "" {

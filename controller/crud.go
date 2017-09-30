@@ -716,7 +716,7 @@ func (c *Controller) parseSetArgs(vs []resp.Value) (
 }
 
 func (c *Controller) cmdSet(msg *server.Message) (res string, d commandDetailsT, err error) {
-	if c.config.MaxMemory > 0 && c.outOfMemory {
+	if c.config.maxMemory() > 0 && c.outOfMemory {
 		err = errOOM
 		return
 	}
