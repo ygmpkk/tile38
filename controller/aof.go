@@ -359,7 +359,7 @@ func (c *Controller) cmdAOF(msg *server.Message) (res string, err error) {
 	return "", s
 }
 
-func (c *Controller) liveAOF(pos int64, conn net.Conn, rd *server.AnyReaderWriter, msg *server.Message) error {
+func (c *Controller) liveAOF(pos int64, conn net.Conn, rd *server.PipelineReader, msg *server.Message) error {
 	c.mu.Lock()
 	c.aofconnM[conn] = true
 	c.mu.Unlock()
@@ -394,19 +394,21 @@ func (c *Controller) liveAOF(pos int64, conn net.Conn, rd *server.AnyReaderWrite
 			cond.L.Unlock()
 		}()
 		for {
-			v, err := rd.ReadMessage()
+			vs, err := rd.ReadMessages()
 			if err != nil {
 				if err != io.EOF {
 					log.Error(err)
 				}
 				return
 			}
-			switch v.Command {
-			default:
-				log.Error("received a live command that was not QUIT")
-				return
-			case "quit", "":
-				return
+			for _, v := range vs {
+				switch v.Command {
+				default:
+					log.Error("received a live command that was not QUIT")
+					return
+				case "quit", "":
+					return
+				}
 			}
 		}
 	}()

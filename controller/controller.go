@@ -194,7 +194,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.stopWatchingMemory.set(true)
 		c.stopWatchingAutoGC.set(true)
 	}()
-	handler := func(conn *server.Conn, msg *server.Message, rd *server.AnyReaderWriter, w io.Writer, websocket bool) error {
+	handler := func(conn *server.Conn, msg *server.Message, rd *server.PipelineReader, w io.Writer, websocket bool) error {
 		c.connsmu.RLock()
 		if cc, ok := c.conns[conn]; ok {
 			cc.last.set(time.Now())
