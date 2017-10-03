@@ -54,7 +54,7 @@ func (s *hserver) Send(ctx context.Context, in *hservice.MessageRequest) (*hserv
 
 func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--webhook-http-consumer-port" {
-		log.Default = log.New(os.Stderr, &log.Config{})
+		log.SetOutput(os.Stderr)
 		port, err := strconv.ParseUint(os.Args[2], 10, 16)
 		if err != nil {
 			log.Fatal(err)
@@ -74,7 +74,7 @@ func main() {
 	}
 
 	if len(os.Args) == 3 && os.Args[1] == "--webhook-grpc-consumer-port" {
-		log.Default = log.New(os.Stderr, &log.Config{})
+		log.SetOutput(os.Stderr)
 		port, err := strconv.ParseUint(os.Args[2], 10, 16)
 		if err != nil {
 			log.Fatal(err)
@@ -141,13 +141,16 @@ func main() {
 	flag.Parse()
 
 	var logw io.Writer = os.Stderr
+	log.SetOutput(logw)
 	if quiet {
-		logw = ioutil.Discard
+		log.Level = 0
+	} else if veryVerbose {
+		log.Level = 3
+	} else if verbose {
+		log.Level = 2
+	} else {
+		log.Level = 1
 	}
-	log.Default = log.New(logw, &log.Config{
-		HideDebug: !veryVerbose,
-		HideWarn:  !(veryVerbose || verbose),
-	})
 	core.DevMode = devMode
 	core.ShowDebugMessages = veryVerbose
 
