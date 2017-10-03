@@ -141,6 +141,9 @@ func main() {
 	flag.Parse()
 
 	var logw io.Writer = os.Stderr
+	if quiet {
+		logw = ioutil.Discard
+	}
 	log.SetOutput(logw)
 	if quiet {
 		log.Level = 0
