@@ -1,3 +1,136 @@
+Release v1.12.6 (2017-10-05)
+===
+
+### Service Client Updates
+* `service/redshift`: Updates service API and documentation
+  * DescribeEventSubscriptions API supports tag keys and tag values as request parameters.
+
+Release v1.12.5 (2017-10-04)
+===
+
+### Service Client Updates
+* `service/kinesisanalytics`: Updates service API and documentation
+  * Kinesis Analytics now supports schema discovery on objects in S3. Additionally, Kinesis Analytics now supports input data preprocessing through Lambda.
+* `service/route53domains`: Updates service API and documentation
+  * Added a new API that checks whether a domain name can be transferred to Amazon Route 53.
+
+### SDK Bugs
+* `service/s3/s3crypto`: Correct PutObjectRequest documentation ([#1568](https://github.com/aws/aws-sdk-go/pull/1568))
+  * s3Crypto's PutObjectRequest docstring example was using an incorrect value. Corrected the type used in the example.
+Release v1.12.4 (2017-10-03)
+===
+
+### Service Client Updates
+* `service/ec2`: Updates service API, documentation, and waiters
+  * This release includes service updates to AWS VPN.
+* `service/ssm`: Updates service API and documentation
+  * EC2 Systems Manager support for tagging SSM Documents. Also support for tag-based permissions to restrict access to SSM Documents based on these tags.
+
+Release v1.12.3 (2017-10-02)
+===
+
+### Service Client Updates
+* `service/cloudhsm`: Updates service documentation and paginators
+  * Documentation updates for CloudHSM
+
+Release v1.12.2 (2017-09-29)
+===
+
+### Service Client Updates
+* `service/appstream`: Updates service API and documentation
+  * Includes APIs for managing and accessing image builders, and deleting images.
+* `service/codebuild`: Updates service API and documentation
+  * Adding support for Building GitHub Pull Requests in AWS CodeBuild
+* `service/mturk-requester`: Updates service API and documentation
+* `service/organizations`: Updates service API and documentation
+  * This release flags the HandshakeParty structure's Type and Id fields as 'required'. They effectively were required in the past, as you received an error if you did not include them. This is now reflected at the API definition level.
+* `service/route53`: Updates service API and documentation
+  * This change allows customers to reset elements of health check.
+
+### SDK Bugs
+* `private/protocol/query`: Fix query protocol handling of nested byte slices ([#1557](https://github.com/aws/aws-sdk-go/issues/1557))
+  * Fixes the query protocol to correctly marshal nested []byte values of API operations.
+* `service/s3`: Fix PutObject and UploadPart API to include ContentMD5 field ([#1559](https://github.com/aws/aws-sdk-go/pull/1559))
+  * Fixes the SDK's S3 PutObject and UploadPart API code generation to correctly render the ContentMD5 field into the associated input types for these two API operations.
+  * Fixes [#1553](https://github.com/aws/aws-sdk-go/pull/1553)
+Release v1.12.1 (2017-09-27)
+===
+
+### Service Client Updates
+* `aws/endpoints`: Updated Regions and Endpoints metadata.
+* `service/pinpoint`: Updates service API and documentation
+  * Added two new push notification channels: Amazon Device Messaging (ADM) and, for push notification support in China, Baidu Cloud Push. Added support for APNs auth via .p8 key file. Added operation for direct message deliveries to user IDs, enabling you to message an individual user on multiple endpoints.
+
+Release v1.12.0 (2017-09-26)
+===
+
+### SDK Bugs
+* `API Marshaler`: Revert REST JSON and XML protocol marshaler improvements
+  * Bug [#1550](https://github.com/aws/aws-sdk-go/issues/1550) identified a missed condition in the Amazon Route 53 RESTXML protocol marshaling causing requests to that service to fail. Reverting the marshaler improvements until the bug can be fixed.
+
+Release v1.11.0 (2017-09-26)
+===
+
+### Service Client Updates
+* `service/cloudformation`: Updates service API and documentation
+  * You can now prevent a stack from being accidentally deleted by enabling termination protection on the stack. If you attempt to delete a stack with termination protection enabled, the deletion fails and the stack, including its status, remains unchanged. You can enable termination protection on a stack when you create it. Termination protection on stacks is disabled by default. After creation, you can set termination protection on a stack whose status is CREATE_COMPLETE, UPDATE_COMPLETE, or UPDATE_ROLLBACK_COMPLETE.
+
+### SDK Features
+* Add dep Go dependency management metadata files (#1544)
+  * Adds the Go `dep` dependency management metadata files to the SDK.
+  * Fixes [#1451](https://github.com/aws/aws-sdk-go/issues/1451)
+  * Fixes [#634](https://github.com/aws/aws-sdk-go/issues/634)
+* `service/dynamodb/expression`: Add expression building utility for DynamoDB ([#1527](https://github.com/aws/aws-sdk-go/pull/1527))
+  * Adds a new package, expression, to the SDK providing builder utilities to create DynamoDB expressions safely taking advantage of type safety.
+* `API Marshaler`: Add generated marshalers for RESTXML protocol ([#1409](https://github.com/aws/aws-sdk-go/pull/1409))
+  * Updates the RESTXML protocol marshaler to use generated code instead of reflection for REST XML based services.
+* `API Marshaler`: Add generated marshalers for RESTJSON protocol ([#1547](https://github.com/aws/aws-sdk-go/pull/1547))
+  * Updates the RESTJSON protocol marshaler to use generated code instead of reflection for REST JSON based services.
+
+### SDK Enhancements
+* `private/protocol`: Update format of REST JSON and XMl benchmarks ([#1546](https://github.com/aws/aws-sdk-go/pull/1546))
+  * Updates the format of the REST JSON and XML benchmarks to be readable. RESTJSON benchmarks were updated to more accurately bench building of the protocol.
+
+Release v1.10.51 (2017-09-22)
+===
+
+### Service Client Updates
+* `service/config`: Updates service API and documentation
+* `service/ecs`: Updates service API and documentation
+  * Amazon ECS users can now add and drop Linux capabilities to their containers through the use of docker's cap-add and cap-drop features. Customers can specify the capabilities they wish to add or drop for each container in their task definition.
+* `aws/endpoints`: Updated Regions and Endpoints metadata.
+* `service/rds`: Updates service documentation
+  * Documentation updates for rds
+
+Release v1.10.50 (2017-09-21)
+===
+
+### Service Client Updates
+* `service/budgets`: Updates service API
+  * Including "DuplicateRecordException" in UpdateNotification and UpdateSubscriber.
+* `service/ec2`: Updates service API and documentation
+  * Add EC2 APIs to copy Amazon FPGA Images (AFIs) within the same region and across multiple regions, delete AFIs, and modify AFI attributes. AFI attributes include name, description and granting/denying other AWS accounts to load the AFI.
+* `service/logs`: Updates service API and documentation
+  * Adds support for associating LogGroups with KMS Keys.
+
+### SDK Bugs
+* Fix greengrass service model being duplicated with different casing. ([#1541](https://github.com/aws/aws-sdk-go/pull/1541))
+  * Fixes [#1540](https://github.com/aws/aws-sdk-go/issues/1540)
+  * Fixes [#1539](https://github.com/aws/aws-sdk-go/issues/1539)
+Release v1.10.49 (2017-09-20)
+===
+
+### Service Client Updates
+* `service/Greengrass`: Adds new service
+* `service/appstream`: Updates service API and documentation
+  * API updates for supporting On-Demand fleets.
+* `service/codepipeline`: Updates service API and documentation
+  * This change includes a PipelineMetadata object that is part of the output from the GetPipeline API that includes the Pipeline ARN, created, and updated timestamp.
+* `aws/endpoints`: Updated Regions and Endpoints metadata.
+* `service/rds`: Updates service API and documentation
+  * Introduces the --option-group-name parameter to the ModifyDBSnapshot CLI command. You can specify this parameter when you upgrade an Oracle DB snapshot. The same option group considerations apply when upgrading a DB snapshot as when upgrading a DB instance.  For more information, see http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Oracle.html#USER_UpgradeDBInstance.Oracle.OGPG.OG
+* `service/runtime.lex`: Updates service API and documentation
+
 Release v1.10.48 (2017-09-19)
 ===
 
