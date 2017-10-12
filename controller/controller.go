@@ -705,7 +705,8 @@ func (c *Controller) command(
 		res, err = c.cmdConfigSet(msg)
 	case "config rewrite":
 		res, err = c.cmdConfigRewrite(msg)
-	case "config":
+	case "config", "script":
+		// These get rewritten into "config foo" and "script bar"
 		err = fmt.Errorf("unknown command '%s'", msg.Values[0])
 		if len(msg.Values) > 1 {
 			command := msg.Values[0].String() + " " + msg.Values[1].String()
