@@ -226,6 +226,7 @@ moreData:
 		if kind != kindHTTP {
 			msg.Command = strings.ToLower(string(args[0]))
 			for i := 0; i < len(args); i++ {
+				args[i] = append([]byte{}, args[i]...)
 				msg.Values = append(msg.Values, resp.BytesValue(args[i]))
 			}
 			switch kind {
