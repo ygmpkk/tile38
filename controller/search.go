@@ -352,20 +352,14 @@ type iterItem struct {
 }
 
 func nearestNeighbors(sw *scanWriter, lat, lon float64, iter func(id string, o geojson.Object, fields []float64, dist *float64) bool) {
-	limit := sw.limit * 10
-	if limit > limitItems*10 {
-		limit = limitItems * 10
-	}
-	k := sw.cursor + limit
+	limit := int(sw.limit)
 	var items []iterItem
 	sw.col.NearestNeighbors(lat, lon, func(id string, o geojson.Object, fields []float64) bool {
-		if k == 0 {
-			return false
+		if _, ok := sw.fieldMatch(fields, o); ok {
+			dist := o.CalculatedPoint().DistanceTo(geojson.Position{X: lon, Y: lat, Z: 0})
+			items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
 		}
-		dist := o.CalculatedPoint().DistanceTo(geojson.Position{X: lon, Y: lat, Z: 0})
-		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
-		k--
-		return true
+		return len(items) < limit
 	})
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].dist < items[j].dist
