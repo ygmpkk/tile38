@@ -829,6 +829,7 @@ func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDeta
 	var fields []string
 	var values []float64
 	var xx bool
+	var updated_count int
 	d, fields, values, xx, err = c.parseFSetArgs(vs)
 
 	col := c.getCol(d.key)
@@ -837,7 +838,7 @@ func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDeta
 		return
 	}
 	var ok bool
-	d.obj, d.fields, d.updated, ok = col.SetFields(d.id, fields, values)
+	d.obj, d.fields, updated_count, ok = col.SetFields(d.id, fields, values)
 	if !(ok || xx) {
 		err = errIDNotFound
 		return
@@ -845,6 +846,7 @@ func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDeta
 	if ok {
 		d.command = "fset"
 		d.timestamp = time.Now()
+		d.updated = updated_count > 0
 		fmap := col.FieldMap()
 		d.fmap = make(map[string]int)
 		for key, idx := range fmap {
@@ -856,11 +858,7 @@ func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDeta
 	case server.JSON:
 		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Now().Sub(start).String() + "\"}")
 	case server.RESP:
-		if d.updated {
-			res = resp.IntegerValue(1)
-		} else {
-			res = resp.IntegerValue(0)
-		}
+		res = resp.IntegerValue(updated_count)
 	}
 	return
 }
