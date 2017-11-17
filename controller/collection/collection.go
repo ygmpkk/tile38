@@ -233,6 +233,24 @@ func (c *Collection) SetField(id, field string, value float64) (obj geojson.Obje
 	return item.object, c.getFieldValues(id), updated, true
 }
 
+// SetFields is similar to SetField, just setting multiple fields at once
+func (c *Collection) SetFields(id string, in_fields []string, in_values []float64) (
+	obj geojson.Object, fields []float64, updated_count int, ok bool,
+) {
+	i := c.items.Get(&itemT{id: id})
+	if i == nil {
+		ok = false
+		return
+	}
+	item := i.(*itemT)
+	for idx, field := range in_fields {
+		if c.setField(item, field, in_values[idx]) {
+			updated_count++
+		}
+	}
+	return item.object, c.getFieldValues(id), updated_count, true
+}
+
 func (c *Collection) setField(item *itemT, field string, value float64) (updated bool) {
 	idx, ok := c.fieldMap[field]
 	if !ok {

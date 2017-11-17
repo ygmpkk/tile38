@@ -780,8 +780,9 @@ notok:
 	return
 }
 
-func (c *Controller) parseFSetArgs(vs []resp.Value) (d commandDetailsT, err error) {
-	var svalue string
+func (c *Controller) parseFSetArgs(vs []resp.Value) (
+	d commandDetailsT, fields []string, values []float64, xx bool, err error,
+) {
 	var ok bool
 	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
 		err = errInvalidNumberOfArguments
@@ -791,26 +792,33 @@ func (c *Controller) parseFSetArgs(vs []resp.Value) (d commandDetailsT, err erro
 		err = errInvalidNumberOfArguments
 		return
 	}
-	if vs, d.field, ok = tokenval(vs); !ok || d.field == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if isReservedFieldName(d.field) {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if vs, svalue, ok = tokenval(vs); !ok || svalue == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	d.value, err = strconv.ParseFloat(svalue, 64)
-	if err != nil {
-		err = errInvalidArgument(svalue)
-		return
+	for len(vs) > 0 {
+		var name string
+		if vs, name, ok = tokenval(vs); !ok || name == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if lc(name, "xx") {
+			xx = true
+			continue
+		}
+		if isReservedFieldName(name) {
+			err = errInvalidArgument(name)
+			return
+		}
+		var svalue string
+		var value float64
+		if vs, svalue, ok = tokenval(vs); !ok || svalue == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		value, err = strconv.ParseFloat(svalue, 64)
+		if err != nil {
+			err = errInvalidArgument(svalue)
+			return
+		}
+		fields = append(fields, name)
+		values = append(values, value)
 	}
 	return
 }
@@ -818,35 +826,39 @@ func (c *Controller) parseFSetArgs(vs []resp.Value) (d commandDetailsT, err erro
 func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDetailsT, err error) {
 	start := time.Now()
 	vs := msg.Values[1:]
-	d, err = c.parseFSetArgs(vs)
+	var fields []string
+	var values []float64
+	var xx bool
+	var updated_count int
+	d, fields, values, xx, err = c.parseFSetArgs(vs)
+
 	col := c.getCol(d.key)
 	if col == nil {
 		err = errKeyNotFound
 		return
 	}
 	var ok bool
-	d.obj, d.fields, d.updated, ok = col.SetField(d.id, d.field, d.value)
-	if !ok {
+	d.obj, d.fields, updated_count, ok = col.SetFields(d.id, fields, values)
+	if !(ok || xx) {
 		err = errIDNotFound
 		return
 	}
-	d.command = "fset"
-	d.timestamp = time.Now()
-	fmap := col.FieldMap()
-	d.fmap = make(map[string]int)
-	for key, idx := range fmap {
-		d.fmap[key] = idx
+	if ok {
+		d.command = "fset"
+		d.timestamp = time.Now()
+		d.updated = updated_count > 0
+		fmap := col.FieldMap()
+		d.fmap = make(map[string]int)
+		for key, idx := range fmap {
+			d.fmap[key] = idx
+		}
 	}
 
 	switch msg.OutputType {
 	case server.JSON:
 		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Now().Sub(start).String() + "\"}")
 	case server.RESP:
-		if d.updated {
-			res = resp.IntegerValue(1)
-		} else {
-			res = resp.IntegerValue(0)
-		}
+		res = resp.IntegerValue(updated_count)
 	}
 	return
 }
