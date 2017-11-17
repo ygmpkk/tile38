@@ -331,7 +331,7 @@ var commandsJSON = `{
     "group": "keys"
   },
   "FSET": {
-    "summary": "Set the value for a single field of an id",
+    "summary": "Set the value for one or more fields of an id",
     "complexity": "O(1)",
     "arguments":[
       {
@@ -343,12 +343,20 @@ var commandsJSON = `{
         "type": "string"
       },
       {
-        "name": "field",
-        "type": "string"
+        "command": "XX",
+        "name": [],
+        "type": [],
+        "optional": true
       },
       {
-        "name": "value",
-        "type": "double"
+        "name": ["field","value"],
+        "type": ["string","double"]
+      },
+      {
+        "name": ["field","value"],
+        "type": ["string","double"],
+        "multiple": true,
+        "optional": true
       }
     ],
     "since": "1.0.0",
@@ -665,12 +673,12 @@ var commandsJSON = `{
         "type": "pattern",
         "optional": true
       },
-			{
-				"command": "DISTANCE",
-				"name": [],
-				"type": [],
-				"optional": true
-			},
+      {
+        "command": "DISTANCE",
+        "name": [],
+        "type": [],
+        "optional": true
+      },
       {
         "command": "WHERE",
         "name": ["field","min","max"],

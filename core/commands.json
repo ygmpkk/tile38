@@ -184,8 +184,13 @@
       },
       {
         "name": ["field","value"],
+        "type": ["string","double"]
+      },
+      {
+        "name": ["field","value"],
         "type": ["string","double"],
-        "multiple": true
+        "multiple": true,
+        "optional": true
       }
     ],
     "since": "1.0.0",
