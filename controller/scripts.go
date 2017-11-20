@@ -16,6 +16,7 @@ import (
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/controller/server"
 	"github.com/yuin/gopher-lua"
+	luajson "layeh.com/gopher-json"
 )
 
 const (
@@ -149,6 +150,9 @@ func (pl *lStatePool) New() *lua.LState {
 		"sha1hex":      sha1hex,
 	}
 	L.SetGlobal("tile38", L.SetFuncs(L.NewTable(), exports))
+
+	// Load json
+	L.SetGlobal("json", L.Get(luajson.Loader(L)))
 
 	// Prohibit creating new globals in this state
 	lockNewGlobals := func(ls *lua.LState) int {
