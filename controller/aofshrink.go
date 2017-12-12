@@ -169,12 +169,12 @@ func (c *Controller) aofshrink() {
 					)
 
 				}()
-			}
-			if len(aofbuf) > maxchunk {
-				if _, err := f.Write(aofbuf); err != nil {
-					return err
+				if len(aofbuf) > maxchunk {
+					if _, err := f.Write(aofbuf); err != nil {
+						return err
+					}
+					aofbuf = aofbuf[:0]
 				}
-				aofbuf = aofbuf[:0]
 			}
 		}
 
