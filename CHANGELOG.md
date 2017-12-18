@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.10.0] - 2017-12-18
+### Added
+- #221: Sqs endpoint (@ennycampino)
+- #226: Lua scripting (@rshura) 
+- #231: Allow setting multiple fields in a single fset command (@rshura)
+- #235: Add json library (encode/decode methods) to lua. (@rshura)
+- 26d0083: Update vendoring to use golang/dep 
+- c8ed7ca: Add WHEREIN command (@rshura)
+- d817814: Optimized network pipelining
+
+### Fixed
+- #237: Flush to file periodically (@rshura)
+- #241: Point match on interior hole (@genesor)
+- 920dc3a: Use atomic ints/bools
+- 730502d: Set keepalive default to 300 seconds
+- 1084c60: Apply limit on top of cursor (@rshura)
+
 ## [1.9.1] - 2017-08-16
 ### Added
 - cd05708: Spatial index optimizations
