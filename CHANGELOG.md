@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.10.0] - 2017-12-18
 ### Added
-- #221: Sqs endpoint (@ennycampino)
+- #221: Sqs endpoint (@lennycampino)
 - #226: Lua scripting (@rshura) 
 - #231: Allow setting multiple fields in a single fset command (@rshura)
 - #235: Add json library (encode/decode methods) to lua. (@rshura)
