@@ -137,17 +137,6 @@ func (c *Controller) aofshrink() {
 								values = append(values, "point")
 								values = append(values, strconv.FormatFloat(obj.Y, 'f', -1, 64))
 								values = append(values, strconv.FormatFloat(obj.X, 'f', -1, 64))
-							case geojson.Point:
-								if obj.Coordinates.Z == 0 {
-									values = append(values, "point")
-									values = append(values, strconv.FormatFloat(obj.Coordinates.Y, 'f', -1, 64))
-									values = append(values, strconv.FormatFloat(obj.Coordinates.X, 'f', -1, 64))
-									values = append(values, strconv.FormatFloat(obj.Coordinates.Z, 'f', -1, 64))
-								} else {
-									values = append(values, "point")
-									values = append(values, strconv.FormatFloat(obj.Coordinates.Y, 'f', -1, 64))
-									values = append(values, strconv.FormatFloat(obj.Coordinates.X, 'f', -1, 64))
-								}
 							}
 
 							// append the values to the aof buffer
