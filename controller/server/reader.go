@@ -223,27 +223,29 @@ moreData:
 		if !complete {
 			break
 		}
-		if kind != kindHTTP {
-			msg.Command = strings.ToLower(string(args[0]))
-			for i := 0; i < len(args); i++ {
-				args[i] = append([]byte{}, args[i]...)
-				msg.Values = append(msg.Values, resp.BytesValue(args[i]))
+		if len(args) > 0 {
+			if kind != kindHTTP {
+				msg.Command = strings.ToLower(string(args[0]))
+				for i := 0; i < len(args); i++ {
+					args[i] = append([]byte{}, args[i]...)
+					msg.Values = append(msg.Values, resp.BytesValue(args[i]))
+				}
+				switch kind {
+				case redcon.Redis:
+					msg.ConnType = RESP
+					msg.OutputType = RESP
+				case redcon.Tile38:
+					msg.ConnType = Native
+					msg.OutputType = JSON
+				case redcon.Telnet:
+					msg.ConnType = RESP
+					msg.OutputType = RESP
+				}
+			} else if len(msg.Values) == 0 {
+				return nil, errInvalidHTTP
 			}
-			switch kind {
-			case redcon.Redis:
-				msg.ConnType = RESP
-				msg.OutputType = RESP
-			case redcon.Tile38:
-				msg.ConnType = Native
-				msg.OutputType = JSON
-			case redcon.Telnet:
-				msg.ConnType = RESP
-				msg.OutputType = RESP
-			}
-		} else if len(msg.Values) == 0 {
-			return nil, errInvalidHTTP
+			msgs = append(msgs, msg)
 		}
-		msgs = append(msgs, msg)
 		data = leftover
 	}
 	if len(data) > 0 {
