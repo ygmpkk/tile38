@@ -16,8 +16,8 @@ fi
 
 if [ "$1" == "update-version" ]; then
 	# update the versions in the README.md and Dockerfile
-	sed -i '' "s/version-.\..\../version-$VERSION/g" README.md
-	sed -i '' "s/ENV\ TILE38_VERSION\ .\..\../ENV TILE38_VERSION $VERSION/g" docker/Dockerfile
+	sed -i '' "s/version-[0-9]*\.[0-9]*\.[0-9]*/version-$VERSION/g" README.md
+	sed -i '' "s/ENV\ TILE38_VERSION\ [0-9]*\.[0-9]*\.[0-9]*/ENV TILE38_VERSION $VERSION/g" docker/Dockerfile
 	exit
 fi
 
