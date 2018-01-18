@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.10.1] - 2018-01-17
+### Fixed
+- #244: Fix issue with points not being detected inside MultiPolygons (@fazlul3003)
+- #245: Precalculate and store bboxes for complex objects (@huangpeizhi)
+- #246: Fix server crash when receiving zero arg commands (@behrad)
+
 ## [1.10.0] - 2017-12-18
 ### Added
 - #221: Sqs endpoint (@lennycampino)
