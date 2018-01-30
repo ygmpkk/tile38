@@ -598,6 +598,10 @@ func randomKey(n int) string {
 func (c *Controller) reset() {
 	c.aofsz = 0
 	c.cols = btree.New(16, 0)
+	c.exlistmu.Lock()
+	c.exlist = nil
+	c.exlistmu.Unlock()
+	c.expires = make(map[string]map[string]time.Time)
 }
 
 func (c *Controller) command(
