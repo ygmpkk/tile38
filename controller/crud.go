@@ -824,6 +824,10 @@ func (c *Controller) parseFSetArgs(vs []resp.Value) (
 }
 
 func (c *Controller) cmdFset(msg *server.Message) (res resp.Value, d commandDetailsT, err error) {
+	if c.config.maxMemory() > 0 && c.outOfMemory.on() {
+		err = errOOM
+		return
+	}
 	start := time.Now()
 	vs := msg.Values[1:]
 	var fields []string
