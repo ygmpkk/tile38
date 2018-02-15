@@ -87,7 +87,9 @@ func (c *Controller) goLive(inerr error, conn net.Conn, rd *server.PipelineReade
 		lb.key = s.key
 		lb.fence = &s
 		c.mu.RLock()
-		sw, err = c.newScanWriter(&wr, msg, s.key, s.output, s.precision, s.glob, false, s.cursor, s.limit, s.wheres, s.whereins, s.nofields)
+		sw, err = c.newScanWriter(
+			&wr, msg, s.key, s.output, s.precision, s.glob, false,
+			s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
 		c.mu.RUnlock()
 	}
 	// everything below if for live SCAN, NEARBY, WITHIN, INTERSECTS

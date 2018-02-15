@@ -97,6 +97,7 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 		break
 	}
 	s, err := c.cmdSearchArgs(cmdlc, vs, types)
+	defer s.Close()
 	if err != nil {
 		return server.NOMessage, d, err
 	}
@@ -132,7 +133,9 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 	hook.cond = sync.NewCond(&hook.mu)
 
 	var wr bytes.Buffer
-	hook.ScanWriter, err = c.newScanWriter(&wr, cmsg, s.key, s.output, s.precision, s.glob, false, s.cursor, s.limit, s.wheres, s.whereins, s.nofields)
+	hook.ScanWriter, err = c.newScanWriter(
+		&wr, cmsg, s.key, s.output, s.precision, s.glob, false,
+		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
 	if err != nil {
 		return server.NOMessage, d, err
 	}

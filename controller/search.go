@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,8 +41,14 @@ func (s liveFenceSwitches) Error() string {
 	return "going live"
 }
 
+func (s liveFenceSwitches) Close() {
+	for _, whereeval := range s.searchScanBaseTokens.whereevals {
+		whereeval.Close()
+	}
+}
+
 func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) (s liveFenceSwitches, err error) {
-	if vs, s.searchScanBaseTokens, err = parseSearchScanBaseTokens(cmd, vs); err != nil {
+	if vs, s.searchScanBaseTokens, err = c.parseSearchScanBaseTokens(cmd, vs); err != nil {
 		return
 	}
 	var typ string
@@ -288,6 +295,14 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 	vs := msg.Values[1:]
 	wr := &bytes.Buffer{}
 	s, err := c.cmdSearchArgs("nearby", vs, nearbyTypes)
+	defer s.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			res = server.NOMessage
+			err = errors.New(r.(string))
+			return
+		}
+	}()
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -296,7 +311,9 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 		return server.NOMessage, s
 	}
 	minZ, maxZ := zMinMaxFromWheres(s.wheres)
-	sw, err := c.newScanWriter(wr, msg, s.key, s.output, s.precision, s.glob, false, s.cursor, s.limit, s.wheres, s.whereins, s.nofields)
+	sw, err := c.newScanWriter(
+		wr, msg, s.key, s.output, s.precision, s.glob, false,
+		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -385,6 +402,15 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 
 	wr := &bytes.Buffer{}
 	s, err := c.cmdSearchArgs(cmd, vs, withinOrIntersectsTypes)
+	defer s.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			res = server.NOMessage
+			err = errors.New(r.(string))
+			return
+		}
+	}()
+
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -392,7 +418,9 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 	if s.fence {
 		return server.NOMessage, s
 	}
-	sw, err := c.newScanWriter(wr, msg, s.key, s.output, s.precision, s.glob, false, s.cursor, s.limit, s.wheres, s.whereins, s.nofields)
+	sw, err := c.newScanWriter(
+		wr, msg, s.key, s.output, s.precision, s.glob, false,
+		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -440,8 +468,8 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 	return sw.respOut, nil
 }
 
-func cmdSeachValuesArgs(vs []resp.Value) (s liveFenceSwitches, err error) {
-	if vs, s.searchScanBaseTokens, err = parseSearchScanBaseTokens("search", vs); err != nil {
+func (c *Controller) cmdSeachValuesArgs(vs []resp.Value) (s liveFenceSwitches, err error) {
+	if vs, s.searchScanBaseTokens, err = c.parseSearchScanBaseTokens("search", vs); err != nil {
 		return
 	}
 	if len(vs) != 0 {
@@ -456,11 +484,21 @@ func (c *Controller) cmdSearch(msg *server.Message) (res resp.Value, err error) 
 	vs := msg.Values[1:]
 
 	wr := &bytes.Buffer{}
-	s, err := cmdSeachValuesArgs(vs)
+	s, err := c.cmdSeachValuesArgs(vs)
+	defer s.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			res = server.NOMessage
+			err = errors.New(r.(string))
+			return
+		}
+	}()
 	if err != nil {
 		return server.NOMessage, err
 	}
-	sw, err := c.newScanWriter(wr, msg, s.key, s.output, s.precision, s.glob, true, s.cursor, s.limit, s.wheres, s.whereins, s.nofields)
+	sw, err := c.newScanWriter(
+		wr, msg, s.key, s.output, s.precision, s.glob, true,
+		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
 	if err != nil {
 		return server.NOMessage, err
 	}

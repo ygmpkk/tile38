@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/tidwall/resp"
+	"github.com/yuin/gopher-lua"
 )
 
 const defaultSearchOutput = outputObjects
@@ -166,6 +167,64 @@ func (wherein whereinT) match(value float64) bool {
 	return ok
 }
 
+type whereevalT struct {
+	c 			*Controller
+	luaState	*lua.LState
+	fn			*lua.LFunction
+}
+
+func (whereeval whereevalT) Close() {
+	luaSetRawGlobals(
+		whereeval.luaState, map[string]lua.LValue{
+			"ARGV":	lua.LNil,
+		})
+	whereeval.c.luapool.Put(whereeval.luaState)
+}
+
+func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
+	fieldsTbl := whereeval.luaState.CreateTable(0, len(fieldsWithNames))
+	for field, val := range fieldsWithNames {
+		fieldsTbl.RawSetString(field, lua.LNumber(val))
+	}
+
+	luaSetRawGlobals(
+		whereeval.luaState, map[string]lua.LValue{
+			"FIELDS":	fieldsTbl,
+		})
+	defer luaSetRawGlobals(
+		whereeval.luaState, map[string]lua.LValue{
+			"FIELDS":	lua.LNil,
+		})
+
+	whereeval.luaState.Push(whereeval.fn)
+	if err := whereeval.luaState.PCall(0, 1, nil); err != nil {
+		panic(err.Error())
+	}
+	ret := whereeval.luaState.Get(-1)
+	whereeval.luaState.Pop(1)
+
+	// Make bool out of returned lua value
+	switch ret.Type() {
+	case lua.LTNil:
+		return false
+	case lua.LTBool:
+		return ret == lua.LTrue
+	case lua.LTNumber:
+		return float64(ret.(lua.LNumber)) != 0
+	case lua.LTString:
+		return ret.String() != ""
+	case lua.LTTable:
+		tbl := ret.(*lua.LTable)
+		if tbl.Len() != 0 {
+			return true
+		}
+		var match bool
+		tbl.ForEach(func(lk lua.LValue, lv lua.LValue) {match = true})
+		return match
+	}
+	panic(fmt.Sprintf("Script returned value of type %s", ret.Type()))
+}
+
 type searchScanBaseTokens struct {
 	key       string
 	cursor    uint64
@@ -179,6 +238,7 @@ type searchScanBaseTokens struct {
 	glob      string
 	wheres    []whereT
 	whereins  []whereinT
+	whereevals	[]whereevalT
 	nofields  bool
 	ulimit    bool
 	limit     uint64
@@ -187,7 +247,7 @@ type searchScanBaseTokens struct {
 	desc      bool
 }
 
-func parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vsout []resp.Value, t searchScanBaseTokens, err error) {
+func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vsout []resp.Value, t searchScanBaseTokens, err error) {
 	var ok bool
 	if vs, t.key, ok = tokenval(vs); !ok || t.key == "" {
 		err = errInvalidNumberOfArguments
@@ -287,6 +347,76 @@ func parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vsout []resp.Value,
 					valMap[val] = empty
 				}
 				t.whereins = append(t.whereins, whereinT{field, valMap})
+				continue
+			} else if (wtok[0] == 'W' || wtok[0] == 'w') && strings.Contains(strings.ToLower(wtok), "whereeval") {
+				scriptIsSha := strings.ToLower(wtok) == "whereevalsha"
+				vs = nvs
+				var script, nargsStr, arg string
+				if vs, script, ok = tokenval(vs); !ok || script == "" {
+					err = errInvalidNumberOfArguments
+					return
+				}
+				if vs, nargsStr, ok = tokenval(vs); !ok || nargsStr == "" {
+					err = errInvalidNumberOfArguments
+					return
+				}
+
+				var i, nargs uint64
+				if nargs, err = strconv.ParseUint(nargsStr, 10, 64); err != nil {
+					err = errInvalidArgument(nargsStr)
+					return
+				}
+
+				var luaState *lua.LState
+				luaState, err = c.luapool.Get()
+				if err != nil {
+					return
+				}
+
+				argsTbl := luaState.CreateTable(len(vs), 0)
+				for i = 0; i < nargs; i++ {
+					if vs, arg, ok = tokenval(vs); !ok || arg == "" {
+						err = errInvalidNumberOfArguments
+						return
+					}
+					argsTbl.Append(lua.LString(arg))
+				}
+
+				var shaSum string
+				if scriptIsSha {
+					shaSum = script
+				} else {
+					shaSum = Sha1Sum(script)
+				}
+
+				luaSetRawGlobals(
+					luaState, map[string]lua.LValue{
+						"ARGV":     argsTbl,
+					})
+
+				compiled, ok := c.luascripts.Get(shaSum)
+				var fn *lua.LFunction
+				if ok {
+					fn = &lua.LFunction{
+						IsG: false,
+						Env: luaState.Env,
+
+						Proto:     compiled,
+						GFunction: nil,
+						Upvalues:  make([]*lua.Upvalue, 0),
+					}
+				} else if scriptIsSha {
+					err = errShaNotFound
+					return
+				} else {
+					fn, err = luaState.Load(strings.NewReader(script), "f_"+shaSum)
+					if err != nil {
+						err = makeSafeErr(err)
+						return
+					}
+					c.luascripts.Put(shaSum, fn.Proto)
+				}
+				t.whereevals = append(t.whereevals, whereevalT{c,luaState, fn})
 				continue
 			} else if (wtok[0] == 'N' || wtok[0] == 'n') && strings.ToLower(wtok) == "nofields" {
 				vs = nvs

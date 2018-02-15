@@ -40,6 +40,7 @@ type scanWriter struct {
 	output         outputT
 	wheres         []whereT
 	whereins       []whereinT
+	whereevals     []whereevalT
 	numberItems    uint64
 	nofields       bool
 	cursor         uint64
@@ -68,7 +69,7 @@ type ScanWriterParams struct {
 func (c *Controller) newScanWriter(
 	wr *bytes.Buffer, msg *server.Message, key string, output outputT,
 	precision uint64, globPattern string, matchValues bool,
-	cursor, limit uint64, wheres []whereT, whereins []whereinT, nofields bool,
+	cursor, limit uint64, wheres []whereT, whereins []whereinT, whereevals []whereevalT, nofields bool,
 ) (
 	*scanWriter, error,
 ) {
@@ -92,6 +93,7 @@ func (c *Controller) newScanWriter(
 		limit:       limit,
 		wheres:      wheres,
 		whereins:    whereins,
+		whereevals:  whereevals,
 		output:      output,
 		nofields:    nofields,
 		precision:   precision,
@@ -186,9 +188,10 @@ func (sw *scanWriter) writeFoot() {
 	}
 }
 
-func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64, bool) {
+func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []float64, match bool) {
 	var z float64
 	var gotz bool
+	fvals = sw.fvals
 	if !sw.hasFieldsOutput() || sw.fullFields {
 		for _, where := range sw.wheres {
 			if where.field == "z" {
@@ -196,7 +199,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 					z = o.CalculatedPoint().Z
 				}
 				if !where.match(z) {
-					return sw.fvals, false
+					return
 				}
 				continue
 			}
@@ -208,7 +211,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 				}
 			}
 			if !where.match(value) {
-				return sw.fvals, false
+				return
 			}
 		}
 		for _, wherein := range sw.whereins {
@@ -220,7 +223,20 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 				}
 			}
 			if !wherein.match(value) {
-				return sw.fvals, false
+				return
+			}
+		}
+		for _, whereval := range sw.whereevals {
+			fieldsWithNames := make(map[string]float64)
+			for field, idx := range sw.fmap {
+				if idx < len(fields) {
+					fieldsWithNames[field] = fields[idx]
+				} else {
+					fieldsWithNames[field] = 0
+				}
+			}
+			if !whereval.match(fieldsWithNames) {
+				return
 			}
 		}
 	} else {
@@ -237,7 +253,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 					z = o.CalculatedPoint().Z
 				}
 				if !where.match(z) {
-					return sw.fvals, false
+					return
 				}
 				continue
 			}
@@ -247,7 +263,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 				value = sw.fvals[idx]
 			}
 			if !where.match(value) {
-				return sw.fvals, false
+				return
 			}
 		}
 		for _, wherein := range sw.whereins {
@@ -257,11 +273,25 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) ([]float64,
 				value = sw.fvals[idx]
 			}
 			if !wherein.match(value) {
-				return sw.fvals, false
+				return
+			}
+		}
+		for _, whereval := range sw.whereevals {
+			fieldsWithNames := make(map[string]float64)
+			for field, idx := range sw.fmap {
+				if idx < len(fields) {
+					fieldsWithNames[field] = fields[idx]
+				} else {
+					fieldsWithNames[field] = 0
+				}
+			}
+			if !whereval.match(fieldsWithNames) {
+				return
 			}
 		}
 	}
-	return sw.fvals, true
+	match = true
+	return
 }
 
 //id string, o geojson.Object, fields []float64, noLock bool
