@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.11.0] - 2018-03-05
+### Added
+- #221: Add WHEREEVAL clause to scan/search commands (@rshura)
+### Fixed
+- #254: Add maxmemory protection to FSET (@rshura)
+- #258: Clear expires on reset (@zycbobby)
+- #268: Avoid bbox intersect for non-bbox objects (@contra)
+
 ## [1.10.1] - 2018-01-17
 ### Fixed
 - #244: Fix issue with points not being detected inside MultiPolygons (@fazlul3003)
