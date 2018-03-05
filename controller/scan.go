@@ -27,14 +27,16 @@ func (c *Controller) cmdScan(msg *server.Message) (res resp.Value, err error) {
 	vs := msg.Values[1:]
 
 	s, err := c.cmdScanArgs(vs)
-	defer s.Close()
-	defer func() {
-		if r := recover(); r != nil {
-			res = server.NOMessage
-			err = errors.New(r.(string))
-			return
-		}
-	}()
+	if s.usingLua() {
+		defer s.Close()
+		defer func() {
+			if r := recover(); r != nil {
+				res = server.NOMessage
+				err = errors.New(r.(string))
+				return
+			}
+		}()
+	}
 	if err != nil {
 		return server.NOMessage, err
 	}

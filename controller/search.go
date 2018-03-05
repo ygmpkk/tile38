@@ -42,9 +42,13 @@ func (s liveFenceSwitches) Error() string {
 }
 
 func (s liveFenceSwitches) Close() {
-	for _, whereeval := range s.searchScanBaseTokens.whereevals {
+	for _, whereeval := range s.whereevals {
 		whereeval.Close()
 	}
+}
+
+func (s liveFenceSwitches) usingLua() bool {
+	return len(s.whereevals) > 0
 }
 
 func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) (s liveFenceSwitches, err error) {
@@ -295,14 +299,16 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 	vs := msg.Values[1:]
 	wr := &bytes.Buffer{}
 	s, err := c.cmdSearchArgs("nearby", vs, nearbyTypes)
-	defer s.Close()
-	defer func() {
-		if r := recover(); r != nil {
-			res = server.NOMessage
-			err = errors.New(r.(string))
-			return
-		}
-	}()
+	if s.usingLua() {
+		defer s.Close()
+		defer func() {
+			if r := recover(); r != nil {
+				res = server.NOMessage
+				err = errors.New(r.(string))
+				return
+			}
+		}()
+	}
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -402,15 +408,16 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 
 	wr := &bytes.Buffer{}
 	s, err := c.cmdSearchArgs(cmd, vs, withinOrIntersectsTypes)
-	defer s.Close()
-	defer func() {
-		if r := recover(); r != nil {
-			res = server.NOMessage
-			err = errors.New(r.(string))
-			return
-		}
-	}()
-
+	if s.usingLua() {
+		defer s.Close()
+		defer func() {
+			if r := recover(); r != nil {
+				res = server.NOMessage
+				err = errors.New(r.(string))
+				return
+			}
+		}()
+	}
 	if err != nil {
 		return server.NOMessage, err
 	}
@@ -485,14 +492,16 @@ func (c *Controller) cmdSearch(msg *server.Message) (res resp.Value, err error) 
 
 	wr := &bytes.Buffer{}
 	s, err := c.cmdSeachValuesArgs(vs)
-	defer s.Close()
-	defer func() {
-		if r := recover(); r != nil {
-			res = server.NOMessage
-			err = errors.New(r.(string))
-			return
-		}
-	}()
+	if s.usingLua() {
+		defer s.Close()
+		defer func() {
+			if r := recover(); r != nil {
+				res = server.NOMessage
+				err = errors.New(r.(string))
+				return
+			}
+		}()
+	}
 	if err != nil {
 		return server.NOMessage, err
 	}
