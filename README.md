@@ -312,7 +312,12 @@ Tile38 uses the [Redis RESP](http://redis.io/topics/protocol) protocol natively.
 - Scala: [scala-redis](https://github.com/debasishg/scala-redis)
 - Swift: [Redbird](https://github.com/czechboy0/Redbird)
 
+## Special thanks
+
+[Vladimir Agafonkin](https://github.com/mourner) for the exceptional R-Tree indexing implementation [RBush](https://github.com/mourner/rbush). It gives Tile38 a little extra pep!
+
 ## Contact
+
 Josh Baker [@tidwall](http://twitter.com/tidwall)
 
 ## License
