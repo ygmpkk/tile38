@@ -82,7 +82,7 @@ $ ./tile38-cli
 ## Coordinate System
 It's important to note that the coordinate system Tile38 uses is 
 [WGS 84 Web Mercator](https://en.wikipedia.org/wiki/Web_Mercator), also known 
-as EPSG:3857. All distance are in meters and all calcuations are done on a spherical surface, 
+as EPSG:3857. All distance are in meters and all calculations are done on a spherical surface, 
 not a plane.
 
 ## <a name="cli"></a>Playing with Tile38
