@@ -6,28 +6,31 @@ import (
 	"time"
 )
 
-type aint struct{ v int64 }
+type aint struct{ v uintptr }
 
 func (a *aint) add(d int) int {
-	return int(atomic.AddInt64(&a.v, int64(d)))
+	if d < 0 {
+		return int(atomic.AddUintptr(&a.v, ^uintptr(d-1)))
+	}
+	return int(atomic.AddUintptr(&a.v, uintptr(d)))
 }
 func (a *aint) get() int {
-	return int(atomic.LoadInt64(&a.v))
+	return int(atomic.LoadUintptr(&a.v))
 }
 func (a *aint) set(i int) int {
-	return int(atomic.SwapInt64(&a.v, int64(i)))
+	return int(atomic.SwapUintptr(&a.v, uintptr(i)))
 }
 
-type abool struct{ v int64 }
+type abool struct{ v uint32 }
 
 func (a *abool) on() bool {
-	return atomic.LoadInt64(&a.v) != 0
+	return atomic.LoadUint32(&a.v) != 0
 }
 func (a *abool) set(t bool) bool {
 	if t {
-		return atomic.SwapInt64(&a.v, 1) != 0
+		return atomic.SwapUint32(&a.v, 1) != 0
 	}
-	return atomic.SwapInt64(&a.v, 0) != 0
+	return atomic.SwapUint32(&a.v, 0) != 0
 }
 
 type astring struct {
