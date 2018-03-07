@@ -10,7 +10,7 @@ type aint struct{ v uintptr }
 
 func (a *aint) add(d int) int {
 	if d < 0 {
-		return int(atomic.AddUintptr(&a.v, ^uintptr(d-1)))
+		return int(atomic.AddUintptr(&a.v, ^uintptr((d*-1)-1)))
 	}
 	return int(atomic.AddUintptr(&a.v, uintptr(d)))
 }
