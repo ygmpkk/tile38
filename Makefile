@@ -4,6 +4,7 @@ clean:
 	rm -f tile38-server
 	rm -f tile38-cli
 	rm -f tile38-benchmark
+	rm -f tile38-luamemtest
 test:
 	@./build.sh test
 cover:
