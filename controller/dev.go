@@ -130,13 +130,10 @@ func (c *Controller) cmdMassInsert(msg *server.Message) (res resp.Value, err err
 
 func (c *Controller) cmdSleep(msg *server.Message) (res resp.Value, err error) {
 	start := time.Now()
-	vs := msg.Values[1:]
-	var sduration string
-	var ok bool
-	if vs, sduration, ok = tokenval(vs); !ok || sduration == "" {
+	if len(msg.Values) != 2 {
 		return server.NOMessage, errInvalidNumberOfArguments
 	}
-	d, _ := strconv.Atoi(sduration)
-	time.Sleep(time.Duration(d) * time.Second)
+	d, _ := strconv.ParseFloat(msg.Values[1].String(), 64)
+	time.Sleep(time.Duration(float64(time.Second) * d))
 	return server.OKMessage(msg, start), nil
 }
