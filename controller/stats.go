@@ -118,6 +118,8 @@ func (c *Controller) cmdServer(msg *server.Message) (res resp.Value, err error) 
 	m["avg_item_size"] = avgsz
 	m["pointer_size"] = (32 << uintptr(uint64(^uintptr(0))>>63)) / 8
 	m["read_only"] = c.config.readOnly()
+	m["cpus"] = runtime.NumCPU()
+	m["threads"] = runtime.GOMAXPROCS(0)
 
 	switch msg.OutputType {
 	case server.JSON:
