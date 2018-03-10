@@ -328,6 +328,7 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 	}
 	sw.writeHead()
 	if sw.col != nil {
+		var matched uint32
 		iter := func(id string, o geojson.Object, fields []float64, dist *float64) bool {
 			if c.hasExpired(s.key, id) {
 				return true
@@ -342,15 +343,16 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 				}
 			}
 			return sw.writeObject(ScanWriterParams{
-				id:       id,
-				o:        o,
-				fields:   fields,
-				distance: distance,
-				noLock:   true,
+				id:              id,
+				o:               o,
+				fields:          fields,
+				distance:        distance,
+				noLock:          true,
+				ignoreGlobMatch: s.knn,
 			})
 		}
 		if s.knn {
-			nearestNeighbors(sw, s.lat, s.lon, iter)
+			nearestNeighbors(sw, s.lat, s.lon, &matched, iter)
 		} else {
 			sw.col.Nearby(s.sparse, s.lat, s.lon, s.meters, minZ, maxZ,
 				func(id string, o geojson.Object, fields []float64) bool {
@@ -374,13 +376,22 @@ type iterItem struct {
 	dist   float64
 }
 
-func nearestNeighbors(sw *scanWriter, lat, lon float64, iter func(id string, o geojson.Object, fields []float64, dist *float64) bool) {
+func nearestNeighbors(sw *scanWriter, lat, lon float64, matched *uint32,
+	iter func(id string, o geojson.Object, fields []float64, dist *float64) bool) {
 	limit := int(sw.cursor + sw.limit)
 	var items []iterItem
 	sw.col.NearestNeighbors(lat, lon, func(id string, o geojson.Object, fields []float64) bool {
-		if _, ok := sw.fieldMatch(fields, o); ok {
-			dist := o.CalculatedPoint().DistanceTo(geojson.Position{X: lon, Y: lat, Z: 0})
-			items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
+		if _, ok := sw.fieldMatch(fields, o); !ok {
+			return true
+		}
+		match, keepGoing := sw.globMatch(id, o)
+		if !match {
+			return true
+		}
+		dist := o.CalculatedPoint().DistanceTo(geojson.Position{X: lon, Y: lat, Z: 0})
+		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
+		if !keepGoing {
+			return false
 		}
 		return len(items) < limit
 	})

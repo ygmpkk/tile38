@@ -59,11 +59,12 @@ type scanWriter struct {
 }
 
 type ScanWriterParams struct {
-	id       string
-	o        geojson.Object
-	fields   []float64
-	distance float64
-	noLock   bool
+	id              string
+	o               geojson.Object
+	fields          []float64
+	distance        float64
+	noLock          bool
+	ignoreGlobMatch bool
 }
 
 func (c *Controller) newScanWriter(
@@ -294,6 +295,28 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 	return
 }
 
+func (sw *scanWriter) globMatch(id string, o geojson.Object) (ok, keepGoing bool) {
+	if !sw.globEverything {
+		if sw.globSingle {
+			if sw.globPattern != id {
+				return false, true
+			}
+			return true, false
+		}
+		var val string
+		if sw.matchValues {
+			val = o.String()
+		} else {
+			val = id
+		}
+		ok, _ := glob.Match(sw.globPattern, val)
+		if !ok {
+			return false, true
+		}
+	}
+	return true, true
+}
+
 //id string, o geojson.Object, fields []float64, noLock bool
 func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 	if !opts.noLock {
@@ -301,23 +324,11 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 		defer sw.mu.Unlock()
 	}
 	keepGoing := true
-	if !sw.globEverything {
-		if sw.globSingle {
-			if sw.globPattern != opts.id {
-				return true
-			}
-			keepGoing = false // return current object and stop iterating
-		} else {
-			var val string
-			if sw.matchValues {
-				val = opts.o.String()
-			} else {
-				val = opts.id
-			}
-			ok, _ := glob.Match(sw.globPattern, val)
-			if !ok {
-				return true
-			}
+	if !opts.ignoreGlobMatch {
+		var match bool
+		match, keepGoing = sw.globMatch(opts.id, opts.o)
+		if !match {
+			return true
 		}
 	}
 	nfields, ok := sw.fieldMatch(opts.fields, opts.o)
