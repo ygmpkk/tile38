@@ -54,13 +54,6 @@ docker pull tile38/tile38
 docker run -p 9851:9851 tile38/tile38
 ```
 
-For the latest development version that tracks the Github master branch:
-
-```
-docker pull tile38/tile38:edge
-docker run -p 9851:9851 tile38/tile38:edge
-```
-
 Visit the [Tile38 hub page](https://hub.docker.com/r/tile38/tile38/) for more information.
 
 ### Homebrew (macOS)
@@ -86,7 +79,7 @@ To test:
 $ make test
 ```
 
-## Running 
+### Running 
 For command line options invoke:
 ```
 $ ./tile38-server -h
