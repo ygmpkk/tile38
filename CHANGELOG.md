@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.11.1] - 2018-03-16
+### Added
+- #272: Preserve Docker image tag history (@gechr)
+- 9428b84: Added cpu and threads to SERVER stats 
+### Fixed
+- #281: Linestring intersection failure (@contra)
+- #280: Filter id match before kNN results (@sweco-semtne)
+- #269: Safe atomic ints for arm32 (@gmonk63)
+- #267: Optimization for multiploygons intersect queries (@contra)
+
 ## [1.11.0] - 2018-03-05
 ### Added
 - #221: Add WHEREEVAL clause to scan/search commands (@rshura)
