@@ -21,6 +21,12 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 <a href="http://tile38.com/topics/roaming-geofences"><img src="/doc/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
 </p>
 
+## Supporting Tile38
+Tile38 is an independent project. Maintaining and developing new features takes a considerable amount of time.  
+[Please consider becoming a backer or sponsor on Patreon](https://www.patreon.com/tidwall)
+
+
+
 ## Features
 
 - Spatial index with [search](#searching) methods such as Nearby, Within, and Intersects.
