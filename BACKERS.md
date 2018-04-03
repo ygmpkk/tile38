@@ -12,3 +12,4 @@ If you'd like to join them, please consider:
 - Coen B
 - Melbatoast
 - gmonk63
+- Richard Law
