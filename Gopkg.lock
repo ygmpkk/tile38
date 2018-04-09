@@ -140,6 +140,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/tidwall/lotsa"
+  packages = ["."]
+  revision = "a03631ac7f1cd37f159fca01ff6d600b3536d3cf"
+
+[[projects]]
+  branch = "master"
   name = "github.com/tidwall/match"
   packages = ["."]
   revision = "1731857f09b1f38450e2c12409748407822dc6be"
@@ -231,6 +237,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d03f1946a6c426327998ec09c8ed935b234a8ca47e2bea55dd6f9d77424f0d60"
+  inputs-digest = "815f293904a566198a4157c81abad0db57c378fad869347de42c2201795b2158"
   solver-name = "gps-cdcl"
   solver-version = 1

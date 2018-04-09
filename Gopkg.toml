@@ -21,6 +21,8 @@
 #  version = "2.4.0"
 
 
+required = ["github.com/tidwall/lotsa"]
+
 [[constraint]]
   name = "github.com/Shopify/sarama"
   version = "1.13.0"
