@@ -22,9 +22,11 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 </p>
 
 ## Supporting Tile38
-Tile38 is an independent project. Maintaining and developing new features takes a considerable amount of time.  
-[Please consider becoming a backer or sponsor on Patreon](https://www.patreon.com/tidwall)
 
+Tile38 is an independent project with its ongoing development made possible thanks to the support by these awesome [backers](https://github.com/tidwall/tile38/blob/master/BACKERS.md).
+If you'd like to join them, please consider:
+
+- [Become a backer or sponsor on Patreon](https://www.patreon.com/tidwall).
 
 
 ## Features
