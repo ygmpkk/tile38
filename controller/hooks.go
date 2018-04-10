@@ -298,8 +298,16 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 				}
 				buf.WriteString(jsonString(v.String()))
 			}
-
-			buf.WriteString(`]}`)
+			buf.WriteString(`],"meta":{`)
+			for i, meta := range hook.Metas {
+				if i > 0 {
+					buf.WriteString(`,`)
+				}
+				buf.WriteString(jsonString(meta.Name))
+				buf.WriteString(`:`)
+				buf.WriteString(jsonString(meta.Value))
+			}
+			buf.WriteString(`}}`)
 		}
 		buf.WriteString(`],"elapsed":"` + time.Now().Sub(start).String() + "\"}")
 		return resp.StringValue(buf.String()), nil
@@ -315,6 +323,12 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 			}
 			hvals = append(hvals, resp.ArrayValue(evals))
 			hvals = append(hvals, resp.ArrayValue(hook.Message.Values))
+			var metas []resp.Value
+			for _, meta := range hook.Metas {
+				metas = append(metas, resp.StringValue(meta.Name))
+				metas = append(metas, resp.StringValue(meta.Value))
+			}
+			hvals = append(hvals, resp.ArrayValue(metas))
 			vals = append(vals, resp.ArrayValue(hvals))
 		}
 		return resp.ArrayValue(vals), nil
