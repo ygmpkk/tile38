@@ -116,6 +116,10 @@ func ListenAndServe(host string, port int, dir string, http bool) error {
 	return ListenAndServeEx(host, port, dir, nil, http)
 }
 func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http bool) error {
+	if core.AppendFileName == "" {
+		core.AppendFileName = path.Join(dir, "appendonly.aof")
+	}
+
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 	c := &Controller{
 		host:     host,
@@ -177,13 +181,15 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err := c.migrateAOF(); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path.Join(dir, "appendonly.aof"), os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return err
-	}
-	c.aof = f
-	if err := c.loadAOF(); err != nil {
-		return err
+	if core.AppendOnly == "yes" {
+		f, err := os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
+		if err != nil {
+			return err
+		}
+		c.aof = f
+		if err := c.loadAOF(); err != nil {
+			return err
+		}
 	}
 	c.fillExpiresList()
 	if c.config.followHost() != "" {

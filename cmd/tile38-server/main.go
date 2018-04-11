@@ -53,6 +53,42 @@ func (s *hserver) Send(ctx context.Context, in *hservice.MessageRequest) (*hserv
 }
 
 func main() {
+	gitsha := " (" + core.GitSHA + ")"
+	if gitsha == " (0000000)" {
+		gitsha = ""
+	}
+	versionLine := `tile38-server version: ` + core.Version + gitsha
+
+	output := os.Stderr
+	flag.Usage = func() {
+		fmt.Fprintf(output,
+			versionLine+`
+
+Usage: tile38-server [-p port]
+
+Basic Options:
+  -h hostname : listening host
+  -p port     : listening port (default: 9851)
+  -d path     : data directory (default: data)
+  -q          : no logging. totally silent output
+  -v          : enable verbose logging
+  -vv         : enable very verbose logging
+
+Advanced Options: 
+  --pidfile path          : file that contains the pid
+  --appendonly yes/no     : AOF persistence (default: yes)
+  --appendonlyfile path   : AOF path (default: data/appendonly.aof)
+  --http-transport yes/no : HTTP transport (default: yes)
+  --protected-mode yes/no : protected mode (default: yes)
+
+Developer Options:
+  --dev                             : enable developer mode
+  --webhook-http-consumer-port port : Start a test HTTP webhook server
+  --webhook-grpc-consumer-port port : Start a test GRPC webhook server
+`,
+		)
+	}
+
 	if len(os.Args) == 3 && os.Args[1] == "--webhook-http-consumer-port" {
 		log.SetOutput(os.Stderr)
 		port, err := strconv.ParseUint(os.Args[2], 10, 16)
@@ -97,6 +133,13 @@ func main() {
 	nargs := []string{os.Args[0]}
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
+		case "--help":
+			output = os.Stdout
+			flag.Usage()
+			return
+		case "--version":
+			fmt.Fprintf(os.Stdout, "%s\n", versionLine)
+			return
 		case "--protected-mode", "-protected-mode":
 			i++
 			if i < len(os.Args) {
@@ -113,6 +156,26 @@ func main() {
 		case "--dev", "-dev":
 			devMode = true
 			continue
+		case "--appendonly", "-appendonly":
+			i++
+			if i < len(os.Args) {
+				switch strings.ToLower(os.Args[i]) {
+				case "no":
+					core.AppendOnly = "no"
+				case "yes":
+					core.AppendOnly = "yes"
+				}
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "appendonly must be 'yes' or 'no'\n")
+			os.Exit(1)
+		case "--appendfilename", "-appendfilename":
+			i++
+			if i == len(os.Args) || os.Args[i] == "" {
+				fmt.Fprintf(os.Stderr, "appendfilename must have a value\n")
+				os.Exit(1)
+			}
+			core.AppendFileName = os.Args[i]
 		case "--http-transport", "-http-transport":
 			i++
 			if i < len(os.Args) {
@@ -160,10 +223,6 @@ func main() {
 	hostd := ""
 	if host != "" {
 		hostd = "Addr: " + host + ", "
-	}
-	gitsha := " (" + core.GitSHA + ")"
-	if gitsha == " (0000000)" {
-		gitsha = ""
 	}
 	var pidferr error
 

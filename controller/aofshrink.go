@@ -3,7 +3,6 @@ package controller
 import (
 	"math"
 	"os"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/tidwall/tile38/controller/collection"
 	"github.com/tidwall/tile38/controller/log"
+	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/geojson"
 )
 
@@ -19,6 +19,9 @@ const maxids = 32
 const maxchunk = 4 * 1024 * 1024
 
 func (c *Controller) aofshrink() {
+	if c.aof == nil {
+		return
+	}
 	start := time.Now()
 	c.mu.Lock()
 	if c.shrinking {
@@ -39,7 +42,7 @@ func (c *Controller) aofshrink() {
 	}()
 
 	err := func() error {
-		f, err := os.Create(path.Join(c.dir, "shrink"))
+		f, err := os.Create(core.AppendFileName + "-shrink")
 		if err != nil {
 			return err
 		}
@@ -255,13 +258,13 @@ func (c *Controller) aofshrink() {
 			if err := c.aof.Close(); err != nil {
 				log.Fatalf("shrink live aof close fatal operation: %v", err)
 			}
-			if err := os.Rename(path.Join(c.dir, "appendonly.aof"), path.Join(c.dir, "appendonly.bak")); err != nil {
+			if err := os.Rename(core.AppendFileName, core.AppendFileName+"-bak"); err != nil {
 				log.Fatalf("shrink backup fatal operation: %v", err)
 			}
-			if err := os.Rename(path.Join(c.dir, "shrink"), path.Join(c.dir, "appendonly.aof")); err != nil {
+			if err := os.Rename(core.AppendFileName+"-shrink", core.AppendFileName); err != nil {
 				log.Fatalf("shrink rename fatal operation: %v", err)
 			}
-			c.aof, err = os.OpenFile(path.Join(c.dir, "appendonly.aof"), os.O_CREATE|os.O_RDWR, 0600)
+			c.aof, err = os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 			if err != nil {
 				log.Fatalf("shrink openfile fatal operation: %v", err)
 			}
@@ -272,7 +275,7 @@ func (c *Controller) aofshrink() {
 			}
 			c.aofsz = int(n)
 
-			os.Remove(path.Join(c.dir, "appendonly.bak")) // ignore error
+			os.Remove(core.AppendFileName + "-bak") // ignore error
 
 			// kill all followers connections
 			for conn := range c.aofconnM {

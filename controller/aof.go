@@ -165,11 +165,13 @@ func (c *Controller) writeAOF(value resp.Value, d *commandDetailsT) error {
 	if err != nil {
 		return err
 	}
-	n, err := c.aof.Write(data)
-	if err != nil {
-		return err
+	if c.aof != nil {
+		n, err := c.aof.Write(data)
+		if err != nil {
+			return err
+		}
+		c.aofsz += n
 	}
-	c.aofsz += n
 
 	// notify aof live connections that we have new data
 	c.fcond.L.Lock()
@@ -298,6 +300,9 @@ func (c *Controller) cmdAOFMD5(msg *server.Message) (res resp.Value, err error) 
 }
 
 func (c *Controller) cmdAOF(msg *server.Message) (res resp.Value, err error) {
+	if c.aof == nil {
+		return server.NOMessage, errors.New("aof disabled")
+	}
 	vs := msg.Values[1:]
 
 	var ok bool
