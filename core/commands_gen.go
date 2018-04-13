@@ -527,6 +527,22 @@ var commandsJSON = `{
         "variadic": true
       },
       {
+        "command": "WHEREEVAL",
+        "name": ["script","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVALSHA",
+        "name": ["sha1","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
         "command": "NOFIELDS",
         "name": [],
         "type": [],
@@ -597,6 +613,22 @@ var commandsJSON = `{
         "command": "WHEREIN",
         "name": ["field","count","value"],
         "type": ["string","integer","double"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVAL",
+        "name": ["script","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVALSHA",
+        "name": ["sha1","numargs","arg"],
+        "type": ["string","integer","string"],
         "optional": true,
         "multiple": true,
         "variadic": true
@@ -690,6 +722,22 @@ var commandsJSON = `{
         "command": "WHEREIN",
         "name": ["field","count","value"],
         "type": ["string","integer","double"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVAL",
+        "name": ["script","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVALSHA",
+        "name": ["sha1","numargs","arg"],
+        "type": ["string","integer","string"],
         "optional": true,
         "multiple": true,
         "variadic": true
@@ -834,6 +882,22 @@ var commandsJSON = `{
         "command": "WHEREIN",
         "name": ["field","count","value"],
         "type": ["string","integer","double"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVAL",
+        "name": ["script","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVALSHA",
+        "name": ["sha1","numargs","arg"],
+        "type": ["string","integer","string"],
         "optional": true,
         "multiple": true,
         "variadic": true
@@ -1022,6 +1086,22 @@ var commandsJSON = `{
         "command": "WHEREIN",
         "name": ["field","count","value"],
         "type": ["string","integer","double"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVAL",
+        "name": ["script","numargs","arg"],
+        "type": ["string","integer","string"],
+        "optional": true,
+        "multiple": true,
+        "variadic": true
+      },
+      {
+        "command": "WHEREEVALSHA",
+        "name": ["sha1","numargs","arg"],
+        "type": ["string","integer","string"],
         "optional": true,
         "multiple": true,
         "variadic": true
