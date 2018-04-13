@@ -85,6 +85,7 @@ Developer Options:
   --dev                             : enable developer mode
   --webhook-http-consumer-port port : Start a test HTTP webhook server
   --webhook-grpc-consumer-port port : Start a test GRPC webhook server
+
 `,
 		)
 	}
