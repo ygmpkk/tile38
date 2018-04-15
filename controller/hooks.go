@@ -235,6 +235,7 @@ func (c *Controller) cmdPDelHook(msg *server.Message) (res resp.Value, d command
 					delete(hm, h.Name)
 				}
 				delete(c.hooks, h.Name)
+				d.updated = true
 				count++
 			}
 		}
