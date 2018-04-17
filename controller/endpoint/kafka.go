@@ -53,7 +53,11 @@ func (conn *KafkaEndpointConn) Send(msg string) error {
 
 	uri := fmt.Sprintf("%s:%d", conn.ep.Kafka.Host, conn.ep.Kafka.Port)
 	if conn.conn == nil {
-		c, err := sarama.NewSyncProducer([]string{uri}, nil)
+		cfg := sarama.NewConfig()
+		cfg.Net.DialTimeout = time.Second
+		cfg.Net.ReadTimeout = time.Second * 5
+		cfg.Net.WriteTimeout = time.Second * 5
+		c, err := sarama.NewSyncProducer([]string{uri}, cfg)
 		if err != nil {
 			return err
 		}
