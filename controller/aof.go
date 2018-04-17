@@ -219,7 +219,7 @@ func (c *Controller) queueHooks(d *commandDetailsT) error {
 		for _, msg := range hmsgs {
 			c.qidx++ // increment the log id
 			key := hookLogPrefix + uint64ToString(c.qidx)
-			_, _, err := tx.Set(key, string(msg), hookLogSetDefaults())
+			_, _, err := tx.Set(key, string(msg), hookLogSetDefaults)
 			if err != nil {
 				return err
 			}
