@@ -1,10 +1,12 @@
 package endpoint
 
 import (
+	"net"
 	"sync"
 	"time"
 
 	"fmt"
+
 	"github.com/streadway/amqp"
 )
 
@@ -56,7 +58,11 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 			prefix = "amqps://"
 		}
 
-		c, err := amqp.Dial(fmt.Sprintf("%s%s", prefix, conn.ep.AMQP.URI))
+		var cfg amqp.Config
+		cfg.Dial = func(network, addr string) (net.Conn, error) {
+			return net.DialTimeout(network, addr, time.Second)
+		}
+		c, err := amqp.DialConfig(fmt.Sprintf("%s%s", prefix, conn.ep.AMQP.URI), cfg)
 
 		if err != nil {
 			return err
@@ -70,11 +76,11 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 		// Declare new exchange
 		if err := channel.ExchangeDeclare(
 			conn.ep.AMQP.QueueName,
-			"direct",
-			true,
-			false,
-			false,
-			false,
+			conn.ep.AMQP.Type,
+			conn.ep.AMQP.Durable,
+			conn.ep.AMQP.AutoDelete,
+			conn.ep.AMQP.Internal,
+			conn.ep.AMQP.NoWait,
 			nil,
 		); err != nil {
 			return err
@@ -83,11 +89,10 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 		// Create queue if queue don't exists
 		if _, err := channel.QueueDeclare(
 			conn.ep.AMQP.QueueName,
-			true,
-
+			conn.ep.AMQP.Durable,
+			conn.ep.AMQP.AutoDelete,
 			false,
-			false,
-			false,
+			conn.ep.AMQP.NoWait,
 			nil,
 		); err != nil {
 			return err
@@ -98,7 +103,7 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 			conn.ep.AMQP.QueueName,
 			conn.ep.AMQP.RouteKey,
 			conn.ep.AMQP.QueueName,
-			false,
+			conn.ep.AMQP.NoWait,
 			nil,
 		); err != nil {
 			return err
@@ -111,14 +116,14 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 	if err := conn.channel.Publish(
 		conn.ep.AMQP.QueueName,
 		conn.ep.AMQP.RouteKey,
-		false,
-		false,
+		conn.ep.AMQP.Mandatory,
+		conn.ep.AMQP.Immediate,
 		amqp.Publishing{
 			Headers:         amqp.Table{},
 			ContentType:     "application/json",
 			ContentEncoding: "",
 			Body:            []byte(msg),
-			DeliveryMode:    amqp.Transient,
+			DeliveryMode:    conn.ep.AMQP.DeliveryMode,
 			Priority:        0,
 		},
 	); err != nil {

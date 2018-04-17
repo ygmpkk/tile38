@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/streadway/amqp"
 )
 
 var errExpired = errors.New("expired")
@@ -52,10 +54,18 @@ type Endpoint struct {
 		QueueName string
 	}
 	AMQP struct {
-		URI       string
-		SSL       bool
-		QueueName string
-		RouteKey  string
+		URI          string
+		SSL          bool
+		QueueName    string
+		RouteKey     string
+		Type         string
+		Durable      bool
+		AutoDelete   bool
+		Internal     bool
+		NoWait       bool
+		Mandatory    bool
+		Immediate    bool
+		DeliveryMode uint8
 	}
 	MQTT struct {
 		Host      string
@@ -462,6 +472,9 @@ func parseEndpoint(s string) (Endpoint, error) {
 	if endpoint.Protocol == AMQP {
 		// Bind connection information
 		endpoint.AMQP.URI = s
+		endpoint.AMQP.Type = "direct"
+		endpoint.AMQP.Durable = true
+		endpoint.AMQP.DeliveryMode = amqp.Transient
 
 		// Bind queue name
 		if len(sp) > 1 {
@@ -485,6 +498,22 @@ func parseEndpoint(s string) (Endpoint, error) {
 				switch key {
 				case "route":
 					endpoint.AMQP.RouteKey = val[0]
+				case "type":
+					endpoint.AMQP.Type = val[0]
+				case "durable":
+					endpoint.AMQP.Durable = queryBool(val[0])
+				case "internal":
+					endpoint.AMQP.Internal = queryBool(val[0])
+				case "no_wait":
+					endpoint.AMQP.NoWait = queryBool(val[0])
+				case "auto_delete":
+					endpoint.AMQP.AutoDelete = queryBool(val[0])
+				case "immediate":
+					endpoint.AMQP.Immediate = queryBool(val[0])
+				case "mandatory":
+					endpoint.AMQP.Mandatory = queryBool(val[0])
+				case "delivery_mode":
+					endpoint.AMQP.DeliveryMode = uint8(queryInt(val[0]))
 				}
 			}
 		}
@@ -503,4 +532,22 @@ func parseEndpoint(s string) (Endpoint, error) {
 	}
 
 	return endpoint, nil
+}
+
+func queryInt(s string) int {
+	x, _ := strconv.ParseInt(s, 10, 64)
+	return int(x)
+}
+
+func queryBool(s string) bool {
+	if len(s) > 0 {
+		if s[0] >= '1' && s[0] <= '9' {
+			return true
+		}
+		switch s[0] {
+		case 'Y', 'y', 'T', 't':
+			return true
+		}
+	}
+	return false
 }
