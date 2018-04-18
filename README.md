@@ -21,14 +21,6 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 <a href="http://tile38.com/topics/roaming-geofences"><img src="/doc/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
 </p>
 
-## Supporting Tile38
-
-Tile38 is an independent project with its ongoing development made possible thanks to the support by these awesome [backers](https://github.com/tidwall/tile38/blob/master/BACKERS.md).
-If you'd like to join them, please consider:
-
-- [Become a backer or sponsor on Patreon](https://www.patreon.com/tidwall).
-
-
 ## Features
 
 - Spatial index with [search](#searching) methods such as Nearby, Within, and Intersects.
@@ -41,6 +33,7 @@ If you'd like to join them, please consider:
 - Leader / follower [replication](#replication).
 - In-memory database that persists on disk.
 - All coordinates are in [WGS 84 Web Mercator / EPSG:3857](#coordinate-system)
+- Fast R-Tree indexes based on the [RBush](https://github.com/mourner/rbush) library by [Vladimir Agafonkin](https://github.com/mourner)
 
 ## Components
 - `tile38-server    ` - The server
@@ -335,10 +328,6 @@ Tile38 uses the [Redis RESP](http://redis.io/topics/protocol) protocol natively.
 - Rust: [redis-rs](https://github.com/mitsuhiko/redis-rs)
 - Scala: [scala-redis](https://github.com/debasishg/scala-redis)
 - Swift: [Redbird](https://github.com/czechboy0/Redbird)
-
-## Special thanks
-
-[Vladimir Agafonkin](https://github.com/mourner) for the exceptional R-Tree indexing implementation [RBush](https://github.com/mourner/rbush). It gives Tile38 a little extra pep!
 
 ## Contact
 
