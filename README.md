@@ -1,6 +1,6 @@
 <p align="center">
   <a href="http://tile38.com"><img 
-    src="/res/logo1500.png" 
+    src="/pkg/assets/logo1500.png" 
     width="200" height="200" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
@@ -14,11 +14,11 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 
 <p align="center">
 <i>This README is quick start document. You can find detailed documentation at <a href="http://tile38.com">http://tile38.com</a>.</i><br><br>
-<a href="#searching"><img src="/res/search-nearby.png" alt="Nearby" border="0" width="120" height="120"></a>
-<a href="#searching"><img src="/res/search-within.png" alt="Within" border="0" width="120" height="120"></a>
-<a href="#searching"><img src="/res/search-intersects.png" alt="Intersects" border="0" width="120" height="120"></a>
-<a href="http://tile38.com/topics/geofencing"><img src="/res/geofence.gif" alt="Geofencing" border="0" width="120" height="120"></a>
-<a href="http://tile38.com/topics/roaming-geofences"><img src="/res/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/pkg/assets/search-nearby.png" alt="Nearby" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/pkg/assets/search-within.png" alt="Within" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/pkg/assets/search-intersects.png" alt="Intersects" border="0" width="120" height="120"></a>
+<a href="http://tile38.com/topics/geofencing"><img src="/pkg/assets/geofence.gif" alt="Geofencing" border="0" width="120" height="120"></a>
+<a href="http://tile38.com/topics/roaming-geofences"><img src="/pkg/assets/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
 </p>
 
 ## Features
@@ -142,19 +142,19 @@ To set a field when an object already exists:
 
 Tile38 has support to search for objects and points that are within or intersects other objects. All object types can be searched including Polygons, MultiPolygons, GeometryCollections, etc.
 
-<img src="/res/search-within.png" width="200" height="200" border="0" alt="Search Within" align="left">
+<img src="/pkg/assets/search-within.png" width="200" height="200" border="0" alt="Search Within" align="left">
 
 #### Within 
 WITHIN searches a collection for objects that are fully contained inside a specified bounding area.
 <BR CLEAR="ALL">
 
-<img src="/res/search-intersects.png" width="200" height="200" border="0" alt="Search Intersects" align="left">
+<img src="/pkg/assets/search-intersects.png" width="200" height="200" border="0" alt="Search Intersects" align="left">
 
 #### Intersects
 INTERSECTS searches a collection for objects that intersect a specified bounding area.
 <BR CLEAR="ALL">
 
-<img src="/res/search-nearby.png" width="200" height="200" border="0" alt="Search Nearby" align="left">
+<img src="/pkg/assets/search-nearby.png" width="200" height="200" border="0" alt="Search Nearby" align="left">
 
 #### Nearby
 NEARBY searches a collection for objects that intersect a specified radius.
@@ -169,12 +169,12 @@ NEARBY searches a collection for objects that intersect a specified radius.
 This is very helpful for example; when you have many (perhaps millions) of objects and do not want them all clustered together on a map. Sparse will limit the number of objects returned and provide them evenly distributed so that your map looks clean.<br><br>
 You can choose a value between 1 and 8. The value 1 will result in no more than 4 items. The value 8 will result in no more than 65536. *1=4, 2=16, 3=64, 4=256, 5=1024, 6=4098, 7=16384, 8=65536.*<br><br>
 <table>
-<td>No Sparsing<img src="/res/sparse-none.png" width="100" height="100" border="0" alt="Search Within"></td>
-<td>Sparse 1<img src="/res/sparse-1.png" width="100" height="100" border="0" alt="Search Within"></td>
-<td>Sparse 2<img src="/res/sparse-2.png" width="100" height="100" border="0" alt="Search Within"></td>
-<td>Sparse 3<img src="/res/sparse-3.png" width="100" height="100" border="0" alt="Search Within"></td>
-<td>Sparse 4<img src="/res/sparse-4.png" width="100" height="100" border="0" alt="Search Within"></td>
-<td>Sparse 5<img src="/res/sparse-5.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>No Sparsing<img src="/pkg/assets/sparse-none.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>Sparse 1<img src="/pkg/assets/sparse-1.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>Sparse 2<img src="/pkg/assets/sparse-2.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>Sparse 3<img src="/pkg/assets/sparse-3.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>Sparse 4<img src="/pkg/assets/sparse-4.png" width="100" height="100" border="0" alt="Search Within"></td>
+<td>Sparse 5<img src="/pkg/assets/sparse-5.png" width="100" height="100" border="0" alt="Search Within"></td>
 </table>
 *Please note that the higher the sparse value, the slower the performance. Also, LIMIT and CURSOR are not available when using SPARSE.* 
 
@@ -191,7 +191,7 @@ You can choose a value between 1 and 8. The value 1 will result in no more than 
 
 ## Geofencing
 
-<img src="/res/geofence.gif" width="200" height="200" border="0" alt="Geofence animation" align="left">
+<img src="/pkg/assets/geofence.gif" width="200" height="200" border="0" alt="Geofence animation" align="left">
 A <a href="https://en.wikipedia.org/wiki/Geo-fence">geofence</a> is a virtual boundary that can detect when an object enters or exits the area. This boundary can be a radius, bounding box, or a polygon. Tile38 can turn any standard search into a geofence monitor by adding the FENCE keyword to the search. 
 
 *Tile38 also allows for [Webhooks](http://tile38.com/commands/sethook) to be assigned to Geofences.*
