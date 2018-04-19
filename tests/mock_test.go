@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/tidwall/tile38/controller"
-	tlog "github.com/tidwall/tile38/controller/log"
-	"github.com/tidwall/tile38/core"
+	"github.com/tidwall/tile38/pkg/controller"
+	"github.com/tidwall/tile38/pkg/core"
+	tlog "github.com/tidwall/tile38/pkg/log"
 )
 
 var errTimeout = errors.New("timeout")

@@ -1,4 +1,4 @@
-![Tile38 Logo](https://raw.githubusercontent.com/tidwall/tile38/master/doc/logo200.png)
+![Tile38 Logo](https://raw.githubusercontent.com/tidwall/tile38/master/res/logo200.png)
 
 Tile38 is an open source (MIT licensed), in-memory geolocation data store, spatial index, and realtime geofence. It supports a variety of object types including lat/lon points, bounding boxes, XYZ tiles, Geohashes, and GeoJSON. 
 
@@ -17,6 +17,7 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 - In-memory database that persists on disk.
 
 ## Contact
+
 Josh Baker [@tidwall](http://twitter.com/tidwall)
 
 ## License

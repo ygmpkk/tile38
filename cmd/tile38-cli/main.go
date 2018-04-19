@@ -15,8 +15,8 @@ import (
 
 	"github.com/peterh/liner"
 	"github.com/tidwall/resp"
-	"github.com/tidwall/tile38/client"
-	"github.com/tidwall/tile38/core"
+	"github.com/tidwall/tile38/pkg/client"
+	"github.com/tidwall/tile38/pkg/core"
 )
 
 func userHomeDir() string {

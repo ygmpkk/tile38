@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/tidwall/redbench"
-	"github.com/tidwall/tile38/core"
+	"github.com/tidwall/tile38/pkg/core"
 )
 
 var (
