@@ -345,7 +345,7 @@ type Hook struct {
 	closed     bool
 	opened     bool
 	query      string
-	epm        *endpoint.EndpointManager
+	epm        *endpoint.Manager
 }
 
 func (h *Hook) Equals(hook *Hook) bool {

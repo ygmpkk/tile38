@@ -12,7 +12,8 @@ const (
 	mqttExpiresAfter = time.Second * 30
 )
 
-type MQTTEndpointConn struct {
+// MQTTConn is an endpoint connection
+type MQTTConn struct {
 	mu   sync.Mutex
 	ep   Endpoint
 	conn paho.Client
@@ -20,7 +21,8 @@ type MQTTEndpointConn struct {
 	t    time.Time
 }
 
-func (conn *MQTTEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *MQTTConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
@@ -32,7 +34,7 @@ func (conn *MQTTEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *MQTTEndpointConn) close() {
+func (conn *MQTTConn) close() {
 	if conn.conn != nil {
 		if conn.conn.IsConnected() {
 			conn.conn.Disconnect(250)
@@ -42,7 +44,8 @@ func (conn *MQTTEndpointConn) close() {
 	}
 }
 
-func (conn *MQTTEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *MQTTConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
@@ -74,8 +77,8 @@ func (conn *MQTTEndpointConn) Send(msg string) error {
 	return nil
 }
 
-func newMQTTEndpointConn(ep Endpoint) *MQTTEndpointConn {
-	return &MQTTEndpointConn{
+func newMQTTConn(ep Endpoint) *MQTTConn {
+	return &MQTTConn{
 		ep: ep,
 		t:  time.Now(),
 	}

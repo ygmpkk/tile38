@@ -15,13 +15,14 @@ const (
 	httpMaxIdleConnections = 20
 )
 
-type HTTPEndpointConn struct {
+// HTTPConn is an endpoint connection
+type HTTPConn struct {
 	ep     Endpoint
 	client *http.Client
 }
 
-func newHTTPEndpointConn(ep Endpoint) *HTTPEndpointConn {
-	return &HTTPEndpointConn{
+func newHTTPConn(ep Endpoint) *HTTPConn {
+	return &HTTPConn{
 		ep: ep,
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -33,11 +34,13 @@ func newHTTPEndpointConn(ep Endpoint) *HTTPEndpointConn {
 	}
 }
 
-func (conn *HTTPEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *HTTPConn) Expired() bool {
 	return false
 }
 
-func (conn *HTTPEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *HTTPConn) Send(msg string) error {
 	req, err := http.NewRequest("POST", conn.ep.Original, bytes.NewBufferString(msg))
 	if err != nil {
 		return err

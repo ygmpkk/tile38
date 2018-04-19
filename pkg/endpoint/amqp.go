@@ -1,20 +1,20 @@
 package endpoint
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
-
-	"fmt"
 
 	"github.com/streadway/amqp"
 )
 
 const (
-	AMQPExpiresAfter = time.Second * 30
+	amqpExpiresAfter = time.Second * 30
 )
 
-type AMQPEndpointConn struct {
+// AMQPConn is an endpoint connection
+type AMQPConn struct {
 	mu      sync.Mutex
 	ep      Endpoint
 	conn    *amqp.Connection
@@ -23,11 +23,12 @@ type AMQPEndpointConn struct {
 	t       time.Time
 }
 
-func (conn *AMQPEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *AMQPConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
-		if time.Now().Sub(conn.t) > kafkaExpiresAfter {
+		if time.Now().Sub(conn.t) > amqpExpiresAfter {
 			conn.ex = true
 			conn.close()
 		}
@@ -35,7 +36,7 @@ func (conn *AMQPEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *AMQPEndpointConn) close() {
+func (conn *AMQPConn) close() {
 	if conn.conn != nil {
 		conn.conn.Close()
 		conn.conn = nil
@@ -43,7 +44,8 @@ func (conn *AMQPEndpointConn) close() {
 	}
 }
 
-func (conn *AMQPEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *AMQPConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
@@ -113,7 +115,7 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 		conn.channel = channel
 	}
 
-	if err := conn.channel.Publish(
+	return conn.channel.Publish(
 		conn.ep.AMQP.QueueName,
 		conn.ep.AMQP.RouteKey,
 		conn.ep.AMQP.Mandatory,
@@ -126,15 +128,11 @@ func (conn *AMQPEndpointConn) Send(msg string) error {
 			DeliveryMode:    conn.ep.AMQP.DeliveryMode,
 			Priority:        0,
 		},
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
 }
 
-func newAMQPEndpointConn(ep Endpoint) *AMQPEndpointConn {
-	return &AMQPEndpointConn{
+func newAMQPConn(ep Endpoint) *AMQPConn {
+	return &AMQPConn{
 		ep: ep,
 		t:  time.Now(),
 	}

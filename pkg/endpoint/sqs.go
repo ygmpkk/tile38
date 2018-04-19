@@ -10,17 +10,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-
 	"github.com/streadway/amqp"
 )
 
 var errCreateQueue = errors.New("Error while creating queue")
 
 const (
-	SQSExpiresAfter = time.Second * 30
+	sqsExpiresAfter = time.Second * 30
 )
 
-type SQSEndpointConn struct {
+// SQSConn is an endpoint connection
+type SQSConn struct {
 	mu      sync.Mutex
 	ep      Endpoint
 	session *session.Session
@@ -30,15 +30,16 @@ type SQSEndpointConn struct {
 	t       time.Time
 }
 
-func (conn *SQSEndpointConn) generateSQSURL() string {
+func (conn *SQSConn) generateSQSURL() string {
 	return "https://sqs." + conn.ep.SQS.Region + "amazonaws.com/" + conn.ep.SQS.QueueID + "/" + conn.ep.SQS.QueueName
 }
 
-func (conn *SQSEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *SQSConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
-		if time.Now().Sub(conn.t) > SQSExpiresAfter {
+		if time.Now().Sub(conn.t) > sqsExpiresAfter {
 			conn.ex = true
 			conn.close()
 		}
@@ -46,14 +47,15 @@ func (conn *SQSEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *SQSEndpointConn) close() {
+func (conn *SQSConn) close() {
 	if conn.svc != nil {
 		conn.svc = nil
 		conn.session = nil
 	}
 }
 
-func (conn *SQSEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *SQSConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
@@ -113,8 +115,8 @@ func (conn *SQSEndpointConn) Send(msg string) error {
 	return nil
 }
 
-func newSQSEndpointConn(ep Endpoint) *SQSEndpointConn {
-	return &SQSEndpointConn{
+func newSQSConn(ep Endpoint) *SQSConn {
+	return &SQSConn{
 		ep: ep,
 		t:  time.Now(),
 	}

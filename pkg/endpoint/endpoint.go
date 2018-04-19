@@ -13,23 +13,31 @@ import (
 
 var errExpired = errors.New("expired")
 
-// EndpointProtocol is the type of protocol that the endpoint represents.
-type EndpointProtocol string
+// Protocol is the type of protocol that the endpoint represents.
+type Protocol string
 
 const (
-	HTTP   = EndpointProtocol("http")   // HTTP
-	Disque = EndpointProtocol("disque") // Disque
-	GRPC   = EndpointProtocol("grpc")   // GRPC
-	Redis  = EndpointProtocol("redis")  // Redis
-	Kafka  = EndpointProtocol("kafka")  // Kafka
-	MQTT   = EndpointProtocol("mqtt")   // MQTT
-	AMQP   = EndpointProtocol("amqp")   // AMQP
-	SQS    = EndpointProtocol("sqs")    // SQS
+	// HTTP protocol
+	HTTP = Protocol("http")
+	// Disque protocol
+	Disque = Protocol("disque")
+	// GRPC protocol
+	GRPC = Protocol("grpc")
+	// Redis protocol
+	Redis = Protocol("redis")
+	// Kafka protocol
+	Kafka = Protocol("kafka")
+	// MQTT protocol
+	MQTT = Protocol("mqtt")
+	// AMQP protocol
+	AMQP = Protocol("amqp")
+	// SQS protocol
+	SQS = Protocol("sqs")
 )
 
 // Endpoint represents an endpoint.
 type Endpoint struct {
-	Protocol EndpointProtocol
+	Protocol Protocol
 	Original string
 	GRPC     struct {
 		Host string
@@ -84,27 +92,29 @@ type Endpoint struct {
 	}
 }
 
-type EndpointConn interface {
+// Conn is an endpoint connection
+type Conn interface {
 	Expired() bool
 	Send(val string) error
 }
 
-type EndpointManager struct {
-	mu    sync.RWMutex // this is intentionally exposed
-	conns map[string]EndpointConn
+// Manager manages all endpoints
+type Manager struct {
+	mu    sync.RWMutex
+	conns map[string]Conn
 }
 
-func NewEndpointManager() *EndpointManager {
-	epc := &EndpointManager{
-		conns: make(map[string]EndpointConn),
+// NewManager returns a new manager
+func NewManager() *Manager {
+	epc := &Manager{
+		conns: make(map[string]Conn),
 	}
 	go epc.Run()
 	return epc
 }
 
-// Manage connection at enpoints
-// If some connection expired we should delete it
-func (epc *EndpointManager) Run() {
+// Run starts the managing of endpoints
+func (epc *Manager) Run() {
 	for {
 		time.Sleep(time.Second)
 		func() {
@@ -119,14 +129,14 @@ func (epc *EndpointManager) Run() {
 	}
 }
 
-// Get finds an endpoint based on its url. If the enpoint does not
-// exist a new only is created.
-func (epc *EndpointManager) Validate(url string) error {
+// Validate an endpoint url
+func (epc *Manager) Validate(url string) error {
 	_, err := parseEndpoint(url)
 	return err
 }
 
-func (epc *EndpointManager) Send(endpoint, val string) error {
+// Send send a message to an endpoint
+func (epc *Manager) Send(endpoint, msg string) error {
 	for {
 		epc.mu.Lock()
 		conn, ok := epc.conns[endpoint]
@@ -140,26 +150,26 @@ func (epc *EndpointManager) Send(endpoint, val string) error {
 			default:
 				return errors.New("invalid protocol")
 			case HTTP:
-				conn = newHTTPEndpointConn(ep)
+				conn = newHTTPConn(ep)
 			case Disque:
-				conn = newDisqueEndpointConn(ep)
+				conn = newDisqueConn(ep)
 			case GRPC:
-				conn = newGRPCEndpointConn(ep)
+				conn = newGRPCConn(ep)
 			case Redis:
-				conn = newRedisEndpointConn(ep)
+				conn = newRedisConn(ep)
 			case Kafka:
-				conn = newKafkaEndpointConn(ep)
+				conn = newKafkaConn(ep)
 			case MQTT:
-				conn = newMQTTEndpointConn(ep)
+				conn = newMQTTConn(ep)
 			case AMQP:
-				conn = newAMQPEndpointConn(ep)
+				conn = newAMQPConn(ep)
 			case SQS:
-				conn = newSQSEndpointConn(ep)
+				conn = newSQSConn(ep)
 			}
 			epc.conns[endpoint] = conn
 		}
 		epc.mu.Unlock()
-		err := conn.Send(val)
+		err := conn.Send(msg)
 		if err != nil {
 			if err == errExpired {
 				// it's possible that the connection has expired in-between

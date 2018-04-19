@@ -67,7 +67,7 @@ type Controller struct {
 	dir     string
 	started time.Time
 	config  *Config
-	epc     *endpoint.EndpointManager
+	epc     *endpoint.Manager
 
 	// atomics
 	followc                aint // counter increases when follow property changes
@@ -136,7 +136,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		expires:  make(map[string]map[string]time.Time),
 		started:  time.Now(),
 		conns:    make(map[*server.Conn]*clientConn),
-		epc:      endpoint.NewEndpointManager(),
+		epc:      endpoint.NewManager(),
 		http:     http,
 	}
 

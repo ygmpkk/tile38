@@ -15,7 +15,8 @@ const (
 	disqueExpiresAfter = time.Second * 30
 )
 
-type DisqueEndpointConn struct {
+// DisqueConn is an endpoint connection
+type DisqueConn struct {
 	mu   sync.Mutex
 	ep   Endpoint
 	ex   bool
@@ -24,14 +25,15 @@ type DisqueEndpointConn struct {
 	rd   *bufio.Reader
 }
 
-func newDisqueEndpointConn(ep Endpoint) *DisqueEndpointConn {
-	return &DisqueEndpointConn{
+func newDisqueConn(ep Endpoint) *DisqueConn {
+	return &DisqueConn{
 		ep: ep,
 		t:  time.Now(),
 	}
 }
 
-func (conn *DisqueEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *DisqueConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
@@ -45,7 +47,7 @@ func (conn *DisqueEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *DisqueEndpointConn) close() {
+func (conn *DisqueConn) close() {
 	if conn.conn != nil {
 		conn.conn.Close()
 		conn.conn = nil
@@ -53,7 +55,8 @@ func (conn *DisqueEndpointConn) close() {
 	conn.rd = nil
 }
 
-func (conn *DisqueEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *DisqueConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if conn.ex {

@@ -6,10 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/tidwall/tile38/pkg/hservice"
-
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -17,7 +15,8 @@ const (
 	grpcExpiresAfter = time.Second * 30
 )
 
-type GRPCEndpointConn struct {
+// GRPCConn is an endpoint connection
+type GRPCConn struct {
 	mu    sync.Mutex
 	ep    Endpoint
 	ex    bool
@@ -26,14 +25,15 @@ type GRPCEndpointConn struct {
 	sconn hservice.HookServiceClient
 }
 
-func newGRPCEndpointConn(ep Endpoint) *GRPCEndpointConn {
-	return &GRPCEndpointConn{
+func newGRPCConn(ep Endpoint) *GRPCConn {
+	return &GRPCConn{
 		ep: ep,
 		t:  time.Now(),
 	}
 }
 
-func (conn *GRPCEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *GRPCConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
@@ -46,14 +46,15 @@ func (conn *GRPCEndpointConn) Expired() bool {
 	}
 	return conn.ex
 }
-func (conn *GRPCEndpointConn) close() {
+func (conn *GRPCConn) close() {
 	if conn.conn != nil {
 		conn.conn.Close()
 		conn.conn = nil
 	}
 }
 
-func (conn *GRPCEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *GRPCConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if conn.ex {
@@ -70,7 +71,7 @@ func (conn *GRPCEndpointConn) Send(msg string) error {
 		}
 		conn.sconn = hservice.NewHookServiceClient(conn.conn)
 	}
-	r, err := conn.sconn.Send(context.Background(), &hservice.MessageRequest{msg})
+	r, err := conn.sconn.Send(context.Background(), &hservice.MessageRequest{Value: msg})
 	if err != nil {
 		conn.close()
 		return err

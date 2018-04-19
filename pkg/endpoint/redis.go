@@ -13,7 +13,8 @@ const (
 	redisExpiresAfter = time.Second * 30
 )
 
-type RedisEndpointConn struct {
+// RedisConn is an endpoint connection
+type RedisConn struct {
 	mu   sync.Mutex
 	ep   Endpoint
 	ex   bool
@@ -22,14 +23,15 @@ type RedisEndpointConn struct {
 	rd   *bufio.Reader
 }
 
-func newRedisEndpointConn(ep Endpoint) *RedisEndpointConn {
-	return &RedisEndpointConn{
+func newRedisConn(ep Endpoint) *RedisConn {
+	return &RedisConn{
 		ep: ep,
 		t:  time.Now(),
 	}
 }
 
-func (conn *RedisEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *RedisConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
@@ -43,7 +45,7 @@ func (conn *RedisEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *RedisEndpointConn) close() {
+func (conn *RedisConn) close() {
 	if conn.conn != nil {
 		conn.conn.Close()
 		conn.conn = nil
@@ -51,7 +53,8 @@ func (conn *RedisEndpointConn) close() {
 	conn.rd = nil
 }
 
-func (conn *RedisEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *RedisConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 

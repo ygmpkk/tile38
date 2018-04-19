@@ -13,7 +13,8 @@ const (
 	kafkaExpiresAfter = time.Second * 30
 )
 
-type KafkaEndpointConn struct {
+// KafkaConn is an endpoint connection
+type KafkaConn struct {
 	mu   sync.Mutex
 	ep   Endpoint
 	conn sarama.SyncProducer
@@ -21,7 +22,8 @@ type KafkaEndpointConn struct {
 	t    time.Time
 }
 
-func (conn *KafkaEndpointConn) Expired() bool {
+// Expired returns true if the connection has expired
+func (conn *KafkaConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
@@ -35,14 +37,15 @@ func (conn *KafkaEndpointConn) Expired() bool {
 	return conn.ex
 }
 
-func (conn *KafkaEndpointConn) close() {
+func (conn *KafkaConn) close() {
 	if conn.conn != nil {
 		conn.conn.Close()
 		conn.conn = nil
 	}
 }
 
-func (conn *KafkaEndpointConn) Send(msg string) error {
+// Send sends a message
+func (conn *KafkaConn) Send(msg string) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
@@ -84,8 +87,8 @@ func (conn *KafkaEndpointConn) Send(msg string) error {
 	return nil
 }
 
-func newKafkaEndpointConn(ep Endpoint) *KafkaEndpointConn {
-	return &KafkaEndpointConn{
+func newKafkaConn(ep Endpoint) *KafkaConn {
+	return &KafkaConn{
 		ep: ep,
 		t:  time.Now(),
 	}
