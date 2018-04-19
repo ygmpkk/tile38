@@ -117,11 +117,11 @@ func handleConn(
 		ok := func() bool {
 			msgs, err := rd.ReadMessages()
 			if err != nil {
-				if err == io.EOF {
-					return false
-				}
+				errstr := err.Error()
 				if err == errCloseHTTP ||
-					strings.Contains(err.Error(), "use of closed network connection") {
+					err == io.EOF ||
+					strings.Contains(errstr, "use of closed network connection") ||
+					strings.Contains(errstr, "connection reset by peer") {
 					return false
 				}
 				log.Error(err)
