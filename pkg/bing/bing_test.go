@@ -92,3 +92,11 @@ func TestLatLonClippingFuzz(t *testing.T) {
 		}
 	}
 }
+
+func TestIssue302(t *testing.T) {
+	// Requesting tile with zoom level > 63 crashes the server #302
+	for z := uint64(0); z < 256; z++ {
+		tileX, tileY := PixelXYToTileXY(LatLongToPixelXY(33, -115, z))
+		TileXYToBounds(tileX, tileY, z)
+	}
+}

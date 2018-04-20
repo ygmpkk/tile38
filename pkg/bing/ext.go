@@ -33,10 +33,10 @@ func TileXYToBounds(tileX, tileY int64, levelOfDetail uint64) (minLat, minLon, m
 	maxLat, minLon = PixelXYToLatLong(pixelX, pixelY, levelOfDetail)
 	pixelX, pixelY = TileXYToPixelXY(tileX+1, tileY+1)
 	minLat, maxLon = PixelXYToLatLong(pixelX, pixelY, levelOfDetail)
-	if tileX%size == 0 {
+	if size == 0 || tileX%size == 0 {
 		minLon = MinLongitude
 	}
-	if tileX%size == size-1 {
+	if size == 0 || tileX%size == size-1 {
 		maxLon = MaxLongitude
 	}
 	if tileY <= 0 {
