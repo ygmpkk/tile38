@@ -2,8 +2,8 @@
 
 set -e
 
-cd $(dirname "${BASH_SOURCE[0]}")
-export CommandsJSON=$(cat commands.json)
+cd $(dirname $0)
+export CommandsJSON="$(cat commands.json)"
 
 # replace out the json
 perl -pe '
