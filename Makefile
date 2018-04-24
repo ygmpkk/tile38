@@ -18,5 +18,4 @@ uninstall:
 	rm -f /usr/local/bin/tile38-cli
 	rm -f /usr/local/bin/tile38-benchmark
 package:
-package:
 	@./build.sh package

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="1.12.0"
+VERSION=$(git describe --tags | sed 's/-/\n/g' | head -n 1)
 PROTECTED_MODE="no"
 
 # Hardcode some values to the core package
@@ -119,7 +119,6 @@ function rmtemp {
 	rm -rf "$TMP"
 }
 trap rmtemp EXIT
-
 
 if [ "$NOLINK" != "1" ]; then
     # symlink root to isolated directory
