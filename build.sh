@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION=$(git describe --tags | sed 's/-/\n/g' | head -n 1)
+VERSION=$(git describe --tags --abbrev=0)
 PROTECTED_MODE="no"
 
 # Hardcode some values to the core package
