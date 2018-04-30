@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.12.1] - 2018-04-30
+### Fixed
+- #300: Fix pdelhooks not persisting (@tobilg)
+- #293: Fix kafka lockup issue (@Joey92)
+- #301: Fix AMQP uri custom params not working (@tobilg)
+- #302: Fix tile with zoom level over 63 panics (@rshura)
+- b99cd39: Fix Sync hook msg ttl with server time
+
 ## [1.12.0] - 2018-04-12
 ### Added
 - 11b42c0: Option to disable AOF or to use a custom path: #220 #223 #297 (@sign0, @umpc, @fmr683, @zhangfeng158)
