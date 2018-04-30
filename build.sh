@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+cd $(dirname "${BASH_SOURCE[0]}")
+OD="$(pwd)"
+
 VERSION=$(git describe --tags --abbrev=0)
 PROTECTED_MODE="no"
 
@@ -71,11 +74,6 @@ if [ "$GOVERS" != "devel" ]; then
 		  exit 1
 	fi
 fi
-
-export GO15VENDOREXPERIMENT=1
-
-cd $(dirname "${BASH_SOURCE[0]}")
-OD="$(pwd)"
 
 package(){
 	echo Packaging $1 Binary

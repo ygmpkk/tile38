@@ -7,7 +7,7 @@ script:
   - make test
 
 after_success:
-  - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin
+  - echo $DOCKER_PASSWORD | docker login -u $DOCKER_LOGIN --password-stdin
   - export REPO=$DOCKER_USER/tile38
   - export COMMIT_SHORT=$(git rev-parse --short HEAD)
   - docker build -f docker/Dockerfile -t $REPO:$COMMIT_SHORT .
