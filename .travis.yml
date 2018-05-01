@@ -7,4 +7,4 @@ script:
   - make test
 
 after_success:
-  - ./build.sh docker-push
+  - ./build.sh travis-docker-push

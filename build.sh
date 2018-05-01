@@ -24,9 +24,7 @@ if [ "$1" == "update-version" ]; then
 	exit
 fi
 
-if [ "$1" == "docker-push" ]; then
-    # GIT_BRANCH - such as master or something else.
-    export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)       
+if [ "$1" == "travis-docker-push" ]; then
     # GIT_VERSION - always the last verison number, like 1.12.1.
     export GIT_VERSION=$(git describe --tags --abbrev=0)  
     # GIT_TAG - either a version number, like 1.12.1, or the commit after the version, like 1.12.1-10-a718ef0.
@@ -35,41 +33,28 @@ if [ "$1" == "docker-push" ]; then
     export GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
     # DOCKER_REPO - the base repository name to push the docker build to.
     export DOCKER_REPO=$DOCKER_USER/tile38
-    if [ "$TRAVIS_PULL_REQUEST" == "true" ]; then 
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then 
         # never push from a pull request
-        echo "Not pushing, on a PR"
-        exit
-    fi
-    if [ "$GIT_BRANCH" != "master" ]; then
+        echo "Not pushing, on a PR or not running in Travis CI"
+    elif [ "$TRAVIS_BRANCH" != "master" ]; then
         # only the master branch will work
         echo "Not pushing, not on master"
-        exit
+    else
+        push(){
+            docker tag $DOCKER_REPO:$GIT_COMMIT_SHORT $DOCKER_REPO:$1
+            docker push $DOCKER_REPO:$1
+            echo "Pushed $DOCKER_REPO:$1"
+        }
+        # docker login
+        echo $DOCKER_PASSWORD | docker login -u $DOCKER_LOGIN --password-stdin
+        # build the docker image
+        docker build -f Dockerfile -t $DOCKER_REPO:$GIT_COMMIT_SHORT .
+        if [ "$GIT_VERSION" == "$GIT_TAG" ]; then
+            push "$GIT_VERSION"
+            push "latest"
+        fi
+        push "edge"
     fi
-    if [ "$(git status | grep "nothing to commit, working tree clean")" == "" ]; then
-        # there's stuff to 
-        echo "Not pushing, local git repo is dirty"
-        exit
-    fi
-    if [ "$(git status | grep "branch is up-to-date")" == "" ]; then
-        # branch must be up-to-date
-        echo "Not pushing, branch is not up-to-date with master"
-        exit
-    fi
-    push(){
-        docker tag $DOCKER_REPO:$GIT_COMMIT_SHORT $DOCKER_REPO:$1
-        docker push $DOCKER_REPO:$1
-        echo "Pushed $DOCKER_REPO:$1"
-    }
-    # docker login
-    echo $DOCKER_PASSWORD | docker login -u $DOCKER_LOGIN --password-stdin
-    # build the docker image
-    docker build -f Dockerfile -t $DOCKER_REPO:$GIT_COMMIT_SHORT .
-
-    if [ "$GIT_VERSION" == "$GIT_TAG" ]; then
-        push "$GIT_VERSION"
-        push "latest"
-    fi
-    push "edge"
     exit
 fi
 
