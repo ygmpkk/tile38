@@ -1,7 +1,7 @@
 FROM alpine:3.4
 
-ADD ./tile38-server /usr/local/bin
-ADD ./tile38-cli /usr/local/bin
+ADD tile38-server /usr/local/bin
+ADD tile38-cli /usr/local/bin
 
 RUN addgroup -S tile38 && \
     adduser -S -G tile38 tile38 && \

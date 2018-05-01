@@ -7,10 +7,4 @@ script:
   - make test
 
 after_success:
-  - echo $DOCKER_PASSWORD | docker login -u $DOCKER_LOGIN --password-stdin
-  - export REPO=$DOCKER_USER/tile38
-  - export COMMIT_SHORT=$(git rev-parse --short HEAD)
-  - docker build -f docker/Dockerfile -t $REPO:$COMMIT_SHORT .
-  - export TAG=`if [ ! -z "$TRAVIS_TAG" ]; then echo $TRAVIS_TAG; elif [ "$TRAVIS_BRANCH" == "master" ]; then echo "edge"; else echo ""; fi`
-  - if [[ ! -z "$TAG" && "$TRAVIS_BRANCH" == "master" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then docker tag $REPO:$COMMIT_SHORT $REPO:$TAG && docker push $REPO:$TAG && echo "Pushed $REPO:$TAG"; else echo "Not pushing, either not on master or on a PR"; fi
-  - if [[ ! -z "$TRAVIS_TAG" ]]; then docker tag $REPO:$COMMIT_SHORT $REPO:latest && docker push $REPO:latest && echo "Pushed $REPO:latest"; else echo "Not pushing, no tag"; fi
+  - ./build.sh docker-push
