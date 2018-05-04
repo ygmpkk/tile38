@@ -840,7 +840,7 @@ var commandsJSON = `{
     "group": "search"
   },
   "WITHIN": {
-    "summary": "Searches for ids that are nearby a point",
+    "summary": "Searches for ids that completely within the area",
     "complexity": "O(log(N)) where N is the number of ids in the area",
     "arguments":[
       {
@@ -999,6 +999,23 @@ var commandsJSON = `{
               {
                 "name": "geojson",
                 "type": "geojson"
+              }
+            ]
+          },
+          {
+            "name": "CIRCLE",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              },
+              {
+                "name": "meters",
+                "type": "double"
               }
             ]
           },
@@ -1044,7 +1061,7 @@ var commandsJSON = `{
     "group": "search"
   },
   "INTERSECTS": {
-    "summary": "Searches for ids that are nearby a point",
+    "summary": "Searches for ids that intersect an area",
     "complexity": "O(log(N)) where N is the number of ids in the area",
     "arguments":[
       {
@@ -1203,6 +1220,23 @@ var commandsJSON = `{
               {
                 "name": "geojson",
                 "type": "geojson"
+              }
+            ]
+          },
+          {
+            "name": "CIRCLE",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              },
+              {
+                "name": "meters",
+                "type": "double"
               }
             ]
           },

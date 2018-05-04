@@ -87,6 +87,7 @@ func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) 
 		err = errInvalidArgument(typ)
 		return
 	}
+	s.meters = -1  // this will become non-negative if search is within a circle
 	switch ltyp {
 	case "point":
 		var slat, slon, smeters string
@@ -127,6 +128,41 @@ func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) 
 				err = errInvalidArgument(smeters)
 				return
 			}
+			if s.meters < 0 {
+				err = errInvalidArgument(smeters)
+				return
+			}
+		}
+	case "circle":
+		var slat, slon, smeters string
+		if vs, slat, ok = tokenval(vs); !ok || slat == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, slon, ok = tokenval(vs); !ok || slon == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
+			err = errInvalidArgument(slat)
+			return
+		}
+
+		if s.lat, err = strconv.ParseFloat(slat, 64); err != nil {
+			err = errInvalidArgument(slat)
+			return
+		}
+		if s.lon, err = strconv.ParseFloat(slon, 64); err != nil {
+			err = errInvalidArgument(slon)
+			return
+		}
+		if s.meters, err = strconv.ParseFloat(smeters, 64); err != nil {
+			err = errInvalidArgument(smeters)
+			return
+		}
+		if s.meters < 0 {
+			err = errInvalidArgument(smeters)
+			return
 		}
 	case "object":
 		var obj string
@@ -292,7 +328,8 @@ func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) 
 }
 
 var nearbyTypes = []string{"point"}
-var withinOrIntersectsTypes = []string{"geo", "bounds", "hash", "tile", "quadkey", "get", "object"}
+var withinOrIntersectsTypes = []string{
+	"geo", "bounds", "hash", "tile", "quadkey", "get", "object", "circle"}
 
 func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) {
 	start := time.Now()
@@ -449,7 +486,11 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 	if sw.col != nil {
 		minZ, maxZ := zMinMaxFromWheres(s.wheres)
 		if cmd == "within" {
-			sw.col.Within(s.sparse, s.o, s.minLat, s.minLon, s.maxLat, s.maxLon, minZ, maxZ,
+			sw.col.Within(s.sparse,
+				s.o,
+				s.minLat, s.minLon, s.maxLat, s.maxLon,
+				s.lat, s.lon, s.meters,
+				minZ, maxZ,
 				func(id string, o geojson.Object, fields []float64) bool {
 					if c.hasExpired(s.key, id) {
 						return true
@@ -463,7 +504,11 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 				},
 			)
 		} else if cmd == "intersects" {
-			sw.col.Intersects(s.sparse, s.o, s.minLat, s.minLon, s.maxLat, s.maxLon, minZ, maxZ,
+			sw.col.Intersects(s.sparse,
+				s.o,
+				s.minLat, s.minLon, s.maxLat, s.maxLon,
+				s.lat, s.lon, s.meters,
+				minZ, maxZ,
 				func(id string, o geojson.Object, fields []float64) bool {
 					if c.hasExpired(s.key, id) {
 						return true

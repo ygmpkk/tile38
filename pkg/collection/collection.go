@@ -417,9 +417,11 @@ func (c *Collection) Nearby(sparse uint8, lat, lon, meters, minZ, maxZ float64, 
 }
 
 // Within returns all object that are fully contained within an object or bounding box. Set obj to nil in order to use the bounding box.
-func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, maxLat, maxLon, minZ, maxZ float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
+func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, maxLat, maxLon, lat, lon, meters, minZ, maxZ float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
 	var keepon = true
 	var bbox geojson.BBox
+	center := geojson.Position{X: lon, Y: lat, Z: 0}
+
 	if obj != nil {
 		bbox = obj.CalculatedBBox()
 		if minZ == math.Inf(-1) && maxZ == math.Inf(+1) {
@@ -428,6 +430,8 @@ func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, ma
 				bbox.Max.Z = maxZ
 			}
 		}
+	} else if meters != -1 {
+		bbox = geojson.BBoxesFromCenter(lat, lon, meters)
 	} else {
 		bbox = geojson.BBox{Min: geojson.Position{X: minLon, Y: minLat, Z: minZ}, Max: geojson.Position{X: maxLon, Y: maxLat, Z: maxZ}}
 	}
@@ -437,6 +441,15 @@ func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, ma
 			if obj != nil {
 				keepon = c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
 					if o.Within(obj) {
+						if iterator(id, o, fields) {
+							return false
+						}
+					}
+					return true
+				})
+			} else if meters != -1 {
+				keepon = c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
+					if o.WithinCircle(center, meters) {
 						if iterator(id, o, fields) {
 							return false
 						}
@@ -467,6 +480,13 @@ func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, ma
 			}
 			return true
 		})
+	} else if meters != -1 {
+		return c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
+			if o.WithinCircle(center, meters) {
+				return iterator(id, o, fields)
+			}
+			return true
+		})
 	}
 	return c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
 		if o.WithinBBox(bbox) {
@@ -477,9 +497,10 @@ func (c *Collection) Within(sparse uint8, obj geojson.Object, minLat, minLon, ma
 }
 
 // Intersects returns all object that are intersect an object or bounding box. Set obj to nil in order to use the bounding box.
-func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon, maxLat, maxLon, minZ, maxZ float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
+func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon, maxLat, maxLon, lat, lon, meters, minZ, maxZ float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
 	var keepon = true
 	var bbox geojson.BBox
+	center := geojson.Position{X: lon, Y: lat, Z: 0}
 	if obj != nil {
 		bbox = obj.CalculatedBBox()
 		if minZ == math.Inf(-1) && maxZ == math.Inf(+1) {
@@ -488,6 +509,8 @@ func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon
 				bbox.Max.Z = maxZ
 			}
 		}
+	} else if meters != -1 {
+		bbox = geojson.BBoxesFromCenter(lat, lon, meters)
 	} else {
 		bbox = geojson.BBox{Min: geojson.Position{X: minLon, Y: minLat, Z: minZ}, Max: geojson.Position{X: maxLon, Y: maxLat, Z: maxZ}}
 	}
@@ -514,6 +537,15 @@ func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon
 					}
 					return true
 				})
+			} else if meters != -1 {
+				keepon = c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
+					if o.IntersectsCircle(center, meters) {
+						if iterator(id, o, fields) {
+							return false
+						}
+					}
+					return true
+				})
 			}
 			if keepon {
 				keepon = c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
@@ -534,6 +566,13 @@ func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon
 	if obj != nil {
 		return c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
 			if o.Intersects(obj) {
+				return iterator(id, o, fields)
+			}
+			return true
+		})
+	} else if meters != -1 {
+		return c.geoSearch(bbox, func(id string, o geojson.Object, fields []float64) bool {
+			if o.IntersectsCircle(center, meters) {
 				return iterator(id, o, fields)
 			}
 			return true
