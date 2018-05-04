@@ -5,7 +5,7 @@ import "testing"
 func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "KNN", keys_KNN_test)
 	runStep(t, mc, "WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
-	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLEtest)
+	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
 }
 
 func keys_KNN_test(mc *mockServer) error {
@@ -43,7 +43,7 @@ func keys_WITHIN_CIRCLE_test(mc *mockServer) error {
 	})
 }
 
-func keys_INTERSECTS_CIRCLEtest(mc *mockServer) error {
+func keys_INTERSECTS_CIRCLE_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
 		{"SET", "mykey", "1", "POINT", 37.7335, -122.4412}, {"OK"},
 		{"SET", "mykey", "2", "POINT", 37.7335, -122.44121}, {"OK"},
