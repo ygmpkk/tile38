@@ -725,7 +725,6 @@ func (c *Controller) cmdSet(msg *server.Message) (res resp.Value, d commandDetai
 	if err != nil {
 		return
 	}
-	ex = ex
 	col := c.getCol(d.key)
 	if col == nil {
 		if xx {
