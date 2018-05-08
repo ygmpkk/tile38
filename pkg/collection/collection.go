@@ -37,13 +37,13 @@ func (i *itemT) Less(item btree.Item, ctx interface{}) bool {
 	}
 }
 
-func (i *itemT) Rect() (minX, minY, minZ, maxX, maxY, maxZ float64) {
+func (i *itemT) Rect() (minX, minY, maxX, maxY float64) {
 	bbox := i.object.CalculatedBBox()
-	return bbox.Min.X, bbox.Min.Y, bbox.Min.Z, bbox.Max.X, bbox.Max.Y, bbox.Max.Z
+	return bbox.Min.X, bbox.Min.Y, bbox.Max.X, bbox.Max.Y
 }
 
-func (i *itemT) Point() (x, y, z float64) {
-	x, y, z, _, _, _ = i.Rect()
+func (i *itemT) Point() (x, y float64) {
+	x, y, _, _ = i.Rect()
 	return
 }
 
@@ -375,7 +375,7 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 }
 
 func (c *Collection) geoSearch(bbox geojson.BBox, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
-	return c.index.Search(bbox.Min.Y, bbox.Min.X, bbox.Max.Y, bbox.Max.X, bbox.Min.Z, bbox.Max.Z, func(item interface{}) bool {
+	return c.index.Search(bbox.Min.X, bbox.Min.Y, bbox.Max.X, bbox.Max.Y, func(item interface{}) bool {
 		iitm := item.(*itemT)
 		if !iterator(iitm.id, iitm.object, c.getFieldValues(iitm.id)) {
 			return false
@@ -587,7 +587,7 @@ func (c *Collection) Intersects(sparse uint8, obj geojson.Object, minLat, minLon
 }
 
 func (c *Collection) NearestNeighbors(lat, lon float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
-	return c.index.NearestNeighbors(lat, lon, func(item interface{}) bool {
+	return c.index.KNN(lon, lat, func(item interface{}) bool {
 		var iitm *itemT
 		iitm, ok := item.(*itemT)
 		if !ok {

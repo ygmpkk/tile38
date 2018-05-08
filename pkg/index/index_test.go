@@ -8,48 +8,54 @@ import (
 	"time"
 )
 
+func init() {
+	seed := time.Now().UnixNano()
+	fmt.Printf("seed: %d\n", seed)
+	rand.Seed(seed)
+}
+
 func randf(min, max float64) float64 {
 	return rand.Float64()*(max-min) + min
 }
 
-func randPoint() (lat float64, lon float64) {
-	// intentionally go out of range.
-	return randf(-100, 100), randf(-190, 190)
-}
-
-func randRect() (swLat, swLon, neLat, neLon float64) {
-	swLat, swLon = randPoint()
-	// intentionally go out of range even more.
-	neLat = randf(swLat-10, swLat+10)
-	neLon = randf(swLon-10, swLon+10)
+func randRect() (minX, minY, maxX, maxY float64) {
+	minX, minY = rand.Float64()*360-180, rand.Float64()*180-90
+	maxX, maxY = rand.Float64()*360-180, rand.Float64()*180-90
+	if minX > maxX {
+		minX, maxX = maxX, minX
+	}
+	if minY > maxY {
+		minY, maxY = maxY, minY
+	}
 	return
 }
 
-func wp(swLat, swLon, neLat, neLon float64) *FlexItem {
+func wp(minX, minY, maxX, maxY float64) *FlexItem {
 	return &FlexItem{
-		MinX: swLon,
-		MinY: swLat,
-		MaxX: neLon,
-		MaxY: neLat,
+		MinX: minX,
+		MinY: minY,
+		MaxX: maxX,
+		MaxY: maxY,
 	}
 }
 
 func TestRandomInserts(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	l := 200000
-	tr := New()
-	start := time.Now()
-	i := 0
-	for ; i < l/2; i++ {
-		swLat, swLon := randPoint()
-		tr.Insert(wp(swLat, swLon, swLat, swLon))
-	}
-	inspdur := time.Now().Sub(start)
 
-	start = time.Now()
+	l := 100000
+	tr := New()
+	i := 0
+	var gitems []*FlexItem
+	var nitems []*FlexItem
+
+	start := time.Now()
 	for ; i < l; i++ {
-		swLat, swLon, neLat, neLon := randRect()
-		tr.Insert(wp(swLat, swLon, neLat, neLon))
+		item := wp(randRect())
+		tr.Insert(item)
+		if item.MinX >= -180 && item.MinY >= -90 && item.MaxX <= 180 && item.MaxY <= 90 {
+			gitems = append(gitems, item)
+		} else {
+			nitems = append(nitems, item)
+		}
 	}
 	insrdur := time.Now().Sub(start)
 	count := 0
@@ -60,17 +66,18 @@ func TestRandomInserts(t *testing.T) {
 	}
 	count = 0
 	items := make([]Item, 0, l)
-	tr.Search(-90, -180, 90, 180, 0, 0, func(item interface{}) bool {
+	tr.Search(-180, -90, +180, +90, func(item interface{}) bool {
 		count++
 		items = append(items, item.(Item))
 		return true
 	})
-	if count != l {
-		t.Fatalf("count == %d, expect %d", count, l)
+
+	if count != len(gitems) {
+		t.Fatalf("count == %d, expect %d", count, len(gitems))
 	}
 	start = time.Now()
 	count1 := 0
-	tr.Search(33, -115, 34, -114, 0, 0, func(item interface{}) bool {
+	tr.Search(33, -115, 34, -114, func(item interface{}) bool {
 		count1++
 		return true
 	})
@@ -79,7 +86,7 @@ func TestRandomInserts(t *testing.T) {
 	start = time.Now()
 	count2 := 0
 
-	tr.Search(33-180, -115-360, 34-180, -114-360, 0, 0, func(item interface{}) bool {
+	tr.Search(33-180, -115-360, 34-180, -114-360, func(item interface{}) bool {
 		count2++
 		return true
 	})
@@ -87,28 +94,27 @@ func TestRandomInserts(t *testing.T) {
 
 	start = time.Now()
 	count3 := 0
-	tr.Search(-10, 170, 20, 200, 0, 0, func(item interface{}) bool {
+	tr.Search(-10, 170, 20, 200, func(item interface{}) bool {
 		count3++
 		return true
 	})
 	searchdur3 := time.Now().Sub(start)
 
-	fmt.Printf("Randomly inserted %d points in %s.\n", l/2, inspdur.String())
-	fmt.Printf("Randomly inserted %d rects in %s.\n", l/2, insrdur.String())
+	fmt.Printf("Randomly inserted %d rects in %s.\n", l, insrdur.String())
 	fmt.Printf("Searched %d items in %s.\n", count1, searchdur1.String())
 	fmt.Printf("Searched %d items in %s.\n", count2, searchdur2.String())
 	fmt.Printf("Searched %d items in %s.\n", count3, searchdur3.String())
 
-	tr.Search(-10, 170, 20, 200, 0, 0, func(item interface{}) bool {
-		lat1, lon1, _, lat2, lon2, _ := item.(Item).Rect()
+	tr.Search(-10, 170, 20, 200, func(item interface{}) bool {
+		lat1, lon1, lat2, lon2 := item.(Item).Rect()
 		if lat1 == lat2 && lon1 == lon2 {
 			return false
 		}
 		return true
 	})
 
-	tr.Search(-10, 170, 20, 200, 0, 0, func(item interface{}) bool {
-		lat1, lon1, _, lat2, lon2, _ := item.(Item).Rect()
+	tr.Search(-10, 170, 20, 200, func(item interface{}) bool {
+		lat1, lon1, lat2, lon2 := item.(Item).Rect()
 		if lat1 != lat2 || lon1 != lon2 {
 			return false
 		}
@@ -130,9 +136,9 @@ func TestRandomInserts(t *testing.T) {
 			t.Fatal("getQTreeItem(nil) should return nil")
 		}
 	*/
-	if tr.getRTreeItem(nil) != nil {
-		t.Fatal("getRTreeItem(nil) should return nil")
-	}
+	// if tr.getRTreeItem(nil) != nil {
+	// 	t.Fatal("getRTreeItem(nil) should return nil")
+	// }
 }
 
 func TestMemory(t *testing.T) {
@@ -173,7 +179,7 @@ func TestInsertVarious(t *testing.T) {
 		t.Fatalf("count = %d, expect 1", count)
 	}
 	found := false
-	tr.Search(-90, -180, 90, 180, 0, 0, func(item2 interface{}) bool {
+	tr.Search(-90, -180, 90, 180, func(item2 interface{}) bool {
 		if item2.(Item) == item {
 			found = true
 		}

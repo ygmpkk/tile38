@@ -1,4 +1,4 @@
-package rtreebase
+package rtree
 
 import (
 	"fmt"
