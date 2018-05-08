@@ -226,10 +226,10 @@ The `detect` may be one of the following values.
 - `exit` is when an object that **was** previously in the fence has exited the area.
 - `cross` is when an object that **was not** previously in the fence has entered **and** exited the area.
 
-These can be used when establishing a geofence, to pre-filter responses. For instance, to limit responses to `enter` detections:
+These can be used when establishing a geofence, to pre-filter responses. For instance, to limit responses to `enter` and `exit` detections:
 
 ```
-> nearby fleet fence detect enter point 33.462 -112.268 6000
+> nearby fleet fence detect enter,exit point 33.462 -112.268 6000
 ```
 
 ## Object types
