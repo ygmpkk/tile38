@@ -27,12 +27,11 @@ fi
 if [ "$1" == "travis-docker-push" ]; then
     # GIT_VERSION - always the last verison number, like 1.12.1.
     export GIT_VERSION=$(git describe --tags --abbrev=0)  
-    # GIT_TAG - either a version number, like 1.12.1, or the commit after the version, like 1.12.1-10-a718ef0.
-    export GIT_TAG=$(git describe --tags)                      
     # GIT_COMMIT_SHORT - the short git commit number, like a718ef0.
     export GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
     # DOCKER_REPO - the base repository name to push the docker build to.
     export DOCKER_REPO=$DOCKER_USER/tile38
+
     if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then 
         # never push from a pull request
         echo "Not pushing, on a PR or not running in Travis CI"
@@ -49,7 +48,8 @@ if [ "$1" == "travis-docker-push" ]; then
         echo $DOCKER_PASSWORD | docker login -u $DOCKER_LOGIN --password-stdin
         # build the docker image
         docker build -f Dockerfile -t $DOCKER_REPO:$GIT_COMMIT_SHORT .
-        if [ "$GIT_VERSION" == "$GIT_TAG" ]; then
+        if [ "$(curl -s https://hub.docker.com/v2/repositories/$DOCKER_REPO/tags/$GIT_VERSION/ | grep "$GIT_VERSION" | grep "repository")" == "" ]; then
+            # push the newest tag
             push "$GIT_VERSION"
             push "latest"
         fi
