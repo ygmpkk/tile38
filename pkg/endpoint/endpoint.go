@@ -469,6 +469,7 @@ func parseEndpoint(s string) (Endpoint, error) {
 
 	// Basic AMQP connection strings in HOOKS interface
 	// amqp://guest:guest@localhost:5672/<queue_name>/?params=value
+    // or amqp://guest:guest@localhost:5672/<namespace>/<queue_name>/?params=value
 	//
 	// Default params are:
 	//
@@ -486,8 +487,15 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.AMQP.Durable = true
 		endpoint.AMQP.DeliveryMode = amqp.Transient
 
-		// Bind queue name
-		if len(sp) > 1 {
+        // Fix incase of namespace, e.g. example.com/namespace/queue
+        // but not example.com/queue/ - with an endslash.
+        if len(sp) > 2 && len(sp[2]) > 0 {
+            endpoint.AMQP.URI = endpoint.AMQP.URI + "/" + sp[1]
+            sp = append([]string{endpoint.AMQP.URI}, sp[2:]...)
+        }
+		
+        // Bind queue name with no namespace
+        if len(sp) > 1 {
 			var err error
 			endpoint.AMQP.QueueName, err = url.QueryUnescape(sp[1])
 			if err != nil {
