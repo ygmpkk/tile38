@@ -258,6 +258,9 @@ func (c *Controller) aofshrink() {
 			if err := c.aof.Close(); err != nil {
 				log.Fatalf("shrink live aof close fatal operation: %v", err)
 			}
+			if err := f.Close(); err != nil {
+				log.Fatalf("shrink new aof close fatal operation: %v", err)
+			}
 			if err := os.Rename(core.AppendFileName, core.AppendFileName+"-bak"); err != nil {
 				log.Fatalf("shrink backup fatal operation: %v", err)
 			}
