@@ -375,6 +375,8 @@ func main() {
 			}
 		} else if err == liner.ErrPromptAborted {
 			return
+		} else if err == io.EOF {
+			os.Exit(0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error reading line: %s", err.Error())
 		}
