@@ -327,6 +327,7 @@ Tile38 uses the [Redis RESP](http://redis.io/topics/protocol) protocol natively.
 - Node.js: [node-tile38](https://github.com/phulst/node-tile38) ([example code](https://github.com/tidwall/tile38/wiki/Node.js-example-(node-tile38)))
 - Node.js: [node_redis](https://github.com/NodeRedis/node_redis) ([example code](https://github.com/tidwall/tile38/wiki/Node.js-example-(node-redis)))
 - Perl: [perl-redis](https://github.com/PerlRedis/perl-redis)
+- PHP: [tinyredisclient](https://github.com/ptrofimov/tinyredisclient) ([example code](https://github.com/tidwall/tile38/wiki/PHP-example-(tinyredisclient)))
 - PHP: [phpredis](https://github.com/phpredis/phpredis)
 - Python: [redis-py](https://github.com/andymccurdy/redis-py) ([example code](https://github.com/tidwall/tile38/wiki/Python-example))
 - Ruby: [redic](https://github.com/amakawa/redic) ([example code](https://github.com/tidwall/tile38/wiki/Ruby-example-(redic)))
