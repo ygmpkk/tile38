@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.12.3] - 2018-06-16
+### Fixed
+- #316: Fix AMQP and AMQPS webhook endpoints to support namespaces (@DeadWisdom)
+- #318: Fix aofshrink crash on windows (@abhit011)
+- #326: Fix sporadic kNN results when TTL is used (@pmaseberg)
+
 ## [1.12.2] - 2018-05-10
 ### Fixed
 - #313: Hotfix intersect returning incorrect results (@stevelacy)
