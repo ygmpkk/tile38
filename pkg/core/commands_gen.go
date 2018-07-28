@@ -1124,6 +1124,12 @@ var commandsJSON = `{
         "variadic": true
       },
       {
+        "command": "CLIP",
+        "name": [],
+        "type": [],
+        "optional": true
+      },
+      {
         "command": "NOFIELDS",
         "name": [],
         "type": [],
