@@ -327,6 +327,8 @@ func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
 }
 
 func fenceMatchRoam(c *Controller, fence *liveFenceSwitches, tkey, tid string, obj geojson.Object) (keys, ids []string, meterss []float64) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	col := c.getCol(fence.roam.key)
 	if col == nil {
 		return
