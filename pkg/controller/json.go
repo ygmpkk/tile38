@@ -42,6 +42,19 @@ func jsonString(s string) string {
 	return string(b)
 }
 
+func appendJSONTimeFormat(b []byte, t time.Time) []byte {
+	b = append(b, '"')
+	b = t.AppendFormat(b, "2006-01-02T15:04:05.999999999Z07:00")
+	b = append(b, '"')
+	return b
+}
+
+func jsonTimeFormat(t time.Time) string {
+	var b []byte
+	b = appendJSONTimeFormat(b, t)
+	return string(b)
+}
+
 func (c *Controller) cmdJget(msg *server.Message) (resp.Value, error) {
 	start := time.Now()
 
