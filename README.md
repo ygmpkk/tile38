@@ -33,7 +33,6 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 - Leader / follower [replication](#replication).
 - In-memory database that persists on disk.
 - All coordinates are in [WGS 84 Web Mercator / EPSG:3857](#coordinate-system)
-- Fast R-Tree indexes based on the [RBush](https://github.com/mourner/rbush) library by [Vladimir Agafonkin](https://github.com/mourner)
 
 ## Components
 - `tile38-server    ` - The server

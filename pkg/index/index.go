@@ -1,19 +1,17 @@
 package index
 
 import (
-	rtree "github.com/tidwall/tile38/pkg/index/rtree"
+	"github.com/tidwall/boxtree/d2"
 )
 
 // Index is a geospatial index
 type Index struct {
-	r *rtree.RTree
+	r d2.BoxTree
 }
 
 // New create a new index
 func New() *Index {
-	return &Index{
-		r: rtree.New(),
-	}
+	return &Index{}
 }
 
 // Item represents an index item.
@@ -40,13 +38,13 @@ func (item *FlexItem) Point() (x, y float64) {
 // Insert inserts an item into the index
 func (ix *Index) Insert(item Item) {
 	minX, minY, maxX, maxY := item.Rect()
-	ix.r.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, item)
+	ix.r.Insert([]float64{minX, minY}, []float64{maxX, maxY}, item)
 }
 
 // Remove removed an item from the index
 func (ix *Index) Remove(item Item) {
 	minX, minY, maxX, maxY := item.Rect()
-	ix.r.Remove([2]float64{minX, minY}, [2]float64{maxX, maxY}, item)
+	ix.r.Delete([]float64{minX, minY}, []float64{maxX, maxY}, item)
 }
 
 // Count counts all items in the index.
@@ -63,22 +61,35 @@ func (ix *Index) Bounds() (MinX, MinY, MaxX, MaxY float64) {
 
 // RemoveAll removes all items from the index.
 func (ix *Index) RemoveAll() {
-	ix.r = rtree.New()
+	ix.r = d2.BoxTree{}
 }
 
+// KNN returns the nearsest neighbors
 func (ix *Index) KNN(x, y float64, iterator func(item interface{}) bool) bool {
-	return ix.r.KNN([2]float64{x, y}, [2]float64{x, y}, true,
-		func(item interface{}, dist float64) bool {
-			return iterator(item)
+	res := true
+	ix.r.Nearby([]float64{x, y}, []float64{x, y},
+		func(_, _ []float64, item interface{}) bool {
+			if !iterator(item) {
+				res = false
+				return false
+			}
+			return true
 		})
+	return res
 }
 
 // Search returns all items that intersect the bounding box.
 func (ix *Index) Search(minX, minY, maxX, maxY float64,
 	iterator func(item interface{}) bool,
 ) bool {
-	return ix.r.Search([2]float64{minX, minY}, [2]float64{maxX, maxY},
-		func(item interface{}) bool {
-			return iterator(item)
+	res := true
+	ix.r.Search([]float64{minX, minY}, []float64{maxX, maxY},
+		func(_, _ []float64, item interface{}) bool {
+			if !iterator(item) {
+				res = false
+				return false
+			}
+			return true
 		})
+	return res
 }
