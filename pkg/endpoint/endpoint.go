@@ -76,11 +76,14 @@ type Endpoint struct {
 		DeliveryMode uint8
 	}
 	MQTT struct {
-		Host      string
-		Port      int
-		QueueName string
-		Qos       byte
-		Retained  bool
+		Host       string
+		Port       int
+		QueueName  string
+		Qos        byte
+		Retained   bool
+		CACertFile string
+		CertFile   string
+		KeyFile    string
 	}
 
 	SQS struct {
@@ -406,6 +409,12 @@ func parseEndpoint(s string) (Endpoint, error) {
 					if n == 1 {
 						endpoint.MQTT.Retained = true
 					}
+				case "cacert":
+					endpoint.MQTT.CACertFile = val[0]
+				case "cert":
+					endpoint.MQTT.CertFile = val[0]
+				case "key":
+					endpoint.MQTT.KeyFile = val[0]
 				}
 			}
 		}
@@ -469,7 +478,7 @@ func parseEndpoint(s string) (Endpoint, error) {
 
 	// Basic AMQP connection strings in HOOKS interface
 	// amqp://guest:guest@localhost:5672/<queue_name>/?params=value
-    // or amqp://guest:guest@localhost:5672/<namespace>/<queue_name>/?params=value
+	// or amqp://guest:guest@localhost:5672/<namespace>/<queue_name>/?params=value
 	//
 	// Default params are:
 	//
@@ -487,15 +496,15 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.AMQP.Durable = true
 		endpoint.AMQP.DeliveryMode = amqp.Transient
 
-        // Fix incase of namespace, e.g. example.com/namespace/queue
-        // but not example.com/queue/ - with an endslash.
-        if len(sp) > 2 && len(sp[2]) > 0 {
-            endpoint.AMQP.URI = endpoint.AMQP.URI + "/" + sp[1]
-            sp = append([]string{endpoint.AMQP.URI}, sp[2:]...)
-        }
-		
-        // Bind queue name with no namespace
-        if len(sp) > 1 {
+		// Fix incase of namespace, e.g. example.com/namespace/queue
+		// but not example.com/queue/ - with an endslash.
+		if len(sp) > 2 && len(sp[2]) > 0 {
+			endpoint.AMQP.URI = endpoint.AMQP.URI + "/" + sp[1]
+			sp = append([]string{endpoint.AMQP.URI}, sp[2:]...)
+		}
+
+		// Bind queue name with no namespace
+		if len(sp) > 1 {
 			var err error
 			endpoint.AMQP.QueueName, err = url.QueryUnescape(sp[1])
 			if err != nil {

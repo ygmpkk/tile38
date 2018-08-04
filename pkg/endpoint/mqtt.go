@@ -1,7 +1,10 @@
 package endpoint
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -56,7 +59,31 @@ func (conn *MQTTConn) Send(msg string) error {
 
 	if conn.conn == nil {
 		uri := fmt.Sprintf("tcp://%s:%d", conn.ep.MQTT.Host, conn.ep.MQTT.Port)
-		ops := paho.NewClientOptions().SetClientID("tile38").AddBroker(uri)
+		ops := paho.NewClientOptions()
+		if conn.ep.MQTT.CertFile != "" || conn.ep.MQTT.KeyFile != "" ||
+			conn.ep.MQTT.CACertFile != "" {
+			var config tls.Config
+			if conn.ep.MQTT.CertFile != "" || conn.ep.MQTT.KeyFile != "" {
+				cert, err := tls.LoadX509KeyPair(conn.ep.MQTT.CertFile,
+					conn.ep.MQTT.KeyFile)
+				if err != nil {
+					return err
+				}
+				config.Certificates = append(config.Certificates, cert)
+			}
+			if conn.ep.MQTT.CACertFile != "" {
+				// Load CA cert
+				caCert, err := ioutil.ReadFile(conn.ep.MQTT.CACertFile)
+				if err != nil {
+					return err
+				}
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(caCert)
+				config.RootCAs = caCertPool
+			}
+			ops = ops.SetTLSConfig(&config)
+		}
+		ops = ops.SetClientID("tile38").AddBroker(uri)
 		c := paho.NewClient(ops)
 
 		if token := c.Connect(); token.Wait() && token.Error() != nil {
@@ -66,7 +93,8 @@ func (conn *MQTTConn) Send(msg string) error {
 		conn.conn = c
 	}
 
-	t := conn.conn.Publish(conn.ep.MQTT.QueueName, conn.ep.MQTT.Qos, conn.ep.MQTT.Retained, msg)
+	t := conn.conn.Publish(conn.ep.MQTT.QueueName, conn.ep.MQTT.Qos,
+		conn.ep.MQTT.Retained, msg)
 	t.Wait()
 
 	if t.Error() != nil {
