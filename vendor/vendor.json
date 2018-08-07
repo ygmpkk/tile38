@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "nWIa0L7ux21Cb8kzB4rJHXMblpI=",
+			"path": "github.com/nats-io/go-nats",
+			"revision": "f0d9c5988d4c2a17ad466fcdffe010165c46434e",
+			"revisionTime": "2017-11-14T23:23:38Z"
+		}
+	],
+	"rootPath": "github.com/tidwall/tile38"
+}
