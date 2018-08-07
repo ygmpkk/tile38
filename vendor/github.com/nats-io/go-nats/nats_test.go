@@ -1,3 +1,16 @@
+// Copyright 2012-2018 The NATS Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package nats
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10,9 +23,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,7 +56,7 @@ func stackFatalf(t *testing.T, f string, args ...interface{}) {
 	lines = append(lines, msg)
 
 	// Generate the Stack of callers: Skip us and verify* frames.
-	for i := 2; true; i++ {
+	for i := 1; true; i++ {
 		_, file, line, ok := runtime.Caller(i)
 		if !ok {
 			break
@@ -49,6 +65,23 @@ func stackFatalf(t *testing.T, f string, args ...interface{}) {
 		lines = append(lines, msg)
 	}
 	t.Fatalf("%s", strings.Join(lines, "\n"))
+}
+
+func TestVersionMatchesTag(t *testing.T) {
+	tag := os.Getenv("TRAVIS_TAG")
+	if tag == "" {
+		t.SkipNow()
+	}
+	// We expect a tag of the form vX.Y.Z. If that's not the case,
+	// we need someone to have a look. So fail if first letter is not
+	// a `v`
+	if tag[0] != 'v' {
+		t.Fatalf("Expect tag to start with `v`, tag is: %s", tag)
+	}
+	// Strip the `v` from the tag for the version comparison.
+	if Version != tag[1:] {
+		t.Fatalf("Version (%s) does not match tag (%s)", Version, tag[1:])
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,7 +968,7 @@ func TestAsyncINFO(t *testing.T) {
 		}
 	}
 
-	checkPool := func(inThatOrder bool, urls ...string) {
+	checkPool := func(urls ...string) {
 		// Check both pool and urls map
 		if len(c.srvPool) != len(urls) {
 			stackFatalf(t, "Pool should have %d elements, has %d", len(urls), len(c.srvPool))
@@ -943,35 +976,27 @@ func TestAsyncINFO(t *testing.T) {
 		if len(c.urls) != len(urls) {
 			stackFatalf(t, "Map should have %d elements, has %d", len(urls), len(c.urls))
 		}
-		for i, url := range urls {
-			if inThatOrder {
-				if c.srvPool[i].url.Host != url {
-					stackFatalf(t, "Pool should have %q at index %q, has %q", url, i, c.srvPool[i].url.Host)
-				}
-			} else {
-				if _, present := c.urls[url]; !present {
-					stackFatalf(t, "Pool should have %q", url)
-				}
+		for _, url := range urls {
+			if _, present := c.urls[url]; !present {
+				stackFatalf(t, "Pool should have %q", url)
 			}
 		}
 	}
 
 	// Now test the decoding of "connect_urls"
 
-	// No randomize for now
-	c.Opts.NoRandomize = true
 	// Reset the pool
 	c.setupServerPool()
 	// Reinitialize the parser
 	c.ps = &parseState{}
 
-	info = []byte("INFO {\"connect_urls\":[\"localhost:5222\"]}\r\n")
+	info = []byte("INFO {\"connect_urls\":[\"localhost:4222\", \"localhost:5222\"]}\r\n")
 	err = c.parse(info)
 	if err != nil || c.ps.state != OP_START {
 		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
 	}
 	// Pool now should contain localhost:4222 (the default URL) and localhost:5222
-	checkPool(true, "localhost:4222", "localhost:5222")
+	checkPool("localhost:4222", "localhost:5222")
 
 	// Make sure that if client receives the same, it is not added again.
 	err = c.parse(info)
@@ -979,84 +1004,16 @@ func TestAsyncINFO(t *testing.T) {
 		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
 	}
 	// Pool should still contain localhost:4222 (the default URL) and localhost:5222
-	checkPool(true, "localhost:4222", "localhost:5222")
+	checkPool("localhost:4222", "localhost:5222")
 
 	// Receive a new URL
-	info = []byte("INFO {\"connect_urls\":[\"localhost:6222\"]}\r\n")
+	info = []byte("INFO {\"connect_urls\":[\"localhost:4222\", \"localhost:5222\", \"localhost:6222\"]}\r\n")
 	err = c.parse(info)
 	if err != nil || c.ps.state != OP_START {
 		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
 	}
 	// Pool now should contain localhost:4222 (the default URL) localhost:5222 and localhost:6222
-	checkPool(true, "localhost:4222", "localhost:5222", "localhost:6222")
-
-	// Receive more than 1 URL at once
-	info = []byte("INFO {\"connect_urls\":[\"localhost:7222\", \"localhost:8222\"]}\r\n")
-	err = c.parse(info)
-	if err != nil || c.ps.state != OP_START {
-		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
-	}
-	// Pool now should contain localhost:4222 (the default URL) localhost:5222, localhost:6222
-	// localhost:7222 and localhost:8222
-	checkPool(true, "localhost:4222", "localhost:5222", "localhost:6222", "localhost:7222", "localhost:8222")
-
-	// Test with pool randomization now. Note that with randominzation,
-	// the initial pool is randomize, then each array of urls that the
-	// client gets from the INFO protocol is randomized, but added to
-	// the end of the pool.
-	c.Opts.NoRandomize = false
-	c.setupServerPool()
-
-	info = []byte("INFO {\"connect_urls\":[\"localhost:5222\"]}\r\n")
-	err = c.parse(info)
-	if err != nil || c.ps.state != OP_START {
-		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
-	}
-	// Pool now should contain localhost:4222 (the default URL) and localhost:5222
-	checkPool(true, "localhost:4222", "localhost:5222")
-
-	// Make sure that if client receives the same, it is not added again.
-	err = c.parse(info)
-	if err != nil || c.ps.state != OP_START {
-		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
-	}
-	// Pool should still contain localhost:4222 (the default URL) and localhost:5222
-	checkPool(true, "localhost:4222", "localhost:5222")
-
-	// Receive a new URL
-	info = []byte("INFO {\"connect_urls\":[\"localhost:6222\"]}\r\n")
-	err = c.parse(info)
-	if err != nil || c.ps.state != OP_START {
-		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
-	}
-	// Pool now should contain localhost:4222 (the default URL) localhost:5222 and localhost:6222
-	checkPool(true, "localhost:4222", "localhost:5222", "localhost:6222")
-
-	// Receive more than 1 URL at once. Add more than 2 to increase the chance of
-	// the array being shuffled.
-	info = []byte("INFO {\"connect_urls\":[\"localhost:7222\", \"localhost:8222\", " +
-		"\"localhost:9222\", \"localhost:10222\", \"localhost:11222\"]}\r\n")
-	err = c.parse(info)
-	if err != nil || c.ps.state != OP_START {
-		t.Fatalf("Unexpected: %d : %v\n", c.ps.state, err)
-	}
-	// Pool now should contain localhost:4222 (the default URL) localhost:5222, localhost:6222
-	// localhost:7222, localhost:8222, localhost:9222, localhost:10222 and localhost:11222
-	checkPool(false, "localhost:4222", "localhost:5222", "localhost:6222", "localhost:7222", "localhost:8222",
-		"localhost:9222", "localhost:10222", "localhost:11222")
-
-	// Finally, check that (part of) the pool should be randomized.
-	allUrls := []string{"localhost:4222", "localhost:5222", "localhost:6222", "localhost:7222", "localhost:8222",
-		"localhost:9222", "localhost:10222", "localhost:11222"}
-	same := 0
-	for i, url := range c.srvPool {
-		if url.url.Host == allUrls[i] {
-			same++
-		}
-	}
-	if same == len(allUrls) {
-		t.Fatal("Pool does not seem to be randomized")
-	}
+	checkPool("localhost:4222", "localhost:5222", "localhost:6222")
 
 	// Check that pool may be randomized on setup, but new URLs are always
 	// added at end of pool.
@@ -1147,31 +1104,121 @@ func TestConnServers(t *testing.T) {
 	validateURLs(c.Servers(), "nats://localhost:4333", "nats://localhost:4444")
 }
 
-func TestProcessErrAuthorizationError(t *testing.T) {
-	ach := make(chan asyncCB, 1)
-	called := make(chan error, 1)
-	c := &Conn{
-		ach: ach,
-		Opts: Options{
-			AsyncErrorCB: func(nc *Conn, sub *Subscription, err error) {
-				called <- err
-			},
-		},
+func TestConnAsyncCBDeadlock(t *testing.T) {
+	s := RunServerOnPort(TEST_PORT)
+	defer s.Shutdown()
+
+	ch := make(chan bool)
+	o := GetDefaultOptions()
+	o.Url = fmt.Sprintf("nats://127.0.0.1:%d", TEST_PORT)
+	o.ClosedCB = func(_ *Conn) {
+		ch <- true
 	}
-	c.processErr("Authorization Violation")
-	select {
-	case cb := <-ach:
-		cb()
-	default:
-		t.Fatal("Expected callback on channel")
+	o.AsyncErrorCB = func(nc *Conn, sub *Subscription, err error) {
+		// do something with nc that requires locking behind the scenes
+		_ = nc.LastError()
+	}
+	nc, err := o.Connect()
+	if err != nil {
+		t.Fatalf("Should have connected ok: %v", err)
 	}
 
-	select {
-	case err := <-called:
-		if err != ErrAuthorization {
-			t.Fatalf("Expected ErrAuthorization, got: %v", err)
-		}
-	default:
-		t.Fatal("Expected error on channel")
+	total := 300
+	wg := &sync.WaitGroup{}
+	wg.Add(total)
+	for i := 0; i < total; i++ {
+		go func() {
+			// overwhelm asyncCB with errors
+			nc.processErr(AUTHORIZATION_ERR)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	nc.Close()
+	if e := Wait(ch); e != nil {
+		t.Fatal("Deadlock")
+	}
+}
+
+func TestPingTimerLeakedOnClose(t *testing.T) {
+	s := RunServerOnPort(TEST_PORT)
+	defer s.Shutdown()
+
+	nc, err := Connect(fmt.Sprintf("nats://127.0.0.1:%d", TEST_PORT))
+	if err != nil {
+		t.Fatalf("Error on connect: %v", err)
+	}
+	nc.Close()
+	// There was a bug (issue #338) that if connection
+	// was created and closed quickly, the pinger would
+	// be created from a go-routine and would cause the
+	// connection object to be retained until the ping
+	// timer fired.
+	// Wait a little bit and check if the timer is set.
+	// With the defect it would be.
+	time.Sleep(100 * time.Millisecond)
+	nc.mu.Lock()
+	pingTimerSet := nc.ptmr != nil
+	nc.mu.Unlock()
+	if pingTimerSet {
+		t.Fatal("Pinger timer should not be set")
+	}
+}
+
+func TestNoEcho(t *testing.T) {
+	s := RunServerOnPort(TEST_PORT)
+	defer s.Shutdown()
+
+	url := fmt.Sprintf("nats://127.0.0.1:%d", TEST_PORT)
+
+	nc, err := Connect(url, NoEcho())
+	if err != nil {
+		t.Fatalf("Error on connect: %v", err)
+	}
+	defer nc.Close()
+
+	r := int32(0)
+	_, err = nc.Subscribe("foo", func(m *Msg) {
+		atomic.AddInt32(&r, 1)
+	})
+	if err != nil {
+		t.Fatalf("Error on subscribe: %v", err)
+	}
+
+	err = nc.Publish("foo", []byte("Hello World"))
+	if err != nil {
+		t.Fatalf("Error on publish: %v", err)
+	}
+	nc.Flush()
+	nc.Flush()
+
+	if nr := atomic.LoadInt32(&r); nr != 0 {
+		t.Fatalf("Expected no messages echoed back, received %d\n", nr)
+	}
+}
+
+func TestNoEchoOldServer(t *testing.T) {
+	opts := GetDefaultOptions()
+	opts.Url = DefaultURL
+	opts.NoEcho = true
+
+	nc := &Conn{Opts: opts}
+	if err := nc.setupServerPool(); err != nil {
+		t.Fatalf("Problem setting up Server Pool: %v\n", err)
+	}
+
+	// Old style with no proto, meaning 0. We need Proto:1 for NoEcho support.
+	oldInfo := "{\"server_id\":\"22\",\"version\":\"1.1.0\",\"go\":\"go1.10.2\",\"port\":4222,\"max_payload\":1048576}"
+
+	err := nc.processInfo(oldInfo)
+	if err != nil {
+		t.Fatalf("Error processing old style INFO: %v\n", err)
+	}
+
+	// Make sure connectProto generates an error.
+	_, err = nc.connectProto()
+	if err == nil {
+		t.Fatalf("Expected an error but got none\n")
 	}
 }
