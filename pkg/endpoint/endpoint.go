@@ -33,6 +33,8 @@ const (
 	AMQP = Protocol("amqp")
 	// SQS protocol
 	SQS = Protocol("sqs")
+	// NATS protocol
+	NATS = Protocol("nats")
 )
 
 // Endpoint represents an endpoint.
@@ -92,6 +94,14 @@ type Endpoint struct {
 		CredPath    string
 		CredProfile string
 		QueueName   string
+	}
+
+	NATS struct {
+		Host  string
+		Port  int
+		User  string
+		Pass  string
+		Topic string
 	}
 }
 
@@ -168,6 +178,8 @@ func (epc *Manager) Send(endpoint, msg string) error {
 				conn = newAMQPConn(ep)
 			case SQS:
 				conn = newSQSConn(ep)
+			case NATS:
+				conn = newNATSConn(ep)
 			}
 			epc.conns[endpoint] = conn
 		}
@@ -212,6 +224,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.Protocol = MQTT
 	case strings.HasPrefix(s, "sqs:"):
 		endpoint.Protocol = SQS
+	case strings.HasPrefix(s, "nats:"):
+		endpoint.Protocol = NATS
 	}
 
 	s = s[strings.Index(s, ":")+1:]
@@ -555,6 +569,59 @@ func parseEndpoint(s string) (Endpoint, error) {
 
 		if endpoint.AMQP.RouteKey == "" {
 			endpoint.AMQP.RouteKey = "tile38"
+		}
+	}
+
+	// Basic NATS connection strings in HOOKS interface
+	// nats://<host>:<port>/<topic_name>/?params=value
+	//
+	//  params are:
+	//
+	// user - username
+	// pass - password
+	// when user or pass is not set then login without password is used
+	if endpoint.Protocol == NATS {
+		// Parsing connection from URL string
+		hp := strings.Split(s, ":")
+		switch len(hp) {
+		default:
+			return endpoint, errors.New("invalid SQS url")
+		case 2:
+			endpoint.NATS.Host = hp[0]
+			port, err := strconv.Atoi(hp[1])
+			if err != nil {
+				endpoint.NATS.Port = 4222 // default nats port
+			} else {
+				endpoint.NATS.Port = port
+			}
+		}
+
+		// Parsing NATS topic name
+		if len(sp) > 1 {
+			var err error
+			endpoint.NATS.Topic, err = url.QueryUnescape(sp[1])
+			if err != nil {
+				return endpoint, errors.New("invalid NATS topic name")
+			}
+		}
+
+		// Parsing additional params
+		if len(sqp) > 1 {
+			m, err := url.ParseQuery(sqp[1])
+			if err != nil {
+				return endpoint, errors.New("invalid NATS url")
+			}
+			for key, val := range m {
+				if len(val) == 0 {
+					continue
+				}
+				switch key {
+				case "user":
+					endpoint.NATS.User = val[0]
+				case "pass":
+					endpoint.NATS.Pass = val[0]
+				}
+			}
 		}
 	}
 
