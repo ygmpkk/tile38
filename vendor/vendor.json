@@ -1,0 +1,79 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "6i5WXEn6aAYiWSNCH0TsCyAhgv4=",
+			"path": "github.com/nats-io/gnatsd/conf",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "+BI6v9+uBu6jwqNPS0PbPvepW2Y=",
+			"path": "github.com/nats-io/gnatsd/logger",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "mklbylVp2WB0G8kkDmBaRFBqLqs=",
+			"path": "github.com/nats-io/gnatsd/server",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "P5raehO2Vgq7FKicqSdeRYoUJlo=",
+			"path": "github.com/nats-io/gnatsd/server/pse",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "7q/nF5pQYkUKwXkXM1H4yO7XgHU=",
+			"path": "github.com/nats-io/gnatsd/test",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "GfQ4LMqxsTdxY+4VjBPzejbMI6Q=",
+			"path": "github.com/nats-io/gnatsd/util",
+			"revision": "6608e9ac3be979dcb0614b772cc86a87b71acaa3",
+			"revisionTime": "2018-07-05T16:41:09Z"
+		},
+		{
+			"checksumSHA1": "RNbZJ1hCzyADhvkfy0TwbJ6d3MM=",
+			"path": "github.com/nats-io/go-nats",
+			"revision": "ff578ff05d4180a259da6d729af7b55285d24b78",
+			"revisionTime": "2018-07-25T00:55:40Z"
+		},
+		{
+			"checksumSHA1": "C/TsNyFOKX2bTW3U9O3m5mQhJo8=",
+			"path": "github.com/nats-io/go-nats/encoders/builtin",
+			"revision": "ff578ff05d4180a259da6d729af7b55285d24b78",
+			"revisionTime": "2018-07-25T00:55:40Z"
+		},
+		{
+			"checksumSHA1": "pG50W6cz2QHdf4/oW8sQQzPF7Wo=",
+			"path": "github.com/nats-io/go-nats/encoders/protobuf",
+			"revision": "ff578ff05d4180a259da6d729af7b55285d24b78",
+			"revisionTime": "2018-07-25T00:55:40Z"
+		},
+		{
+			"checksumSHA1": "wXnHPa+satCH17fbk9XxK7MrxXw=",
+			"path": "github.com/nats-io/go-nats/encoders/protobuf/testdata",
+			"revision": "ff578ff05d4180a259da6d729af7b55285d24b78",
+			"revisionTime": "2018-07-25T00:55:40Z"
+		},
+		{
+			"checksumSHA1": "mBZQa+wv/u+0qA1ceh6MrWBEgxs=",
+			"path": "github.com/nats-io/go-nats/util",
+			"revision": "ff578ff05d4180a259da6d729af7b55285d24b78",
+			"revisionTime": "2018-07-25T00:55:40Z"
+		},
+		{
+			"checksumSHA1": "ufhg4R5aa96zJxjSy0JfliML97Y=",
+			"path": "github.com/nats-io/nuid",
+			"revision": "3024a71c3cbe30667286099921591e6fcc328230",
+			"revisionTime": "2018-07-12T04:49:59Z"
+		}
+	],
+	"rootPath": "github.com/tidwall/tile38"
+}
