@@ -63,8 +63,9 @@ func (conn *NATSConn) Send(msg string) error {
 		var err error
 		if conn.ep.NATS.User != "" && conn.ep.NATS.Pass != "" {
 			conn.conn, err = nats.Connect(addr, nats.UserInfo(conn.ep.NATS.User, conn.ep.NATS.Pass))
+		} else {
+			conn.conn, err = nats.Connect(addr)
 		}
-		conn.conn, err = nats.Connect(addr)
 		if err != nil {
 			conn.close()
 			return err
