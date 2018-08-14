@@ -17,6 +17,8 @@ var errExpired = errors.New("expired")
 type Protocol string
 
 const (
+	// Local protocol
+	Local = Protocol("local")
 	// HTTP protocol
 	HTTP = Protocol("http")
 	// Disque protocol
@@ -87,7 +89,6 @@ type Endpoint struct {
 		CertFile   string
 		KeyFile    string
 	}
-
 	SQS struct {
 		QueueID     string
 		Region      string
@@ -95,13 +96,15 @@ type Endpoint struct {
 		CredProfile string
 		QueueName   string
 	}
-
 	NATS struct {
 		Host  string
 		Port  int
 		User  string
 		Pass  string
 		Topic string
+	}
+	Local struct {
+		Channel string
 	}
 }
 
@@ -113,14 +116,16 @@ type Conn interface {
 
 // Manager manages all endpoints
 type Manager struct {
-	mu    sync.RWMutex
-	conns map[string]Conn
+	mu        sync.RWMutex
+	conns     map[string]Conn
+	publisher LocalPublisher
 }
 
 // NewManager returns a new manager
-func NewManager() *Manager {
+func NewManager(publisher LocalPublisher) *Manager {
 	epc := &Manager{
-		conns: make(map[string]Conn),
+		conns:     make(map[string]Conn),
+		publisher: publisher,
 	}
 	go epc.Run()
 	return epc
@@ -180,6 +185,8 @@ func (epc *Manager) Send(endpoint, msg string) error {
 				conn = newSQSConn(ep)
 			case NATS:
 				conn = newNATSConn(ep)
+			case Local:
+				conn = newLocalConn(ep, epc.publisher)
 			}
 			epc.conns[endpoint] = conn
 		}
@@ -204,6 +211,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 	switch {
 	default:
 		return endpoint, errors.New("unknown scheme")
+	case strings.HasPrefix(s, "local:"):
+		endpoint.Protocol = Local
 	case strings.HasPrefix(s, "http:"):
 		endpoint.Protocol = HTTP
 	case strings.HasPrefix(s, "https:"):
@@ -237,9 +246,17 @@ func parseEndpoint(s string) (Endpoint, error) {
 	sp := strings.Split(sqp[0], "/")
 	s = sp[0]
 	if s == "" {
+		if endpoint.Protocol == Local {
+			return endpoint, errors.New("missing channel")
+		}
 		return endpoint, errors.New("missing host")
 	}
 
+	// Local PubSub channel
+	// local://<channel>
+	if endpoint.Protocol == Local {
+		endpoint.Local.Channel = s
+	}
 	if endpoint.Protocol == GRPC {
 		dp := strings.Split(s, ":")
 		switch len(dp) {

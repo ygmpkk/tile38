@@ -190,17 +190,23 @@ func (c *Controller) aofshrink() {
 				if hook == nil {
 					return
 				}
-				hook.mu.Lock()
-				defer hook.mu.Unlock()
+				hook.cond.L.Lock()
+				defer hook.cond.L.Unlock()
 
 				var values []string
-				values = append(values, "sethook")
-				values = append(values, name)
-				values = append(values, strings.Join(hook.Endpoints, ","))
+				if hook.channel {
+					values = append(values, "setchan", name)
+				} else {
+					values = append(values, "sethook", name,
+						strings.Join(hook.Endpoints, ","))
+					values = append(values)
+				}
+				for _, meta := range hook.Metas {
+					values = append(values, "meta", meta.Name, meta.Value)
+				}
 				for _, value := range hook.Message.Values {
 					values = append(values, value.String())
 				}
-
 				// append the values to the aof buffer
 				aofbuf = append(aofbuf, '*')
 				aofbuf = append(aofbuf, strconv.FormatInt(int64(len(values)), 10)...)

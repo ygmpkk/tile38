@@ -133,26 +133,9 @@ func commandErrIsFatal(err error) bool {
 }
 
 func (c *Controller) writeAOF(value resp.Value, d *commandDetailsT) error {
-	if d != nil {
-		if !d.updated {
-			return nil // just ignore writes if the command did not update
-		}
-		if c.config.followHost() == "" {
-			// process hooks, for leader only
-			if d.parent {
-				// process children only
-				for _, d := range d.children {
-					if err := c.queueHooks(d); err != nil {
-						return err
-					}
-				}
-			} else {
-				// process parent
-				if err := c.queueHooks(d); err != nil {
-					return err
-				}
-			}
-		}
+	if d != nil && !d.updated {
+		// just ignore writes if the command did not update
+		return nil
 	}
 	if c.shrinking {
 		var values []string
@@ -178,14 +161,34 @@ func (c *Controller) writeAOF(value resp.Value, d *commandDetailsT) error {
 	c.fcond.Broadcast()
 	c.fcond.L.Unlock()
 
+	// process geofences
 	if d != nil {
-		// write to live connection streams
+		// webhook geofences
+		if c.config.followHost() == "" {
+			// for leader only
+			if d.parent {
+				// queue children
+				for _, d := range d.children {
+					if err := c.queueHooks(d); err != nil {
+						return err
+					}
+				}
+			} else {
+				// queue parent
+				if err := c.queueHooks(d); err != nil {
+					return err
+				}
+			}
+		}
+		// live geofences
 		c.lcond.L.Lock()
 		if d.parent {
+			// queue children
 			for _, d := range d.children {
 				c.lstack = append(c.lstack, d)
 			}
 		} else {
+			// queue parent
 			c.lstack = append(c.lstack, d)
 		}
 		c.lcond.Broadcast()
@@ -196,7 +199,7 @@ func (c *Controller) writeAOF(value resp.Value, d *commandDetailsT) error {
 
 func (c *Controller) queueHooks(d *commandDetailsT) error {
 	// big list of all of the messages
-	var hmsgs [][]byte
+	var hmsgs []string
 	var hooks []*Hook
 	// find the hook by the key
 	if hm, ok := c.hookcols[d.key]; ok {
@@ -204,9 +207,13 @@ func (c *Controller) queueHooks(d *commandDetailsT) error {
 			// match the fence
 			msgs := FenceMatch(hook.Name, hook.ScanWriter, hook.Fence, hook.Metas, d)
 			if len(msgs) > 0 {
-				// append each msg to the big list
-				hmsgs = append(hmsgs, msgs...)
-				hooks = append(hooks, hook)
+				if hook.channel {
+					c.Publish(hook.Name, msgs...)
+				} else {
+					// append each msg to the big list
+					hmsgs = append(hmsgs, msgs...)
+					hooks = append(hooks, hook)
+				}
 			}
 		}
 	}
@@ -259,7 +266,7 @@ type liveAOFSwitches struct {
 }
 
 func (s liveAOFSwitches) Error() string {
-	return "going live"
+	return goingLive
 }
 
 func (c *Controller) cmdAOFMD5(msg *server.Message) (res resp.Value, err error) {

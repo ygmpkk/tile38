@@ -29,6 +29,8 @@ import (
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
 
+const goingLive = "going live"
+
 const hookLogPrefix = "hook:log:"
 
 type collectionT struct {
@@ -109,6 +111,8 @@ type Controller struct {
 	aofconnM   map[net.Conn]bool
 	luascripts *lScriptMap
 	luapool    *lStatePool
+
+	pubsub *pubsub
 }
 
 // ListenAndServe starts a new tile38 server
@@ -136,10 +140,10 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		expires:  make(map[string]map[string]time.Time),
 		started:  time.Now(),
 		conns:    make(map[*server.Conn]*clientConn),
-		epc:      endpoint.NewManager(),
 		http:     http,
+		pubsub:   newPubsub(),
 	}
-
+	c.epc = endpoint.NewManager(c)
 	c.luascripts = c.NewScriptMap()
 	c.luapool = c.NewPool()
 	defer c.luapool.Shutdown()
@@ -217,7 +221,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.statsTotalCommands.add(1)
 		err := c.handleInputCommand(conn, msg, w)
 		if err != nil {
-			if err.Error() == "going live" {
+			if err.Error() == goingLive {
 				return c.goLive(err, conn, rd, msg, websocket)
 			}
 			return err
@@ -490,7 +494,9 @@ func (c *Controller) handleInputCommand(conn *server.Conn, msg *server.Message, 
 	default:
 		c.mu.RLock()
 		defer c.mu.RUnlock()
-	case "set", "del", "drop", "fset", "flushdb", "sethook", "pdelhook", "delhook",
+	case "set", "del", "drop", "fset", "flushdb",
+		"setchan", "pdelchan", "delchan",
+		"sethook", "pdelhook", "delhook",
 		"expire", "persist", "jset", "pdel":
 		// write operations
 		write = true
@@ -512,8 +518,9 @@ func (c *Controller) handleInputCommand(conn *server.Conn, msg *server.Message, 
 		if c.config.readOnly() {
 			return writeErr("read only")
 		}
-	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks", "search",
-		"ttl", "bounds", "server", "info", "type", "jget", "evalro", "evalrosha":
+	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks",
+		"chans", "search", "ttl", "bounds", "server", "info", "type", "jget",
+		"evalro", "evalrosha":
 		// read operations
 		c.mu.RLock()
 		defer c.mu.RUnlock()
@@ -548,6 +555,8 @@ func (c *Controller) handleInputCommand(conn *server.Conn, msg *server.Message, 
 		defer c.mu.Unlock()
 	case "evalna", "evalnasha":
 		// No locking for scripts, otherwise writes cannot happen within scripts
+	case "subscribe", "psubscribe", "publish":
+		// No locking for pubsub
 	}
 
 	res, d, err := c.command(msg, w, conn)
@@ -556,7 +565,7 @@ func (c *Controller) handleInputCommand(conn *server.Conn, msg *server.Message, 
 		return writeErr(res.String())
 	}
 	if err != nil {
-		if err.Error() == "going live" {
+		if err.Error() == goingLive {
 			return err
 		}
 		return writeErr(err.Error())
@@ -630,20 +639,31 @@ func (c *Controller) command(
 		res, d, err = c.cmdDrop(msg)
 	case "flushdb":
 		res, d, err = c.cmdFlushDB(msg)
+
 	case "sethook":
-		res, d, err = c.cmdSetHook(msg)
+		res, d, err = c.cmdSetHook(msg, false)
 	case "delhook":
-		res, d, err = c.cmdDelHook(msg)
+		res, d, err = c.cmdDelHook(msg, false)
 	case "pdelhook":
-		res, d, err = c.cmdPDelHook(msg)
+		res, d, err = c.cmdPDelHook(msg, false)
+	case "hooks":
+		res, err = c.cmdHooks(msg, false)
+
+	case "setchan":
+		res, d, err = c.cmdSetHook(msg, true)
+	case "delchan":
+		res, d, err = c.cmdDelHook(msg, true)
+	case "pdelchan":
+		res, d, err = c.cmdPDelHook(msg, true)
+	case "chans":
+		res, err = c.cmdHooks(msg, true)
+
 	case "expire":
 		res, d, err = c.cmdExpire(msg)
 	case "persist":
 		res, d, err = c.cmdPersist(msg)
 	case "ttl":
 		res, err = c.cmdTTL(msg)
-	case "hooks":
-		res, err = c.cmdHooks(msg)
 	case "shutdown":
 		if !core.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Values[0])
@@ -737,6 +757,12 @@ func (c *Controller) command(
 		res, err = c.cmdScriptExists(msg)
 	case "script flush":
 		res, err = c.cmdScriptFlush(msg)
+	case "subscribe":
+		res, err = c.cmdSubscribe(msg)
+	case "psubscribe":
+		res, err = c.cmdPsubscribe(msg)
+	case "publish":
+		res, err = c.cmdPublish(msg)
 	}
 	return
 }

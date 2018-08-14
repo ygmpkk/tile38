@@ -168,15 +168,15 @@ func (wherein whereinT) match(value float64) bool {
 }
 
 type whereevalT struct {
-	c 			*Controller
-	luaState	*lua.LState
-	fn			*lua.LFunction
+	c        *Controller
+	luaState *lua.LState
+	fn       *lua.LFunction
 }
 
 func (whereeval whereevalT) Close() {
 	luaSetRawGlobals(
 		whereeval.luaState, map[string]lua.LValue{
-			"ARGV":	lua.LNil,
+			"ARGV": lua.LNil,
 		})
 	whereeval.c.luapool.Put(whereeval.luaState)
 }
@@ -189,11 +189,11 @@ func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
 
 	luaSetRawGlobals(
 		whereeval.luaState, map[string]lua.LValue{
-			"FIELDS":	fieldsTbl,
+			"FIELDS": fieldsTbl,
 		})
 	defer luaSetRawGlobals(
 		whereeval.luaState, map[string]lua.LValue{
-			"FIELDS":	lua.LNil,
+			"FIELDS": lua.LNil,
 		})
 
 	whereeval.luaState.Push(whereeval.fn)
@@ -219,41 +219,48 @@ func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
 			return true
 		}
 		var match bool
-		tbl.ForEach(func(lk lua.LValue, lv lua.LValue) {match = true})
+		tbl.ForEach(func(lk lua.LValue, lv lua.LValue) { match = true })
 		return match
 	}
 	panic(fmt.Sprintf("Script returned value of type %s", ret.Type()))
 }
 
 type searchScanBaseTokens struct {
-	key       string
-	cursor    uint64
-	output    outputT
-	precision uint64
-	lineout   string
-	fence     bool
-	distance  bool
-	detect    map[string]bool
-	accept    map[string]bool
-	glob      string
-	wheres    []whereT
-	whereins  []whereinT
-	whereevals	[]whereevalT
-	nofields  bool
-	ulimit    bool
-	limit     uint64
-	usparse   bool
-	sparse    uint8
-	desc      bool
-	clip      bool
+	key        string
+	cursor     uint64
+	output     outputT
+	precision  uint64
+	lineout    string
+	fence      bool
+	distance   bool
+	detect     map[string]bool
+	accept     map[string]bool
+	glob       string
+	wheres     []whereT
+	whereins   []whereinT
+	whereevals []whereevalT
+	nofields   bool
+	ulimit     bool
+	limit      uint64
+	usparse    bool
+	sparse     uint8
+	desc       bool
+	clip       bool
 }
 
-func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vsout []resp.Value, t searchScanBaseTokens, err error) {
+func (c *Controller) parseSearchScanBaseTokens(
+	cmd string, t searchScanBaseTokens, vs []resp.Value,
+) (
+	vsout []resp.Value, tout searchScanBaseTokens, err error,
+) {
 	var ok bool
 	if vs, t.key, ok = tokenval(vs); !ok || t.key == "" {
 		err = errInvalidNumberOfArguments
 		return
 	}
+
+	fromFence := t.fence
+
 	var slimit string
 	var ssparse string
 	var scursor string
@@ -261,7 +268,8 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 	for {
 		nvs, wtok, ok := tokenval(vs)
 		if ok && len(wtok) > 0 {
-			if (wtok[0] == 'C' || wtok[0] == 'c') && strings.ToLower(wtok) == "cursor" {
+			switch strings.ToLower(wtok) {
+			case "cursor":
 				vs = nvs
 				if scursor != "" {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -272,7 +280,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					return
 				}
 				continue
-			} else if (wtok[0] == 'W' || wtok[0] == 'w') && strings.ToLower(wtok) == "where" {
+			case "where":
 				vs = nvs
 				var field, smin, smax string
 				if vs, field, ok = tokenval(vs); !ok || field == "" {
@@ -317,7 +325,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				t.wheres = append(t.wheres, whereT{field, minx, min, maxx, max})
 				continue
-			} else if (wtok[0] == 'W' || wtok[0] == 'w') && strings.ToLower(wtok) == "wherein" {
+			case "wherein":
 				vs = nvs
 				var field, nvalsStr, valStr string
 				if vs, field, ok = tokenval(vs); !ok || field == "" {
@@ -349,7 +357,9 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				t.whereins = append(t.whereins, whereinT{field, valMap})
 				continue
-			} else if (wtok[0] == 'W' || wtok[0] == 'w') && strings.Contains(strings.ToLower(wtok), "whereeval") {
+			case "whereevalsha":
+				fallthrough
+			case "whereeval":
 				scriptIsSha := strings.ToLower(wtok) == "whereevalsha"
 				vs = nvs
 				var script, nargsStr, arg string
@@ -392,7 +402,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 
 				luaSetRawGlobals(
 					luaState, map[string]lua.LValue{
-						"ARGV":     argsTbl,
+						"ARGV": argsTbl,
 					})
 
 				compiled, ok := c.luascripts.Get(shaSum)
@@ -417,9 +427,9 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					}
 					c.luascripts.Put(shaSum, fn.Proto)
 				}
-				t.whereevals = append(t.whereevals, whereevalT{c,luaState, fn})
+				t.whereevals = append(t.whereevals, whereevalT{c, luaState, fn})
 				continue
-			} else if (wtok[0] == 'N' || wtok[0] == 'n') && strings.ToLower(wtok) == "nofields" {
+			case "nofields":
 				vs = nvs
 				if t.nofields {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -427,7 +437,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				t.nofields = true
 				continue
-			} else if (wtok[0] == 'L' || wtok[0] == 'l') && strings.ToLower(wtok) == "limit" {
+			case "limit":
 				vs = nvs
 				if slimit != "" {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -438,7 +448,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					return
 				}
 				continue
-			} else if (wtok[0] == 'S' || wtok[0] == 's') && strings.ToLower(wtok) == "sparse" {
+			case "sparse":
 				vs = nvs
 				if ssparse != "" {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -449,15 +459,15 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					return
 				}
 				continue
-			} else if (wtok[0] == 'F' || wtok[0] == 'f') && strings.ToLower(wtok) == "fence" {
+			case "fence":
 				vs = nvs
-				if t.fence {
+				if t.fence && !fromFence {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
 					return
 				}
 				t.fence = true
 				continue
-			} else if (wtok[0] == 'C' || wtok[0] == 'c') && strings.ToLower(wtok) == "commands" {
+			case "commands":
 				vs = nvs
 				if t.accept != nil {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -481,7 +491,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					t.accept = nil
 				}
 				continue
-			} else if (wtok[0] == 'D' || wtok[0] == 'd') && strings.ToLower(wtok) == "distance" {
+			case "distance":
 				vs = nvs
 				if t.distance {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -489,7 +499,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				t.distance = true
 				continue
-			} else if (wtok[0] == 'D' || wtok[0] == 'd') && strings.ToLower(wtok) == "detect" {
+			case "detect":
 				vs = nvs
 				if t.detect != nil {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -525,7 +535,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					}
 				}
 				continue
-			} else if (wtok[0] == 'D' || wtok[0] == 'd') && strings.ToLower(wtok) == "desc" {
+			case "desc":
 				vs = nvs
 				if t.desc || asc {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -533,7 +543,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				t.desc = true
 				continue
-			} else if (wtok[0] == 'A' || wtok[0] == 'a') && strings.ToLower(wtok) == "asc" {
+			case "asc":
 				vs = nvs
 				if t.desc || asc {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -541,7 +551,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 				}
 				asc = true
 				continue
-			} else if (wtok[0] == 'M' || wtok[0] == 'm') && strings.ToLower(wtok) == "match" {
+			case "match":
 				vs = nvs
 				if t.glob != "" {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -552,7 +562,7 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 					return
 				}
 				continue
-			} else if (wtok[0] == 'C' || wtok[0] == 'c') && strings.ToLower(wtok) == "clip" {
+			case "clip":
 				vs = nvs
 				if t.clip {
 					err = errDuplicateArgument(strings.ToUpper(wtok))
@@ -666,5 +676,6 @@ func (c *Controller) parseSearchScanBaseTokens(cmd string, vs []resp.Value) (vso
 		t.limit = math.MaxUint64
 	}
 	vsout = vs
+	tout = t
 	return
 }

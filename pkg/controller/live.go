@@ -43,7 +43,13 @@ func (c *Controller) processLives() {
 	}
 }
 
-func writeMessage(conn net.Conn, message []byte, wrapRESP bool, connType server.Type, websocket bool) error {
+func writeLiveMessage(
+	conn net.Conn,
+	message []byte,
+	wrapRESP bool,
+	connType server.Type,
+	websocket bool,
+) error {
 	if len(message) == 0 {
 		return nil
 	}
@@ -70,28 +76,34 @@ func (c *Controller) goLive(inerr error, conn net.Conn, rd *server.PipelineReade
 	defer func() {
 		log.Info("not live " + addr)
 	}()
-	if s, ok := inerr.(liveAOFSwitches); ok {
+	switch s := inerr.(type) {
+	default:
+		return errors.New("invalid live type switches")
+	case liveAOFSwitches:
 		return c.liveAOF(s.pos, conn, rd, msg)
+	case liveSubscriptionSwitches:
+		return c.liveSubscription(conn, rd, msg, websocket)
+	case liveFenceSwitches:
+		// fallthrough
 	}
+
+	// everything below is for live geofences
 	lb := &liveBuffer{
 		cond: sync.NewCond(&sync.Mutex{}),
 	}
 	var err error
 	var sw *scanWriter
 	var wr bytes.Buffer
-	switch s := inerr.(type) {
-	default:
-		return errors.New("invalid switch")
-	case liveFenceSwitches:
-		lb.glob = s.glob
-		lb.key = s.key
-		lb.fence = &s
-		c.mu.RLock()
-		sw, err = c.newScanWriter(
-			&wr, msg, s.key, s.output, s.precision, s.glob, false,
-			s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
-		c.mu.RUnlock()
-	}
+	s := inerr.(liveFenceSwitches)
+	lb.glob = s.glob
+	lb.key = s.key
+	lb.fence = &s
+	c.mu.RLock()
+	sw, err = c.newScanWriter(
+		&wr, msg, s.key, s.output, s.precision, s.glob, false,
+		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
+	c.mu.RUnlock()
+
 	// everything below if for live SCAN, NEARBY, WITHIN, INTERSECTS
 	if err != nil {
 		return err
@@ -149,7 +161,7 @@ func (c *Controller) goLive(inerr error, conn net.Conn, rd *server.PipelineReade
 	case server.RESP:
 		livemsg = []byte("+OK\r\n")
 	}
-	if err := writeMessage(conn, livemsg, false, connType, websocket); err != nil {
+	if err := writeLiveMessage(conn, livemsg, false, connType, websocket); err != nil {
 		return nil // nil return is fine here
 	}
 	for {
@@ -168,7 +180,7 @@ func (c *Controller) goLive(inerr error, conn net.Conn, rd *server.PipelineReade
 			lb.cond.L.Unlock()
 			msgs := FenceMatch("", sw, fence, nil, details)
 			for _, msg := range msgs {
-				if err := writeMessage(conn, []byte(msg), true, connType, websocket); err != nil {
+				if err := writeLiveMessage(conn, []byte(msg), true, connType, websocket); err != nil {
 					return nil // nil return is fine here
 				}
 			}

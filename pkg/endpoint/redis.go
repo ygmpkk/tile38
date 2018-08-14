@@ -1,12 +1,11 @@
 package endpoint
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
-	"net"
 	"sync"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -19,8 +18,7 @@ type RedisConn struct {
 	ep   Endpoint
 	ex   bool
 	t    time.Time
-	conn net.Conn
-	rd   *bufio.Reader
+	conn redis.Conn
 }
 
 func newRedisConn(ep Endpoint) *RedisConn {
@@ -50,7 +48,6 @@ func (conn *RedisConn) close() {
 		conn.conn.Close()
 		conn.conn = nil
 	}
-	conn.rd = nil
 }
 
 // Send sends a message
@@ -61,48 +58,20 @@ func (conn *RedisConn) Send(msg string) error {
 	if conn.ex {
 		return errExpired
 	}
-
 	conn.t = time.Now()
 	if conn.conn == nil {
 		addr := fmt.Sprintf("%s:%d", conn.ep.Redis.Host, conn.ep.Redis.Port)
 		var err error
-		conn.conn, err = net.Dial("tcp", addr)
+		conn.conn, err = redis.Dial("tcp", addr)
 		if err != nil {
+			conn.close()
 			return err
 		}
-		conn.rd = bufio.NewReader(conn.conn)
 	}
-
-	var args []string
-	args = append(args, "PUBLISH", conn.ep.Redis.Channel, msg)
-	cmd := buildRedisCommand(args)
-
-	if _, err := conn.conn.Write(cmd); err != nil {
-		conn.close()
-		return err
-	}
-
-	c, err := conn.rd.ReadByte()
+	_, err := redis.Int(conn.conn.Do("PUBLISH", conn.ep.Redis.Channel, msg))
 	if err != nil {
 		conn.close()
 		return err
 	}
-
-	if c != ':' {
-		conn.close()
-		return errors.New("invalid redis reply")
-	}
-
-	ln, err := conn.rd.ReadBytes('\n')
-	if err != nil {
-		conn.close()
-		return err
-	}
-
-	if string(ln[0:1]) != "1" {
-		conn.close()
-		return errors.New("invalid redis reply")
-	}
-
 	return nil
 }

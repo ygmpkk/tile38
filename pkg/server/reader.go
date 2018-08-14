@@ -145,7 +145,6 @@ func readNextHTTPCommand(packet []byte, argsIn [][]byte, msg *Message, wr io.Wri
 			accept := base64.StdEncoding.EncodeToString(sum[:])
 			wshead := "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n"
 			if _, err = wr.Write([]byte(wshead)); err != nil {
-				println(4)
 				return false, err
 			}
 		} else if contentLength > 0 {

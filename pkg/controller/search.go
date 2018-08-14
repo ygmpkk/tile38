@@ -38,7 +38,7 @@ type roamSwitches struct {
 }
 
 func (s liveFenceSwitches) Error() string {
-	return "going live"
+	return goingLive
 }
 
 func (s liveFenceSwitches) Close() {
@@ -51,10 +51,18 @@ func (s liveFenceSwitches) usingLua() bool {
 	return len(s.whereevals) > 0
 }
 
-func (c *Controller) cmdSearchArgs(cmd string, vs []resp.Value, types []string) (s liveFenceSwitches, err error) {
-	if vs, s.searchScanBaseTokens, err = c.parseSearchScanBaseTokens(cmd, vs); err != nil {
+func (c *Controller) cmdSearchArgs(
+	fromFenceCmd bool, cmd string, vs []resp.Value, types []string,
+) (s liveFenceSwitches, err error) {
+	var t searchScanBaseTokens
+	if fromFenceCmd {
+		t.fence = true
+	}
+	vs, t, err = c.parseSearchScanBaseTokens(cmd, t, vs)
+	if err != nil {
 		return
 	}
+	s.searchScanBaseTokens = t
 	var typ string
 	var ok bool
 	if vs, typ, ok = tokenval(vs); !ok || typ == "" {
@@ -350,7 +358,7 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 	start := time.Now()
 	vs := msg.Values[1:]
 	wr := &bytes.Buffer{}
-	s, err := c.cmdSearchArgs("nearby", vs, nearbyTypes)
+	s, err := c.cmdSearchArgs(false, "nearby", vs, nearbyTypes)
 	if s.usingLua() {
 		defer s.Close()
 		defer func() {
@@ -473,7 +481,7 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 	vs := msg.Values[1:]
 
 	wr := &bytes.Buffer{}
-	s, err := c.cmdSearchArgs(cmd, vs, withinOrIntersectsTypes)
+	s, err := c.cmdSearchArgs(false, cmd, vs, withinOrIntersectsTypes)
 	if s.usingLua() {
 		defer s.Close()
 		defer func() {
@@ -533,11 +541,11 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 						return true
 					}
 					return sw.writeObject(ScanWriterParams{
-						id:     id,
-						o:      o,
-						fields: fields,
-						noLock: true,
-						clip:   s.clip,
+						id:      id,
+						o:       o,
+						fields:  fields,
+						noLock:  true,
+						clip:    s.clip,
 						clipbox: clipbox,
 					})
 				},
@@ -552,10 +560,15 @@ func (c *Controller) cmdWithinOrIntersects(cmd string, msg *server.Message) (res
 	return sw.respOut, nil
 }
 
-func (c *Controller) cmdSeachValuesArgs(vs []resp.Value) (s liveFenceSwitches, err error) {
-	if vs, s.searchScanBaseTokens, err = c.parseSearchScanBaseTokens("search", vs); err != nil {
+func (c *Controller) cmdSeachValuesArgs(vs []resp.Value) (
+	s liveFenceSwitches, err error,
+) {
+	var t searchScanBaseTokens
+	vs, t, err = c.parseSearchScanBaseTokens("search", t, vs)
+	if err != nil {
 		return
 	}
+	s.searchScanBaseTokens = t
 	if len(vs) != 0 {
 		err = errInvalidNumberOfArguments
 		return

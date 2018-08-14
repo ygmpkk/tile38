@@ -1,14 +1,12 @@
 package endpoint
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
-	"net"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/tidwall/tile38/pkg/log"
 )
 
 const (
@@ -21,8 +19,7 @@ type DisqueConn struct {
 	ep   Endpoint
 	ex   bool
 	t    time.Time
-	conn net.Conn
-	rd   *bufio.Reader
+	conn redis.Conn
 }
 
 func newDisqueConn(ep Endpoint) *DisqueConn {
@@ -52,7 +49,6 @@ func (conn *DisqueConn) close() {
 		conn.conn.Close()
 		conn.conn = nil
 	}
-	conn.rd = nil
 }
 
 // Send sends a message
@@ -66,60 +62,23 @@ func (conn *DisqueConn) Send(msg string) error {
 	if conn.conn == nil {
 		addr := fmt.Sprintf("%s:%d", conn.ep.Disque.Host, conn.ep.Disque.Port)
 		var err error
-		conn.conn, err = net.Dial("tcp", addr)
+		conn.conn, err = redis.Dial("tcp", addr)
 		if err != nil {
 			return err
 		}
-		conn.rd = bufio.NewReader(conn.conn)
 	}
-	var args []string
-	args = append(args, "ADDJOB", conn.ep.Disque.QueueName, msg, "0")
-	if conn.ep.Disque.Options.Replicate > 0 {
-		args = append(args, "REPLICATE", strconv.FormatInt(int64(conn.ep.Disque.Options.Replicate), 10))
-	}
-	cmd := buildRedisCommand(args)
-	if _, err := conn.conn.Write(cmd); err != nil {
-		conn.close()
-		return err
-	}
-	c, err := conn.rd.ReadByte()
-	if err != nil {
-		conn.close()
-		return err
-	}
-	if c != '-' && c != '+' {
-		conn.close()
-		return errors.New("invalid disque reply")
-	}
-	ln, err := conn.rd.ReadBytes('\n')
-	if err != nil {
-		conn.close()
-		return err
-	}
-	if len(ln) < 2 || ln[len(ln)-2] != '\r' {
-		conn.close()
-		return errors.New("invalid disque reply")
-	}
-	id := string(ln[:len(ln)-2])
-	p := strings.Split(id, "-")
-	if len(p) != 4 {
-		conn.close()
-		return errors.New("invalid disque reply")
-	}
-	return nil
-}
 
-func buildRedisCommand(args []string) []byte {
-	var cmd []byte
-	cmd = append(cmd, '*')
-	cmd = strconv.AppendInt(cmd, int64(len(args)), 10)
-	cmd = append(cmd, '\r', '\n')
-	for _, arg := range args {
-		cmd = append(cmd, '$')
-		cmd = strconv.AppendInt(cmd, int64(len(arg)), 10)
-		cmd = append(cmd, '\r', '\n')
-		cmd = append(cmd, arg...)
-		cmd = append(cmd, '\r', '\n')
+	var args []interface{}
+	args = append(args, conn.ep.Disque.QueueName, msg, 0)
+	if conn.ep.Disque.Options.Replicate > 0 {
+		args = append(args, "REPLICATE", conn.ep.Disque.Options.Replicate)
 	}
-	return cmd
+
+	reply, err := redis.String(conn.conn.Do("ADDJOB", args...))
+	if err != nil {
+		conn.close()
+		return err
+	}
+	log.Debugf("Disque: ADDJOB '%s'", reply)
+	return nil
 }

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -36,31 +35,38 @@ func (a hooksByName) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandDetailsT, err error) {
+func (c *Controller) cmdSetHook(msg *server.Message, chanCmd bool) (
+	res resp.Value, d commandDetailsT, err error,
+) {
 	start := time.Now()
-
 	vs := msg.Values[1:]
 	var name, urls, cmd string
 	var ok bool
 	if vs, name, ok = tokenval(vs); !ok || name == "" {
 		return server.NOMessage, d, errInvalidNumberOfArguments
 	}
-	if vs, urls, ok = tokenval(vs); !ok || urls == "" {
-		return server.NOMessage, d, errInvalidNumberOfArguments
-	}
 	var endpoints []string
-	for _, url := range strings.Split(urls, ",") {
-		url = strings.TrimSpace(url)
-		err := c.epc.Validate(url)
-		if err != nil {
-			log.Errorf("sethook: %v", err)
-			return resp.SimpleStringValue(""), d, errInvalidArgument(url)
+	if chanCmd {
+		endpoints = []string{"local://" + name}
+	} else {
+		if vs, urls, ok = tokenval(vs); !ok || urls == "" {
+			return server.NOMessage, d, errInvalidNumberOfArguments
 		}
-		endpoints = append(endpoints, url)
+		for _, url := range strings.Split(urls, ",") {
+			url = strings.TrimSpace(url)
+			err := c.epc.Validate(url)
+			if err != nil {
+				log.Errorf("sethook: %v", err)
+				return resp.SimpleStringValue(""), d, errInvalidArgument(url)
+			}
+			endpoints = append(endpoints, url)
+		}
 	}
 	var commandvs []resp.Value
 	var cmdlc string
 	var types []string
+	// var expires float64
+	// var expiresSet bool
 	metaMap := make(map[string]string)
 	for {
 		commandvs = vs
@@ -82,6 +88,18 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 			}
 			metaMap[metakey] = metaval
 			continue
+		// case "ex":
+		// 	var s string
+		// 	if vs, s, ok = tokenval(vs); !ok || s == "" {
+		// 		return server.NOMessage, d, errInvalidNumberOfArguments
+		// 	}
+		// 	v, err := strconv.ParseFloat(s, 64)
+
+		// 	if err != nil {
+		// 		return server.NOMessage, d, errInvalidArgument(s)
+		// 	}
+		// 	expires = v
+		// 	expiresSet = true
 		case "nearby":
 			types = nearbyTypes
 		case "within", "intersects":
@@ -89,7 +107,7 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 		}
 		break
 	}
-	s, err := c.cmdSearchArgs(cmdlc, vs, types)
+	s, err := c.cmdSearchArgs(true, cmdlc, vs, types)
 	defer s.Close()
 	if err != nil {
 		return server.NOMessage, d, err
@@ -119,12 +137,18 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 		Endpoints: endpoints,
 		Fence:     &s,
 		Message:   cmsg,
-		db:        c.qdb,
 		epm:       c.epc,
 		Metas:     metas,
+		channel:   chanCmd,
+		cond:      sync.NewCond(&sync.Mutex{}),
 	}
-	hook.cond = sync.NewCond(&hook.mu)
-
+	// if expiresSet {
+	// 	hook.expires =
+	// 		time.Now().Add(time.Duration(expires * float64(time.Second)))
+	// }
+	if !chanCmd {
+		hook.db = c.qdb
+	}
 	var wr bytes.Buffer
 	hook.ScanWriter, err = c.newScanWriter(
 		&wr, cmsg, s.key, s.output, s.precision, s.glob, false,
@@ -134,6 +158,10 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 	}
 
 	if h, ok := c.hooks[name]; ok {
+		if h.channel != chanCmd {
+			return server.NOMessage, d,
+				errors.New("hooks and channels cannot share the same name")
+		}
 		if h.Equals(hook) {
 			// it was a match so we do nothing. But let's signal just
 			// for good measure.
@@ -171,7 +199,9 @@ func (c *Controller) cmdSetHook(msg *server.Message) (res resp.Value, d commandD
 	return server.NOMessage, d, nil
 }
 
-func (c *Controller) cmdDelHook(msg *server.Message) (res resp.Value, d commandDetailsT, err error) {
+func (c *Controller) cmdDelHook(msg *server.Message, chanCmd bool) (
+	res resp.Value, d commandDetailsT, err error,
+) {
 	start := time.Now()
 	vs := msg.Values[1:]
 
@@ -183,7 +213,7 @@ func (c *Controller) cmdDelHook(msg *server.Message) (res resp.Value, d commandD
 	if len(vs) != 0 {
 		return server.NOMessage, d, errInvalidNumberOfArguments
 	}
-	if h, ok := c.hooks[name]; ok {
+	if h, ok := c.hooks[name]; ok && h.channel == chanCmd {
 		h.Close()
 		if hm, ok := c.hookcols[h.Key]; ok {
 			delete(hm, h.Name)
@@ -205,7 +235,9 @@ func (c *Controller) cmdDelHook(msg *server.Message) (res resp.Value, d commandD
 	return
 }
 
-func (c *Controller) cmdPDelHook(msg *server.Message) (res resp.Value, d commandDetailsT, err error) {
+func (c *Controller) cmdPDelHook(msg *server.Message, channel bool) (
+	res resp.Value, d commandDetailsT, err error,
+) {
 	start := time.Now()
 	vs := msg.Values[1:]
 
@@ -219,19 +251,21 @@ func (c *Controller) cmdPDelHook(msg *server.Message) (res resp.Value, d command
 	}
 
 	count := 0
-	for name := range c.hooks {
-		match, _ := glob.Match(pattern, name)
-		if match {
-			if h, ok := c.hooks[name]; ok {
-				h.Close()
-				if hm, ok := c.hookcols[h.Key]; ok {
-					delete(hm, h.Name)
-				}
-				delete(c.hooks, h.Name)
-				d.updated = true
-				count++
-			}
+	for name, h := range c.hooks {
+		if h.channel != channel {
+			continue
 		}
+		match, _ := glob.Match(pattern, name)
+		if !match {
+			continue
+		}
+		h.Close()
+		if hm, ok := c.hookcols[h.Key]; ok {
+			delete(hm, h.Name)
+		}
+		delete(c.hooks, h.Name)
+		d.updated = true
+		count++
 	}
 	d.timestamp = time.Now()
 
@@ -244,7 +278,9 @@ func (c *Controller) cmdPDelHook(msg *server.Message) (res resp.Value, d command
 	return
 }
 
-func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
+func (c *Controller) cmdHooks(msg *server.Message, channel bool) (
+	res resp.Value, err error,
+) {
 	start := time.Now()
 	vs := msg.Values[1:]
 
@@ -260,6 +296,9 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 
 	var hooks []*Hook
 	for name, hook := range c.hooks {
+		if hook.channel != channel {
+			continue
+		}
 		match, _ := glob.Match(pattern, name)
 		if match {
 			hooks = append(hooks, hook)
@@ -270,7 +309,12 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 	switch msg.OutputType {
 	case server.JSON:
 		buf := &bytes.Buffer{}
-		buf.WriteString(`{"ok":true,"hooks":[`)
+		buf.WriteString(`{"ok":true,`)
+		if channel {
+			buf.WriteString(`"chans":[`)
+		} else {
+			buf.WriteString(`"hooks":[`)
+		}
 		for i, hook := range hooks {
 			if i > 0 {
 				buf.WriteByte(',')
@@ -278,12 +322,14 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 			buf.WriteString(`{`)
 			buf.WriteString(`"name":` + jsonString(hook.Name))
 			buf.WriteString(`,"key":` + jsonString(hook.Key))
-			buf.WriteString(`,"endpoints":[`)
-			for i, endpoint := range hook.Endpoints {
-				if i > 0 {
-					buf.WriteByte(',')
+			if !channel {
+				buf.WriteString(`,"endpoints":[`)
+				for i, endpoint := range hook.Endpoints {
+					if i > 0 {
+						buf.WriteByte(',')
+					}
+					buf.WriteString(jsonString(endpoint))
 				}
-				buf.WriteString(jsonString(endpoint))
 			}
 			buf.WriteString(`],"command":[`)
 			for i, v := range hook.Message.Values {
@@ -303,7 +349,8 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 			}
 			buf.WriteString(`}}`)
 		}
-		buf.WriteString(`],"elapsed":"` + time.Now().Sub(start).String() + "\"}")
+		buf.WriteString(`],"elapsed":"` +
+			time.Now().Sub(start).String() + "\"}")
 		return resp.StringValue(buf.String()), nil
 	case server.RESP:
 		var vals []resp.Value
@@ -332,7 +379,6 @@ func (c *Controller) cmdHooks(msg *server.Message) (res resp.Value, err error) {
 
 // Hook represents a hook.
 type Hook struct {
-	mu         sync.Mutex
 	cond       *sync.Cond
 	Key        string
 	Name       string
@@ -342,12 +388,15 @@ type Hook struct {
 	ScanWriter *scanWriter
 	Metas      []FenceMeta
 	db         *buntdb.DB
+	channel    bool
 	closed     bool
 	opened     bool
 	query      string
 	epm        *endpoint.Manager
+	expires    time.Time
 }
 
+// Equals returns true if two hooks are equal
 func (h *Hook) Equals(hook *Hook) bool {
 	if h.Key != hook.Key ||
 		h.Name != hook.Name ||
@@ -370,6 +419,7 @@ func (h *Hook) Equals(hook *Hook) bool {
 		resp.ArrayValue(hook.Message.Values))
 }
 
+// FenceMeta is a meta key/value pair for fences
 type FenceMeta struct {
 	Name, Value string
 }
@@ -391,21 +441,28 @@ func (arr hookMetaByName) Swap(a, b int) {
 // Open is called when a hook is first created. It calls the manager
 // function in a goroutine
 func (h *Hook) Open() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	if h.channel {
+		// nothing to open for channels
+		return
+	}
+	h.cond.L.Lock()
+	defer h.cond.L.Unlock()
 	if h.opened {
 		return
 	}
 	h.opened = true
-	b, _ := json.Marshal(h.Name)
-	h.query = `{"hook":` + string(b) + `}`
+	h.query = `{"hook":` + jsonString(h.Name) + `}`
 	go h.manager()
 }
 
 // Close closed the hook and stop the manager function
 func (h *Hook) Close() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	if h.channel {
+		// nothing to close for channels
+		return
+	}
+	h.cond.L.Lock()
+	defer h.cond.L.Unlock()
 	if h.closed {
 		return
 	}
@@ -416,30 +473,35 @@ func (h *Hook) Close() {
 // Signal can be called at any point to wake up the hook and
 // notify the manager that there may be something new in the queue.
 func (h *Hook) Signal() {
-	h.mu.Lock()
+	if h.channel {
+		// nothing to signal for channels
+		return
+	}
+	h.cond.L.Lock()
 	h.cond.Broadcast()
-	h.mu.Unlock()
+	h.cond.L.Unlock()
 }
 
 // the manager is a forever loop that calls proc whenever there's a signal.
 // it ends when the "closed" flag is set.
 func (h *Hook) manager() {
 	for {
-		h.mu.Lock()
+		h.cond.L.Lock()
 		for {
 			if h.closed {
-				h.mu.Unlock()
+				h.cond.L.Unlock()
 				return
 			}
 			if h.proc() {
 				break
 			}
-			h.mu.Unlock()
-			time.Sleep(time.Second / 4)
-			h.mu.Lock()
+			h.cond.L.Unlock()
+			// proc failed. wait half a second and try again
+			time.Sleep(time.Second / 2)
+			h.cond.L.Lock()
 		}
 		h.cond.Wait()
-		h.mu.Unlock()
+		h.cond.L.Unlock()
 	}
 }
 
@@ -452,13 +514,15 @@ func (h *Hook) proc() (ok bool) {
 	start := time.Now()
 	err := h.db.Update(func(tx *buntdb.Tx) error {
 		// get keys and vals
-		err := tx.AscendGreaterOrEqual("hooks", h.query, func(key, val string) bool {
-			if strings.HasPrefix(key, hookLogPrefix) {
-				keys = append(keys, key)
-				vals = append(vals, val)
-			}
-			return true
-		})
+		err := tx.AscendGreaterOrEqual("hooks",
+			h.query, func(key, val string) bool {
+				if strings.HasPrefix(key, hookLogPrefix) {
+					keys = append(keys, key)
+					vals = append(vals, val)
+				}
+				return true
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -494,7 +558,8 @@ func (h *Hook) proc() (ok bool) {
 		for _, endpoint := range h.Endpoints {
 			err := h.epm.Send(endpoint, val)
 			if err != nil {
-				log.Debugf("Endpoint connect/send error: %v: %v: %v", idx, endpoint, err)
+				log.Debugf("Endpoint connect/send error: %v: %v: %v",
+					idx, endpoint, err)
 				continue
 			}
 			log.Debugf("Endpoint send ok: %v: %v: %v", idx, endpoint, err)
@@ -502,7 +567,8 @@ func (h *Hook) proc() (ok bool) {
 			break
 		}
 		if !sent {
-			// failed to send. try to reinsert the remaining. if this fails we lose log entries.
+			// failed to send. try to reinsert the remaining.
+			// if this fails we lose log entries.
 			keys = keys[i:]
 			vals = vals[i:]
 			ttls = ttls[i:]
@@ -528,41 +594,3 @@ func (h *Hook) proc() (ok bool) {
 	}
 	return true
 }
-
-/*
-// Do performs a hook.
-func (hook *Hook) Do(details *commandDetailsT) error {
-	var lerrs []error
-	msgs := FenceMatch(hook.Name, hook.ScanWriter, hook.Fence, details)
-nextMessage:
-	for _, msg := range msgs {
-	nextEndpoint:
-		for _, endpoint := range hook.Endpoints {
-			switch endpoint.Protocol {
-			case HTTP:
-				if err := sendHTTPMessage(endpoint, []byte(msg)); err != nil {
-					lerrs = append(lerrs, err)
-					continue nextEndpoint
-				}
-				continue nextMessage // sent
-			case Disque:
-				if err := sendDisqueMessage(endpoint, []byte(msg)); err != nil {
-					lerrs = append(lerrs, err)
-					continue nextEndpoint
-				}
-				continue nextMessage // sent
-			}
-		}
-	}
-	if len(lerrs) == 0 {
-		//	log.Notice("YAY")
-		return nil
-	}
-	var errmsgs []string
-	for _, err := range lerrs {
-		errmsgs = append(errmsgs, err.Error())
-	}
-	err := errors.New("not sent: " + strings.Join(errmsgs, ","))
-	log.Error(err)
-	return err
-}*/

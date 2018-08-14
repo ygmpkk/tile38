@@ -11,10 +11,15 @@ import (
 	"github.com/tidwall/tile38/pkg/server"
 )
 
-func (c *Controller) cmdScanArgs(vs []resp.Value) (s liveFenceSwitches, err error) {
-	if vs, s.searchScanBaseTokens, err = c.parseSearchScanBaseTokens("scan", vs); err != nil {
+func (c *Controller) cmdScanArgs(vs []resp.Value) (
+	s liveFenceSwitches, err error,
+) {
+	var t searchScanBaseTokens
+	vs, t, err = c.parseSearchScanBaseTokens("scan", t, vs)
+	if err != nil {
 		return
 	}
+	s.searchScanBaseTokens = t
 	if len(vs) != 0 {
 		err = errInvalidNumberOfArguments
 		return
