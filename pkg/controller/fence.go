@@ -47,7 +47,10 @@ func appendHookDetails(b []byte, hookName string, metas []FenceMeta) []byte {
 func hookJSONString(hookName string, metas []FenceMeta) string {
 	return string(appendHookDetails(nil, hookName, metas))
 }
-func fenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas []FenceMeta, details *commandDetailsT) []string {
+func fenceMatch(
+	hookName string, sw *scanWriter, fence *liveFenceSwitches,
+	metas []FenceMeta, details *commandDetailsT,
+) []string {
 	if details.command == "drop" {
 		return []string{
 			`{"command":"drop"` + hookJSONString(hookName, metas) +
@@ -72,23 +75,30 @@ func fenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas
 		}
 	}
 	if details.command == "del" {
+		if fence.roam.on {
+			if fence.roam.nearbys != nil {
+				delete(fence.roam.nearbys, details.id)
+				if len(fence.roam.nearbys) == 0 {
+					fence.roam.nearbys = nil
+				}
+			}
+		}
 		return []string{
-			`{"command":"del"` + hookJSONString(hookName, metas) + `,"id":` + jsonString(details.id) +
+			`{"command":"del"` + hookJSONString(hookName, metas) +
+				`,"id":` + jsonString(details.id) +
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
 	}
-	var roamkeys, roamids []string
-	var roammeters []float64
-	var roamobjs []geojson.Object
+	var roamNearbys, roamFaraways []roamMatch
 	var detect = "outside"
 	if fence != nil {
 		if fence.roam.on {
 			if details.command == "set" {
-				roamkeys, roamids, roammeters, roamobjs =
+				roamNearbys, roamFaraways =
 					fenceMatchRoam(sw.c, fence, details.key,
 						details.id, details.obj)
 			}
-			if len(roamids) == 0 || len(roamids) != len(roamkeys) {
+			if len(roamNearbys) == 0 && len(roamFaraways) == 0 {
 				return nil
 			}
 			detect = "roam"
@@ -202,7 +212,6 @@ func fenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas
 			fence.groups[groupkey] = group
 		}
 	}
-
 	var msgs []string
 	if fence.detect == nil || fence.detect[detect] {
 		if len(res) > 0 && res[0] == '{' {
@@ -224,54 +233,77 @@ func fenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas
 	case "roam":
 		if len(msgs) > 0 {
 			var nmsgs []string
-			msg := msgs[0][:len(msgs[0])-1]
-			for i, id := range roamids {
-				var nmsg []byte
-				nmsg = append(nmsg, msg...)
-				nmsg = append(nmsg, `,"nearby":{"key":`...)
-				nmsg = appendJSONString(nmsg, roamkeys[i])
-				nmsg = append(nmsg, `,"id":`...)
-				nmsg = appendJSONString(nmsg, id)
-				nmsg = append(nmsg, `,"object":`...)
-				nmsg = append(nmsg, roamobjs[i].JSON()...)
-				nmsg = append(nmsg, `,"meters":`...)
-				nmsg = append(nmsg, strconv.FormatFloat(roammeters[i], 'f', -1, 64)...)
-				if fence.roam.scan != "" {
-					nmsg = append(nmsg, `,"scan":[`...)
-					col := sw.c.getCol(roamkeys[i])
-					if col != nil {
-						obj, _, ok := col.Get(id)
-						if ok {
-							nmsg = append(nmsg, `{"id":`+jsonString(id)+`,"self":true,"object":`+obj.JSON()+`}`...)
-						}
-						pattern := id + fence.roam.scan
-						iterator := func(oid string, o geojson.Object, fields []float64) bool {
-							if oid == id {
-								return true
-							}
-							if matched, _ := glob.Match(pattern, oid); matched {
-								nmsg = append(nmsg, `,{"id":`+jsonString(oid)+`,"object":`+o.JSON()+`}`...)
-							}
-							return true
-						}
-						g := glob.Parse(pattern, false)
-						if g.Limits[0] == "" && g.Limits[1] == "" {
-							col.Scan(false, iterator)
-						} else {
-							col.ScanRange(g.Limits[0], g.Limits[1], false, iterator)
-						}
-					}
-					nmsg = append(nmsg, ']')
-				}
-
-				nmsg = append(nmsg, '}')
-				nmsg = append(nmsg, '}')
+			for i := range roamNearbys {
+				nmsg := extendRoamMessage(sw, fence,
+					"nearby", msgs[0], roamNearbys[i])
+				nmsgs = append(nmsgs, string(nmsg))
+			}
+			for i := range roamFaraways {
+				nmsg := extendRoamMessage(sw, fence,
+					"faraway", msgs[0], roamFaraways[i])
 				nmsgs = append(nmsgs, string(nmsg))
 			}
 			msgs = nmsgs
 		}
 	}
 	return msgs
+}
+
+func extendRoamMessage(
+	sw *scanWriter, fence *liveFenceSwitches,
+	kind string, baseMsg string, match roamMatch,
+) string {
+	// hack off the last '}'
+	nmsg := []byte(baseMsg[:len(baseMsg)-1])
+	nmsg = append(nmsg, `,"`+kind+`":{"key":`...)
+	nmsg = appendJSONString(nmsg, fence.roam.key)
+	nmsg = append(nmsg, `,"id":`...)
+	nmsg = appendJSONString(nmsg, match.id)
+	nmsg = append(nmsg, `,"object":`...)
+	nmsg = append(nmsg, match.obj.JSON()...)
+	nmsg = append(nmsg, `,"meters":`...)
+	nmsg = strconv.AppendFloat(nmsg,
+		math.Floor(match.meters*1000)/1000, 'f', -1, 64)
+	if fence.roam.scan != "" {
+		nmsg = append(nmsg, `,"scan":[`...)
+		col := sw.c.getCol(fence.roam.key)
+		if col != nil {
+			obj, _, ok := col.Get(match.id)
+			if ok {
+				nmsg = append(nmsg,
+					`{"id":`+jsonString(match.id)+
+						`,"self":true,"object":`+obj.JSON()+`}`...)
+			}
+			pattern := match.id + fence.roam.scan
+			iterator := func(
+				oid string, o geojson.Object, fields []float64,
+			) bool {
+				if oid == match.id {
+					return true
+				}
+				if matched, _ := glob.Match(pattern, oid); matched {
+					nmsg = append(nmsg,
+						`,{"id":`+jsonString(oid)+
+							`,"object":`+o.JSON()+`}`...)
+				}
+				return true
+			}
+			g := glob.Parse(pattern, false)
+			if g.Limits[0] == "" && g.Limits[1] == "" {
+				col.Scan(false, iterator)
+			} else {
+				col.ScanRange(g.Limits[0], g.Limits[1],
+					false, iterator)
+			}
+		}
+		nmsg = append(nmsg, ']')
+	}
+
+	nmsg = append(nmsg, '}')
+
+	// re-add the last '}'
+	nmsg = append(nmsg, '}')
+	return string(nmsg)
 }
 
 func makemsg(
@@ -326,31 +358,63 @@ func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
 func fenceMatchRoam(
 	c *Controller, fence *liveFenceSwitches,
 	tkey, tid string, obj geojson.Object,
-) (keys, ids []string, meterss []float64, objs []geojson.Object) {
+) (nearbys, faraways []roamMatch) {
 	col := c.getCol(fence.roam.key)
 	if col == nil {
 		return
 	}
 	p := obj.CalculatedPoint()
+	var prevNearbys []roamMatch
+	if fence.roam.nearbys != nil {
+		prevNearbys = fence.roam.nearbys[tid]
+	}
 	col.Nearby(0, p.Y, p.X, fence.roam.meters, math.Inf(-1), math.Inf(+1),
 		func(id string, obj geojson.Object, fields []float64) bool {
-			var match bool
+			var idMatch bool
 			if id == tid {
 				return true // skip self
 			}
 			if fence.roam.pattern {
-				match, _ = glob.Match(fence.roam.id, id)
+				idMatch, _ = glob.Match(fence.roam.id, id)
 			} else {
-				match = fence.roam.id == id
+				idMatch = fence.roam.id == id
 			}
-			if match {
-				keys = append(keys, fence.roam.key)
-				ids = append(ids, id)
-				meterss = append(meterss, obj.CalculatedPoint().DistanceTo(p))
-				objs = append(objs, obj)
+			if !idMatch {
+				return true
 			}
+			match := roamMatch{
+				id:     id,
+				obj:    obj,
+				meters: obj.CalculatedPoint().DistanceTo(p),
+			}
+			for i := 0; i < len(prevNearbys); i++ {
+				if prevNearbys[i].id == match.id {
+					prevNearbys[i] = prevNearbys[len(prevNearbys)-1]
+					prevNearbys = prevNearbys[:len(prevNearbys)-1]
+					i--
+					break
+				}
+			}
+			nearbys = append(nearbys, match)
 			return true
 		},
 	)
+	faraways = prevNearbys
+	for i := 0; i < len(faraways); i++ {
+		faraways[i].meters = faraways[i].obj.CalculatedPoint().DistanceTo(p)
+	}
+	if len(nearbys) == 0 {
+		if fence.roam.nearbys != nil {
+			delete(fence.roam.nearbys, tid)
+			if len(fence.roam.nearbys) == 0 {
+				fence.roam.nearbys = nil
+			}
+		}
+	} else {
+		if fence.roam.nearbys == nil {
+			fence.roam.nearbys = make(map[string][]roamMatch)
+		}
+		fence.roam.nearbys[tid] = nearbys
+	}
 	return
 }

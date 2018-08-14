@@ -35,6 +35,13 @@ type roamSwitches struct {
 	pattern bool
 	meters  float64
 	scan    string
+	nearbys map[string][]roamMatch
+}
+
+type roamMatch struct {
+	id     string
+	obj    geojson.Object
+	meters float64
 }
 
 func (s liveFenceSwitches) Error() string {
