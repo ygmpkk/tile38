@@ -22,6 +22,7 @@ import (
 	"github.com/tidwall/tile38/pkg/collection"
 	"github.com/tidwall/tile38/pkg/core"
 	"github.com/tidwall/tile38/pkg/endpoint"
+	"github.com/tidwall/tile38/pkg/expire"
 	"github.com/tidwall/tile38/pkg/geojson"
 	"github.com/tidwall/tile38/pkg/log"
 	"github.com/tidwall/tile38/pkg/server"
@@ -113,6 +114,7 @@ type Controller struct {
 	luapool    *lStatePool
 
 	pubsub *pubsub
+	hookex expire.List
 }
 
 // ListenAndServe starts a new tile38 server
@@ -142,6 +144,12 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		conns:    make(map[*server.Conn]*clientConn),
 		http:     http,
 		pubsub:   newPubsub(),
+	}
+	c.hookex.Expired = func(item expire.Item) {
+		switch v := item.(type) {
+		case *Hook:
+			c.possiblyExpireHook(v)
+		}
 	}
 	c.epc = endpoint.NewManager(c)
 	c.luascripts = c.NewScriptMap()
