@@ -1449,7 +1449,14 @@ var commandsJSON = `{
         "name": ["name", "value"],
         "type": ["string", "string"],
         "optional": true,
-		"multiple": true
+		    "multiple": true
+      },
+      {
+        "command": "EX",
+        "name": ["seconds"],
+        "type": ["double"],
+        "optional": true,
+        "multiple": false
       },
       {
         "enum": ["NEARBY", "WITHIN", "INTERSECTS"]
@@ -1514,6 +1521,115 @@ var commandsJSON = `{
     ],
     "group": "webhook"
   },
+
+
+
+
+
+  "SETCHAN": {
+    "summary": "Creates a pubsub channel which points to geofenced search",
+    "arguments": [
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "command": "META",
+        "name": ["name", "value"],
+        "type": ["string", "string"],
+        "optional": true,
+		    "multiple": true
+      },
+      {
+        "command": "EX",
+        "name": ["seconds"],
+        "type": ["double"],
+        "optional": true,
+        "multiple": false
+      },
+      {
+        "enum": ["NEARBY", "WITHIN", "INTERSECTS"]
+      },
+      {
+        "name": "key",
+        "type": "string"
+      },
+      {
+        "command": "FENCE",
+        "name": [],
+        "type": []
+      },
+      {
+        "command": "DETECT",
+        "name": ["what"],
+        "type": ["string"],
+        "optional": true
+      },
+      {
+        "command": "COMMANDS",
+        "name": ["which"],
+        "type": ["string"],
+        "optional": true
+      },
+      {
+        "name": "param",
+        "type": "string",
+        "variadic": true
+      }
+
+    ],
+    "group": "pubsub"
+  },
+  "DELCHAN": {
+    "summary": "Removes a channel",
+    "arguments": [
+      {
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "group": "pubsub"
+  },
+  "CHANS": {
+    "summary": "Finds all channels matching a pattern",
+    "arguments":[
+      {
+        "name": "pattern",
+        "type": "pattern"
+      }
+    ],
+    "group": "pubsub"
+  },
+  "PDELCHAN": {
+    "summary": "Removes all channels matching a pattern",
+    "arguments":[
+      {
+        "name": "pattern",
+        "type": "pattern"
+      }
+    ],
+    "group": "pubsub"
+  },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   "PDEL": {
     "summary": "Removes all objects matching a pattern",
     "arguments":[
