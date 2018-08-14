@@ -38,23 +38,13 @@ func TestBasic(t *testing.T) {
 }
 
 func TestRandomQueue(t *testing.T) {
-	N := 100000
+	N := 1000
 	now := time.Now()
 	var list List
 	for i := 0; i < N; i++ {
 		list.Push(&testItem{fmt.Sprintf("%d", i),
 			now.Add(time.Duration(rand.Float64() * float64(time.Second)))})
 	}
-	// var wg sync.WaitGroup
-	// wg.Add(N)
-	// var items []Item
-	// list.Expired = func(item Item) {
-	// 	items = append(items, item)
-	// 	wg.Done()
-	// }
-
-	// wg.Wait()
-
 	var items []Item
 	for list.queue.len > 0 {
 		n1 := list.queue.peek()
@@ -77,7 +67,7 @@ func TestRandomQueue(t *testing.T) {
 }
 
 func TestExpires(t *testing.T) {
-	N := 100000
+	N := 1000
 	now := time.Now()
 	var list List
 	for i := 0; i < N; i++ {
