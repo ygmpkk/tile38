@@ -178,7 +178,13 @@ func (c *Controller) goLive(inerr error, conn net.Conn, rd *server.PipelineReade
 			}
 			fence := lb.fence
 			lb.cond.L.Unlock()
-			msgs := FenceMatch("", sw, fence, nil, details)
+			var msgs []string
+			func() {
+				// safely lock the fence because we are outside the main loop
+				c.mu.RLock()
+				defer c.mu.RUnlock()
+				msgs = FenceMatch("", sw, fence, nil, details)
+			}()
 			for _, msg := range msgs {
 				if err := writeLiveMessage(conn, []byte(msg), true, connType, websocket); err != nil {
 					return nil // nil return is fine here

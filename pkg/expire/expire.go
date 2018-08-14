@@ -15,7 +15,6 @@ type List struct {
 	mu      sync.Mutex
 	queue   queue
 	bgrun   bool
-	arr     []Item
 	Expired func(item Item)
 }
 
@@ -32,7 +31,7 @@ func (list *List) Push(item Item) {
 }
 
 func (list *List) bg() {
-	unix := time.Now().UnixNano()
+	now := time.Now().UnixNano()
 	for {
 		list.mu.Lock()
 		if list.queue.len == 0 {
@@ -40,7 +39,7 @@ func (list *List) bg() {
 			list.mu.Unlock()
 			break
 		}
-		if unix > list.queue.peek().unix {
+		if now > list.queue.peek().unix { // now.After(list.queue.peek().unix)
 			n := list.queue.pop()
 			list.mu.Unlock()
 			if list.Expired != nil {
@@ -49,7 +48,7 @@ func (list *List) bg() {
 		} else {
 			list.mu.Unlock()
 			time.Sleep(time.Second / 10)
-			unix = time.Now().UnixNano()
+			now = time.Now().UnixNano()
 		}
 	}
 }

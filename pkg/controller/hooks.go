@@ -285,9 +285,12 @@ func (c *Controller) cmdPDelHook(msg *server.Message, channel bool) (
 	return
 }
 
-func (c *Controller) possiblyExpireHook(h *Hook) {
+// possiblyExpireHook will evaluate a hook by it's name for expiration and
+// purge it from the database if needed. This operation is called from an
+// independent goroutine
+func (c *Controller) possiblyExpireHook(name string) {
 	c.mu.Lock()
-	if h, ok := c.hooks[h.Name]; ok {
+	if h, ok := c.hooks[name]; ok {
 		if !h.expires.IsZero() && time.Now().After(h.expires) {
 			// purge from database
 			msg := &server.Message{}

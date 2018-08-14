@@ -148,7 +148,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	c.hookex.Expired = func(item expire.Item) {
 		switch v := item.(type) {
 		case *Hook:
-			c.possiblyExpireHook(v)
+			c.possiblyExpireHook(v.Name)
 		}
 	}
 	c.epc = endpoint.NewManager(c)

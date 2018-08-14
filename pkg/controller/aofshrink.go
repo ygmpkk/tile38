@@ -204,6 +204,12 @@ func (c *Controller) aofshrink() {
 				for _, meta := range hook.Metas {
 					values = append(values, "meta", meta.Name, meta.Value)
 				}
+				if !hook.expires.IsZero() {
+					ex := float64(hook.expires.Sub(time.Now())) /
+						float64(time.Second)
+					values = append(values, "ex",
+						strconv.FormatFloat(ex, 'f', 1, 64))
+				}
 				for _, value := range hook.Message.Values {
 					values = append(values, value.String())
 				}
