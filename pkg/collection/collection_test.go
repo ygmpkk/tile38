@@ -28,7 +28,7 @@ func TestCollection(t *testing.T) {
 			}}
 		}
 		objs[id] = obj
-		c.ReplaceOrInsert(id, obj, nil, nil)
+		c.Set(id, obj, nil, nil)
 	}
 	count := 0
 	bbox := geojson.BBox{Min: geojson.Position{X: -180, Y: -90, Z: 0}, Max: geojson.Position{X: 180, Y: 90, Z: 0}}
@@ -76,7 +76,7 @@ func TestManyCollections(t *testing.T) {
 				col = New()
 				colsM[key] = col
 			}
-			col.ReplaceOrInsert(id, obj, nil, nil)
+			col.Set(id, obj, nil, nil)
 			k++
 		}
 	}
@@ -110,7 +110,7 @@ func BenchmarkInsert(t *testing.B) {
 	col := New()
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		col.ReplaceOrInsert(items[i].id, items[i].object, nil, nil)
+		col.Set(items[i].id, items[i].object, nil, nil)
 	}
 }
 
@@ -128,11 +128,11 @@ func BenchmarkReplace(t *testing.B) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.ReplaceOrInsert(items[i].id, items[i].object, nil, nil)
+		col.Set(items[i].id, items[i].object, nil, nil)
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
-		o, _, _ := col.ReplaceOrInsert(items[i].id, items[i].object, nil, nil)
+		o, _, _ := col.Set(items[i].id, items[i].object, nil, nil)
 		if o != items[i].object {
 			t.Fatal("shoot!")
 		}
@@ -153,7 +153,7 @@ func BenchmarkGet(t *testing.B) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.ReplaceOrInsert(items[i].id, items[i].object, nil, nil)
+		col.Set(items[i].id, items[i].object, nil, nil)
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
@@ -178,11 +178,11 @@ func BenchmarkRemove(t *testing.B) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.ReplaceOrInsert(items[i].id, items[i].object, nil, nil)
+		col.Set(items[i].id, items[i].object, nil, nil)
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
-		o, _, _ := col.Remove(items[i].id)
+		o, _, _ := col.Delete(items[i].id)
 		if o != items[i].object {
 			t.Fatal("shoot!")
 		}

@@ -307,7 +307,7 @@ func (c *Controller) cmdDel(msg *server.Message) (res resp.Value, d commandDetai
 	found := false
 	col := c.getCol(d.key)
 	if col != nil {
-		d.obj, d.fields, ok = col.Remove(d.id)
+		d.obj, d.fields, ok = col.Delete(d.id)
 		if ok {
 			if col.Count() == 0 {
 				c.deleteCol(d.key)
@@ -373,7 +373,7 @@ func (c *Controller) cmdPdel(msg *server.Message) (res resp.Value, d commandDeta
 		}
 		var atLeastOneNotDeleted bool
 		for i, dc := range d.children {
-			dc.obj, dc.fields, ok = col.Remove(dc.id)
+			dc.obj, dc.fields, ok = col.Delete(dc.id)
 			if !ok {
 				d.children[i].command = "?"
 				atLeastOneNotDeleted = true
@@ -740,7 +740,7 @@ func (c *Controller) cmdSet(msg *server.Message) (res resp.Value, d commandDetai
 		}
 	}
 	c.clearIDExpires(d.key, d.id)
-	d.oldObj, d.oldFields, d.fields = col.ReplaceOrInsert(d.id, d.obj, fields, values)
+	d.oldObj, d.oldFields, d.fields = col.Set(d.id, d.obj, fields, values)
 	d.command = "set"
 	d.updated = true // perhaps we should do a diff on the previous object?
 	d.timestamp = time.Now()

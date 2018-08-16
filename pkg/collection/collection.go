@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/tidwall/btree"
+	"github.com/tidwall/tile38/pkg/ds"
 	"github.com/tidwall/tile38/pkg/geojson"
 	"github.com/tidwall/tile38/pkg/index"
 )
@@ -49,7 +50,7 @@ func (i *itemT) Point() (x, y float64) {
 
 // Collection represents a collection of geojson objects.
 type Collection struct {
-	items       *btree.BTree // items sorted by keys
+	items       ds.BTree     // items sorted by keys
 	values      *btree.BTree // items sorted by value+key
 	index       *index.Index // items geospatially indexed
 	fieldMap    map[string]int
@@ -66,8 +67,7 @@ var counter uint64
 func New() *Collection {
 	col := &Collection{
 		index:    index.New(),
-		items:    btree.New(128, idOrdered),
-		values:   btree.New(128, valueOrdered),
+		values:   btree.New(16, valueOrdered),
 		fieldMap: make(map[string]int),
 	}
 	return col
@@ -117,15 +117,15 @@ func (c *Collection) Bounds() (minX, minY, maxX, maxY float64) {
 	return c.index.Bounds()
 }
 
-// ReplaceOrInsert adds or replaces an object in the collection and returns the fields array.
+// Set adds or replaces an object in the collection and returns the fields array.
 // If an item with the same id is already in the collection then the new item will adopt the old item's fields.
 // The fields argument is optional.
 // The return values are the old object, the old fields, and the new fields
-func (c *Collection) ReplaceOrInsert(id string, obj geojson.Object, fields []string, values []float64) (oldObject geojson.Object, oldFields []float64, newFields []float64) {
+func (c *Collection) Set(id string, obj geojson.Object, fields []string, values []float64) (oldObject geojson.Object, oldFields []float64, newFields []float64) {
 	var oldItem *itemT
-	var newItem *itemT = &itemT{id: id, object: obj}
+	newItem := &itemT{id: id, object: obj}
 	// add the new item to main btree and remove the old one if needed
-	oldItemPtr := c.items.ReplaceOrInsert(newItem)
+	oldItemPtr, _ := c.items.Set(id, newItem)
 	if oldItemPtr != nil {
 		// the old item was removed, now let's remove from the rtree
 		// or strings tree.
@@ -186,14 +186,14 @@ func (c *Collection) ReplaceOrInsert(id string, obj geojson.Object, fields []str
 	return oldObject, oldFields, newFields
 }
 
-// Remove removes an object and returns it.
+// Delete removes an object and returns it.
 // If the object does not exist then the 'ok' return value will be false.
-func (c *Collection) Remove(id string) (obj geojson.Object, fields []float64, ok bool) {
-	i := c.items.Delete(&itemT{id: id})
-	if i == nil {
+func (c *Collection) Delete(id string) (obj geojson.Object, fields []float64, ok bool) {
+	old, _ := c.items.Delete(id)
+	if old == nil {
 		return nil, nil, false
 	}
-	item := i.(*itemT)
+	item := old.(*itemT)
 	if item.object.IsGeometry() {
 		c.index.Remove(item)
 		c.objects--
@@ -212,43 +212,43 @@ func (c *Collection) Remove(id string) (obj geojson.Object, fields []float64, ok
 // Get returns an object.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Get(id string) (obj geojson.Object, fields []float64, ok bool) {
-	i := c.items.Get(&itemT{id: id})
-	if i == nil {
+	val, _ := c.items.Get(id)
+	if val == nil {
 		return nil, nil, false
 	}
-	item := i.(*itemT)
+	item := val.(*itemT)
 	return item.object, c.getFieldValues(id), true
 }
 
 // SetField set a field value for an object and returns that object.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) SetField(id, field string, value float64) (obj geojson.Object, fields []float64, updated bool, ok bool) {
-	i := c.items.Get(&itemT{id: id})
-	if i == nil {
+	val, _ := c.items.Get(id)
+	if val == nil {
 		ok = false
 		return
 	}
-	item := i.(*itemT)
+	item := val.(*itemT)
 	updated = c.setField(item, field, value)
 	return item.object, c.getFieldValues(id), updated, true
 }
 
 // SetFields is similar to SetField, just setting multiple fields at once
-func (c *Collection) SetFields(id string, in_fields []string, in_values []float64) (
-	obj geojson.Object, fields []float64, updated_count int, ok bool,
+func (c *Collection) SetFields(id string, inFields []string, inValues []float64) (
+	obj geojson.Object, fields []float64, updatedCount int, ok bool,
 ) {
-	i := c.items.Get(&itemT{id: id})
-	if i == nil {
+	val, _ := c.items.Get(id)
+	if val == nil {
 		ok = false
 		return
 	}
-	item := i.(*itemT)
-	for idx, field := range in_fields {
-		if c.setField(item, field, in_values[idx]) {
-			updated_count++
+	item := val.(*itemT)
+	for idx, field := range inFields {
+		if c.setField(item, field, inValues[idx]) {
+			updatedCount++
 		}
 	}
-	return item.object, c.getFieldValues(id), updated_count, true
+	return item.object, c.getFieldValues(id), updatedCount, true
 }
 
 func (c *Collection) setField(item *itemT, field string, value float64) (updated bool) {
@@ -288,34 +288,43 @@ func (c *Collection) Scan(desc bool,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
-	iter := func(item btree.Item) bool {
-		iitm := item.(*itemT)
+	iter := func(key string, value interface{}) bool {
+		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.object, c.getFieldValues(iitm.id))
 		return keepon
 	}
 	if desc {
-		c.items.Descend(iter)
+		c.items.Reverse(iter)
 	} else {
-		c.items.Ascend(iter)
+		c.items.Scan(iter)
 	}
 	return keepon
 }
 
-// ScanGreaterOrEqual iterates though the collection starting with specified id.
+// ScanRange iterates though the collection starting with specified id.
 func (c *Collection) ScanRange(start, end string, desc bool,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
-	iter := func(item btree.Item) bool {
-		iitm := item.(*itemT)
+	iter := func(key string, value interface{}) bool {
+		if !desc {
+			if key >= end {
+				return false
+			}
+		} else {
+			if key <= end {
+				return false
+			}
+		}
+		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.object, c.getFieldValues(iitm.id))
 		return keepon
 	}
 
 	if desc {
-		c.items.DescendRange(&itemT{id: start}, &itemT{id: end}, iter)
+		c.items.Descend(start, iter)
 	} else {
-		c.items.AscendRange(&itemT{id: start}, &itemT{id: end}, iter)
+		c.items.Ascend(start, iter)
 	}
 	return keepon
 }
@@ -361,15 +370,15 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
-	iter := func(item btree.Item) bool {
-		iitm := item.(*itemT)
+	iter := func(key string, value interface{}) bool {
+		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.object, c.getFieldValues(iitm.id))
 		return keepon
 	}
 	if desc {
-		c.items.DescendLessOrEqual(&itemT{id: id}, iter)
+		c.items.Descend(id, iter)
 	} else {
-		c.items.AscendGreaterOrEqual(&itemT{id: id}, iter)
+		c.items.Ascend(id, iter)
 	}
 	return keepon
 }
@@ -593,7 +602,11 @@ func (c *Collection) Intersects(
 	})
 }
 
-func (c *Collection) NearestNeighbors(lat, lon float64, iterator func(id string, obj geojson.Object, fields []float64) bool) bool {
+// NearestNeighbors returns the nearest neighbors
+func (c *Collection) NearestNeighbors(
+	lat, lon float64,
+	iterator func(id string, obj geojson.Object, fields []float64) bool,
+) bool {
 	return c.index.KNN(lon, lat, func(item interface{}) bool {
 		var iitm *itemT
 		iitm, ok := item.(*itemT)

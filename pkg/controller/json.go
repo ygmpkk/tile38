@@ -213,7 +213,7 @@ func (c *Controller) cmdJset(msg *server.Message) (res resp.Value, d commandDeta
 	d.updated = true
 
 	c.clearIDExpires(key, id)
-	col.ReplaceOrInsert(d.id, d.obj, nil, nil)
+	col.Set(d.id, d.obj, nil, nil)
 	switch msg.OutputType {
 	case server.JSON:
 		var buf bytes.Buffer
@@ -287,7 +287,7 @@ func (c *Controller) cmdJdel(msg *server.Message) (res resp.Value, d commandDeta
 	d.updated = true
 
 	c.clearIDExpires(d.key, d.id)
-	col.ReplaceOrInsert(d.id, d.obj, nil, nil)
+	col.Set(d.id, d.obj, nil, nil)
 	switch msg.OutputType {
 	case server.JSON:
 		var buf bytes.Buffer
