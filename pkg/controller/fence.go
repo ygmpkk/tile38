@@ -399,9 +399,15 @@ func fenceMatchRoam(
 			return true
 		},
 	)
-	faraways = prevNearbys
-	for i := 0; i < len(faraways); i++ {
-		faraways[i].meters = faraways[i].obj.CalculatedPoint().DistanceTo(p)
+	for i := 0; i < len(prevNearbys); i++ {
+		obj, _, ok := col.Get(prevNearbys[i].id)
+		if ok {
+			faraways = append(faraways, roamMatch{
+				id:     prevNearbys[i].id,
+				obj:    obj,
+				meters: obj.CalculatedPoint().DistanceTo(p),
+			})
+		}
 	}
 	if len(nearbys) == 0 {
 		if fence.roam.nearbys != nil {
