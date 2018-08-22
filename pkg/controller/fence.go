@@ -364,12 +364,13 @@ func fenceMatchRoam(
 		return
 	}
 	p := obj.CalculatedPoint()
-	var prevNearbys []roamMatch
-	if fence.roam.nearbys != nil {
-		prevNearbys = fence.roam.nearbys[tid]
-	}
+	prevNearbys := fence.roam.nearbys[tid]
+	var newNearbys map[string]bool
 	col.Nearby(0, p.Y, p.X, fence.roam.meters, math.Inf(-1), math.Inf(+1),
 		func(id string, obj geojson.Object, fields []float64) bool {
+			if c.hasExpired(fence.roam.key, id) {
+				return true
+			}
 			var idMatch bool
 			if id == tid {
 				return true // skip self
@@ -382,34 +383,38 @@ func fenceMatchRoam(
 			if !idMatch {
 				return true
 			}
+			if newNearbys == nil {
+				newNearbys = make(map[string]bool)
+			}
+			newNearbys[id] = true
+			prev := prevNearbys[id]
+			if prev {
+				delete(prevNearbys, id)
+			}
+
 			match := roamMatch{
 				id:     id,
 				obj:    obj,
 				meters: obj.CalculatedPoint().DistanceTo(p),
 			}
-			for i := 0; i < len(prevNearbys); i++ {
-				if prevNearbys[i].id == match.id {
-					prevNearbys[i] = prevNearbys[len(prevNearbys)-1]
-					prevNearbys = prevNearbys[:len(prevNearbys)-1]
-					i--
-					break
-				}
+			if !prev || !fence.nodwell {
+				// brand new "nearby"
+				nearbys = append(nearbys, match)
 			}
-			nearbys = append(nearbys, match)
 			return true
 		},
 	)
-	for i := 0; i < len(prevNearbys); i++ {
-		obj, _, ok := col.Get(prevNearbys[i].id)
-		if ok {
+	for id := range prevNearbys {
+		obj, _, ok := col.Get(id)
+		if ok && !c.hasExpired(fence.roam.key, id) {
 			faraways = append(faraways, roamMatch{
-				id:     prevNearbys[i].id,
-				obj:    obj,
+				id: id, obj: obj,
 				meters: obj.CalculatedPoint().DistanceTo(p),
 			})
 		}
 	}
-	if len(nearbys) == 0 {
+
+	if len(newNearbys) == 0 {
 		if fence.roam.nearbys != nil {
 			delete(fence.roam.nearbys, tid)
 			if len(fence.roam.nearbys) == 0 {
@@ -418,9 +423,9 @@ func fenceMatchRoam(
 		}
 	} else {
 		if fence.roam.nearbys == nil {
-			fence.roam.nearbys = make(map[string][]roamMatch)
+			fence.roam.nearbys = make(map[string]map[string]bool)
 		}
-		fence.roam.nearbys[tid] = nearbys
+		fence.roam.nearbys[tid] = newNearbys
 	}
 	return
 }

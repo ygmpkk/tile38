@@ -35,7 +35,7 @@ type roamSwitches struct {
 	pattern bool
 	meters  float64
 	scan    string
-	nearbys map[string][]roamMatch
+	nearbys map[string]map[string]bool
 }
 
 type roamMatch struct {

@@ -233,6 +233,7 @@ type searchScanBaseTokens struct {
 	lineout    string
 	fence      bool
 	distance   bool
+	nodwell    bool
 	detect     map[string]bool
 	accept     map[string]bool
 	glob       string
@@ -534,6 +535,14 @@ func (c *Controller) parseSearchScanBaseTokens(
 						"cross":   true,
 					}
 				}
+				continue
+			case "nodwell":
+				vs = nvs
+				if t.desc || asc {
+					err = errDuplicateArgument(strings.ToUpper(wtok))
+					return
+				}
+				t.nodwell = true
 				continue
 			case "desc":
 				vs = nvs
