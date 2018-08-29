@@ -9,7 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - 3a6f366: Add NODWELL keyword to roaming geofences
 - #343: Add Nats endpoints (@lennycampino)
 - #340: Add MQTT tls/cert options (@tobilg)
-- #314: Add CLIP subcommand to INTERSECTS
+- #314: Add CLIP subcommand to INTERSECTS (@rshura)
 
 ### Changes
 - 3ae26e3: Updated B-tree implementation
