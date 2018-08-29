@@ -24,7 +24,7 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 ## Features
 
 - Spatial index with [search](#searching) methods such as Nearby, Within, and Intersects.
-- Realtime [geofencing](#geofencing) through [webhooks](http://tile38.com/commands/sethook) or [pub/sub channels](#pub-sub-channels).
+- Realtime [geofencing](#geofencing) through [webhooks](http://tile38.com/commands/sethook) or [pub/sub channels](#pubsub-channels).
 - Object types of [lat/lon](#latlon-point), [bbox](#bounding-box), [Geohash](#geohash), [GeoJSON](#geojson), [QuadKey](#quadkey), and [XYZ tile](#xyz-tile).
 - Support for lots of [Clients Libraries](#client-libraries) written in many different languages.
 - Variety of protocols, including [http](#http) (curl), [websockets](#websockets), [telnet](#telnet), and the [Redis RESP](http://redis.io/topics/protocol).
