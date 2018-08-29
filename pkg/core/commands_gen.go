@@ -1522,10 +1522,6 @@ var commandsJSON = `{
     "group": "webhook"
   },
 
-
-
-
-
   "SETCHAN": {
     "summary": "Creates a pubsub channel which points to geofenced search",
     "arguments": [
@@ -1610,26 +1606,28 @@ var commandsJSON = `{
     ],
     "group": "pubsub"
   },
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  "SUBSCRIBE": {
+    "summary": "Subscribe to a geofence channel",
+    "arguments":[
+      {
+        "name": "channel",
+        "type": "string",
+        "variadic": true
+      }
+    ],
+    "group": "pubsub"
+  },
+  "PSUBSCRIBE": {
+    "summary": "Subscribes the client to the given patterns",
+    "arguments":[
+      {
+        "name": "pattern",
+        "type": "pattern",
+        "variadic": true
+      }
+    ],
+    "group": "pubsub"
+  },
   "PDEL": {
     "summary": "Removes all objects matching a pattern",
     "arguments":[

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/peterh/liner"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/pkg/client"
 	"github.com/tidwall/tile38/pkg/core"
@@ -350,7 +351,9 @@ func main() {
 						fmt.Fprintln(os.Stderr, "(error) "+cerr.Err)
 						mustOutput = false
 					}
-				} else if string(msg) == client.LiveJSON {
+				} else if gjson.GetBytes(msg, "command").String() == "psubscribe" ||
+					gjson.GetBytes(msg, "command").String() == "subscribe" ||
+					string(msg) == client.LiveJSON {
 					fmt.Fprintln(os.Stderr, string(msg))
 					livemode = true
 					break // break out of prompt and just feed data to screen
