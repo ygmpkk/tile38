@@ -1526,6 +1526,12 @@
         "name": [],
         "type": [],
         "optional": true
+      },
+      {
+        "command": "STR",
+        "name": [],
+        "type": [],
+        "optional": true
       }
     ],
     "group": "keys"
