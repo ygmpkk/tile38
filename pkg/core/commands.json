@@ -1522,16 +1522,16 @@
         "type": "string"
       },
       {
-        "command": "RAW",
         "name": [],
-        "type": [],
-        "optional": true
-      },
-      {
-        "command": "STR",
-        "name": [],
-        "type": [],
-        "optional": true
+        "optional": true,
+	"enumargs": [
+          {
+            "name": "RAW"
+          },
+          {
+            "name": "STR"
+          }
+        ]
       }
     ],
     "group": "keys"
