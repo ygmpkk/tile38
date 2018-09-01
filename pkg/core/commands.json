@@ -1524,7 +1524,7 @@
       {
         "name": [],
         "optional": true,
-	"enumargs": [
+        "enumargs": [
           {
             "name": "RAW"
           },
