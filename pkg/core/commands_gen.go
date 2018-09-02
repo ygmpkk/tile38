@@ -1688,10 +1688,16 @@ var commandsJSON = `{
         "type": "string"
       },
       {
-        "command": "RAW",
         "name": [],
-        "type": [],
-        "optional": true
+        "optional": true,
+        "enumargs": [
+          {
+            "name": "RAW"
+          },
+          {
+            "name": "STR"
+          }
+        ]
       }
     ],
     "group": "keys"
