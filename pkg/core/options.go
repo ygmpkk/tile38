@@ -14,3 +14,6 @@ var AppendOnly = "yes"
 
 // AppendFileName allows for custom appendonly file path
 var AppendFileName string
+
+// QueueFileName allows for custom queue.db file path
+var QueueFileName string

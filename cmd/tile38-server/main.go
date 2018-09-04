@@ -77,7 +77,8 @@ Basic Options:
 Advanced Options: 
   --pidfile path          : file that contains the pid
   --appendonly yes/no     : AOF persistence (default: yes)
-  --appendonlyfile path   : AOF path (default: data/appendonly.aof)
+  --appendfilename path   : AOF path (default: data/appendonly.aof)
+  --queuefilename path    : Event queue path (default:data/queue.db)
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
 
@@ -177,6 +178,13 @@ Developer Options:
 				os.Exit(1)
 			}
 			core.AppendFileName = os.Args[i]
+		case "--queuefilename", "-queuefilename":
+			i++
+			if i == len(os.Args) || os.Args[i] == "" {
+				fmt.Fprintf(os.Stderr, "queuefilename must have a value\n")
+				os.Exit(1)
+			}
+			core.QueueFileName = os.Args[i]
 		case "--http-transport", "-http-transport":
 			i++
 			if i < len(os.Args) {

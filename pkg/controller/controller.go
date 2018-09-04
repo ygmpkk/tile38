@@ -125,6 +125,9 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if core.AppendFileName == "" {
 		core.AppendFileName = path.Join(dir, "appendonly.aof")
 	}
+	if core.QueueFileName == "" {
+		core.QueueFileName = path.Join(dir, "queue.db")
+	}
 
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 	c := &Controller{
@@ -165,7 +168,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		return err
 	}
 	// load the queue before the aof
-	qdb, err := buntdb.Open(path.Join(dir, "queue.db"))
+	qdb, err := buntdb.Open(core.QueueFileName)
 	if err != nil {
 		return err
 	}
