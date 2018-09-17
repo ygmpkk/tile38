@@ -32,7 +32,6 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 - Full [command line interface](#cli).
 - Leader / follower [replication](#replication).
 - In-memory database that persists on disk.
-- Uses WGS84 coordinate system
 
 ## Components
 - `tile38-server    ` - The server
@@ -248,11 +247,7 @@ set fleet truck1 hash 9tbnthxzr # this would be equivlent to 'point 33.5123 -112
 ```
 
 #### GeoJSON
-[GeoJSON](http://geojson.org/) is an industry standard format for representing a variety of object types including a point, multipoint, linestring, multilinestring, polygon, multipolygon, geometrycollection, feature, and featurecollection. Tile38 supports all of the standards with these exceptions.
-
-1. The `crs` member is not supported and will be ignored. The CRS84/WGS84 projection is assumed.
-2. Any member that is not recognized (including `crs`) will be ignored.
-3. All coordinates can be 2 or 3 axes. Less than 2 axes or more than 3 will result in a parsing error.
+[GeoJSON](http://geojson.org/) is an industry standard format for representing a variety of object types including a point, multipoint, linestring, multilinestring, polygon, multipolygon, geometrycollection, feature, and featurecollection.
 
 <i>* All ignored members will not persist.</i>
 
