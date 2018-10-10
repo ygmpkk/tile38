@@ -15,14 +15,12 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/tidwall/tile38/core"
+	"github.com/tidwall/tile38/internal/controller"
+	"github.com/tidwall/tile38/internal/hservice"
+	"github.com/tidwall/tile38/internal/log"
 	"golang.org/x/net/context"
-
 	"google.golang.org/grpc"
-
-	"github.com/tidwall/tile38/pkg/controller"
-	"github.com/tidwall/tile38/pkg/core"
-	"github.com/tidwall/tile38/pkg/hservice"
-	"github.com/tidwall/tile38/pkg/log"
 )
 
 var (

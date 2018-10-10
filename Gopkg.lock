@@ -135,6 +135,34 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:75dddee0eb82002b5aff6937fdf6d544b85322d2414524a521768fe4b4e5ed3d"
+  name = "github.com/mmcloughlin/geohash"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f7f2bcae3294530249c63fcb6fb6d5e83eee4e73"
+
+[[projects]]
+  digest = "1:f04a78a43f55f089c919beee8ec4a1495dee1bd271548da2cb44bf44699a6a61"
+  name = "github.com/nats-io/go-nats"
+  packages = [
+    ".",
+    "encoders/builtin",
+    "util",
+  ]
+  pruneopts = ""
+  revision = "fb0396ee0bdb8018b0fef30d6d1de798ce99cd05"
+  version = "v1.6.0"
+
+[[projects]]
+  digest = "1:be61e8224b84064109eaba8157cbb4bbe6ca12443e182b6624fdfa1c0dcf53d9"
+  name = "github.com/nats-io/nuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "289cccf02c178dc782430d534e3c1f5b72af807f"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
   digest = "1:30f72985e574101b71666d6e601e7564bd02d95164da59ca17363ad194137969"
   name = "github.com/peterh/liner"
   packages = ["."]
@@ -198,6 +226,18 @@
   revision = "b67b1b8c1658cb01502801c14e33c61e6c4cbb95"
 
 [[projects]]
+  branch = "master"
+  digest = "1:157eb52179752d4d88f1049aa6c3e4954d6796af5f6bcd54b5ab40f8637805df"
+  name = "github.com/tidwall/geojson"
+  packages = [
+    ".",
+    "geo",
+    "geometry",
+  ]
+  pruneopts = ""
+  revision = "8ff3ef500c61617c9f325603cf40863ca7086a1d"
+
+[[projects]]
   digest = "1:211773b67c5594aa92b1e8389c59558fa4927614507ea38237265e00c0ba6b81"
   name = "github.com/tidwall/gjson"
   packages = ["."]
@@ -228,6 +268,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "1731857f09b1f38450e2c12409748407822dc6be"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7eed51dcae60e95dbde54662594ef90a7cbf3b7e3f0de32f84f0213b695967ff"
+  name = "github.com/tidwall/pretty"
+  packages = ["."]
+  pruneopts = ""
+  revision = "65a9db5fad5105a89e17f38adcc9878685be6d78"
 
 [[projects]]
   branch = "master"
@@ -394,13 +442,18 @@
     "github.com/eclipse/paho.mqtt.golang",
     "github.com/garyburd/redigo/redis",
     "github.com/golang/protobuf/proto",
+    "github.com/mmcloughlin/geohash",
+    "github.com/nats-io/go-nats",
     "github.com/peterh/liner",
     "github.com/streadway/amqp",
     "github.com/tidwall/boxtree/d2",
     "github.com/tidwall/btree",
     "github.com/tidwall/buntdb",
+    "github.com/tidwall/geojson",
+    "github.com/tidwall/geojson/geometry",
     "github.com/tidwall/gjson",
     "github.com/tidwall/lotsa",
+    "github.com/tidwall/match",
     "github.com/tidwall/redbench",
     "github.com/tidwall/redcon",
     "github.com/tidwall/resp",

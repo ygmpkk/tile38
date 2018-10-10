@@ -1,6 +1,6 @@
 <p align="center">
   <a href="http://tile38.com"><img 
-    src="/pkg/assets/logo1500.png" 
+    src="/internal/assets/logo1500.png" 
     width="200" height="200" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
@@ -14,11 +14,11 @@ Tile38 is an open source (MIT licensed), in-memory geolocation data store, spati
 
 <p align="center">
 <i>This README is quick start document. You can find detailed documentation at <a href="http://tile38.com">http://tile38.com</a>.</i><br><br>
-<a href="#searching"><img src="/pkg/assets/search-nearby.png" alt="Nearby" border="0" width="120" height="120"></a>
-<a href="#searching"><img src="/pkg/assets/search-within.png" alt="Within" border="0" width="120" height="120"></a>
-<a href="#searching"><img src="/pkg/assets/search-intersects.png" alt="Intersects" border="0" width="120" height="120"></a>
-<a href="http://tile38.com/topics/geofencing"><img src="/pkg/assets/geofence.gif" alt="Geofencing" border="0" width="120" height="120"></a>
-<a href="http://tile38.com/topics/roaming-geofences"><img src="/pkg/assets/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/internal/assets/search-nearby.png" alt="Nearby" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/internal/assets/search-within.png" alt="Within" border="0" width="120" height="120"></a>
+<a href="#searching"><img src="/internal/assets/search-intersects.png" alt="Intersects" border="0" width="120" height="120"></a>
+<a href="http://tile38.com/topics/geofencing"><img src="/internal/assets/geofence.gif" alt="Geofencing" border="0" width="120" height="120"></a>
+<a href="http://tile38.com/topics/roaming-geofences"><img src="/internal/assets/roaming.gif" alt="Roaming Geofences" border="0" width="120" height="120"></a>
 </p>
 
 ## Features
@@ -134,19 +134,19 @@ To set a field when an object already exists:
 
 Tile38 has support to search for objects and points that are within or intersects other objects. All object types can be searched including Polygons, MultiPolygons, GeometryCollections, etc.
 
-<img src="/pkg/assets/search-within.png" width="200" height="200" border="0" alt="Search Within" align="left">
+<img src="/internal/assets/search-within.png" width="200" height="200" border="0" alt="Search Within" align="left">
 
 #### Within 
 WITHIN searches a collection for objects that are fully contained inside a specified bounding area.
 <BR CLEAR="ALL">
 
-<img src="/pkg/assets/search-intersects.png" width="200" height="200" border="0" alt="Search Intersects" align="left">
+<img src="/internal/assets/search-intersects.png" width="200" height="200" border="0" alt="Search Intersects" align="left">
 
 #### Intersects
 INTERSECTS searches a collection for objects that intersect a specified bounding area.
 <BR CLEAR="ALL">
 
-<img src="/pkg/assets/search-nearby.png" width="200" height="200" border="0" alt="Search Nearby" align="left">
+<img src="/internal/assets/search-nearby.png" width="200" height="200" border="0" alt="Search Nearby" align="left">
 
 #### Nearby
 NEARBY searches a collection for objects that intersect a specified radius.
@@ -167,7 +167,7 @@ NEARBY searches a collection for objects that intersect a specified radius.
 
 ## Geofencing
 
-<img src="/pkg/assets/geofence.gif" width="200" height="200" border="0" alt="Geofence animation" align="left">
+<img src="/internal/assets/geofence.gif" width="200" height="200" border="0" alt="Geofence animation" align="left">
 A <a href="https://en.wikipedia.org/wiki/Geo-fence">geofence</a> is a virtual boundary that can detect when an object enters or exits the area. This boundary can be a radius, bounding box, or a polygon. Tile38 can turn any standard search into a geofence monitor by adding the FENCE keyword to the search. 
 
 *Tile38 also allows for [Webhooks](http://tile38.com/commands/sethook) to be assigned to Geofences.*
