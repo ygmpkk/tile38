@@ -428,3 +428,49 @@ func BenchmarkTidwallGet(b *testing.B) {
 		tr.Get(keys[i])
 	}
 }
+
+func TestBTreeOne(t *testing.T) {
+	var tr BTree
+	tr.Set("1", "1")
+	tr.Delete("1")
+	tr.Set("1", "1")
+	tr.Delete("1")
+	tr.Set("1", "1")
+	tr.Delete("1")
+}
+
+func TestBTree256(t *testing.T) {
+	var tr BTree
+	var n int
+	for j := 0; j < 2; j++ {
+		for _, i := range rand.Perm(256) {
+			tr.Set(fmt.Sprintf("%d", i), i)
+			n++
+			if tr.Len() != n {
+				t.Fatalf("expected 256, got %d", n)
+			}
+		}
+		for _, i := range rand.Perm(256) {
+			v, ok := tr.Get(fmt.Sprintf("%d", i))
+			if !ok {
+				t.Fatal("expected true")
+			}
+			if v.(int) != i {
+				t.Fatalf("expected %d, got %d", i, v.(int))
+			}
+		}
+		for _, i := range rand.Perm(256) {
+			tr.Delete(fmt.Sprintf("%d", i))
+			n--
+			if tr.Len() != n {
+				t.Fatalf("expected 256, got %d", n)
+			}
+		}
+		for _, i := range rand.Perm(256) {
+			_, ok := tr.Get(fmt.Sprintf("%d", i))
+			if ok {
+				t.Fatal("expected false")
+			}
+		}
+	}
+}

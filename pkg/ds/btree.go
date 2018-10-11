@@ -195,6 +195,7 @@ func (tr *BTree) Delete(key string) (prev interface{}, deleted bool) {
 	tr.length--
 	if tr.length == 0 {
 		tr.root = nil
+		tr.height = 0
 	}
 	return
 }
