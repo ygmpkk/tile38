@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tidwall/btree"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
+	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/server"
 )
 
@@ -86,8 +86,8 @@ func (c *Controller) cmdServer(msg *server.Message) (res resp.Value, err error) 
 	m["num_collections"] = c.cols.Len()
 	m["num_hooks"] = len(c.hooks)
 	sz := 0
-	c.cols.Ascend(func(item btree.Item) bool {
-		col := item.(*collectionT).Collection
+	c.cols.Scan(func(key string, value interface{}) bool {
+		col := value.(*collection.Collection)
 		sz += col.TotalWeight()
 		return true
 	})
@@ -95,8 +95,8 @@ func (c *Controller) cmdServer(msg *server.Message) (res resp.Value, err error) 
 	points := 0
 	objects := 0
 	strings := 0
-	c.cols.Ascend(func(item btree.Item) bool {
-		col := item.(*collectionT).Collection
+	c.cols.Scan(func(key string, value interface{}) bool {
+		col := value.(*collection.Collection)
 		points += col.PointCount()
 		objects += col.Count()
 		strings += col.StringCount()

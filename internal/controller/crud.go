@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/mmcloughlin/geohash"
-	"github.com/tidwall/btree"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/collection"
+	"github.com/tidwall/tile38/internal/ds"
 	"github.com/tidwall/tile38/internal/glob"
 	"github.com/tidwall/tile38/internal/server"
 )
@@ -461,7 +461,7 @@ func (c *Controller) cmdFlushDB(msg *server.Message) (res resp.Value, d commandD
 		err = errInvalidNumberOfArguments
 		return
 	}
-	c.cols = btree.New(16, 0)
+	c.cols = ds.BTree{}
 	c.exlistmu.Lock()
 	c.exlist = nil
 	c.exlistmu.Unlock()

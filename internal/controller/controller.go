@@ -16,12 +16,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tidwall/btree"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
+	"github.com/tidwall/tile38/internal/ds"
 	"github.com/tidwall/tile38/internal/endpoint"
 	"github.com/tidwall/tile38/internal/expire"
 	"github.com/tidwall/tile38/internal/log"
@@ -33,11 +33,6 @@ var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'"
 const goingLive = "going live"
 
 const hookLogPrefix = "hook:log:"
-
-type collectionT struct {
-	Key        string
-	Collection *collection.Collection
-}
 
 type commandDetailsT struct {
 	command   string
@@ -55,10 +50,6 @@ type commandDetailsT struct {
 	parent   bool               // when true, only children are forwarded
 	pattern  string             // PDEL key pattern
 	children []*commandDetailsT // for multi actions such as "PDEL"
-}
-
-func (col *collectionT) Less(item btree.Item, ctx interface{}) bool {
-	return col.Key < item.(*collectionT).Key
 }
 
 // Controller is a tile38 controller
@@ -95,7 +86,7 @@ type Controller struct {
 	aofsz   int                             // active size of the aof file
 	qdb     *buntdb.DB                      // hook queue log
 	qidx    uint64                          // hook queue log last idx
-	cols    *btree.BTree                    // data collections
+	cols    ds.BTree                        // data collections
 	expires map[string]map[string]time.Time // synced with cols
 
 	follows    map[*bytes.Buffer]bool
@@ -136,7 +127,6 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		host:     host,
 		port:     port,
 		dir:      dir,
-		cols:     btree.New(16, 0),
 		follows:  make(map[*bytes.Buffer]bool),
 		fcond:    sync.NewCond(&sync.Mutex{}),
 		lives:    make(map[*liveBuffer]bool),
@@ -353,30 +343,29 @@ func (c *Controller) watchLuaStatePool() {
 }
 
 func (c *Controller) setCol(key string, col *collection.Collection) {
-	c.cols.ReplaceOrInsert(&collectionT{Key: key, Collection: col})
+	c.cols.Set(key, col)
 }
 
 func (c *Controller) getCol(key string) *collection.Collection {
-	item := c.cols.Get(&collectionT{Key: key})
-	if item == nil {
-		return nil
+	if value, ok := c.cols.Get(key); ok {
+		return value.(*collection.Collection)
 	}
-	return item.(*collectionT).Collection
+	return nil
 }
 
-func (c *Controller) scanGreaterOrEqual(key string, iterator func(key string, col *collection.Collection) bool) {
-	c.cols.AscendGreaterOrEqual(&collectionT{Key: key}, func(item btree.Item) bool {
-		col := item.(*collectionT)
-		return iterator(col.Key, col.Collection)
+func (c *Controller) scanGreaterOrEqual(
+	key string, iterator func(key string, col *collection.Collection) bool,
+) {
+	c.cols.Ascend(key, func(ikey string, ivalue interface{}) bool {
+		return iterator(ikey, ivalue.(*collection.Collection))
 	})
 }
 
 func (c *Controller) deleteCol(key string) *collection.Collection {
-	i := c.cols.Delete(&collectionT{Key: key})
-	if i == nil {
-		return nil
+	if prev, ok := c.cols.Delete(key); ok {
+		return prev.(*collection.Collection)
 	}
-	return i.(*collectionT).Collection
+	return nil
 }
 
 func isReservedFieldName(field string) bool {
@@ -625,7 +614,7 @@ func randomKey(n int) string {
 
 func (c *Controller) reset() {
 	c.aofsz = 0
-	c.cols = btree.New(16, 0)
+	c.cols = ds.BTree{}
 	c.exlistmu.Lock()
 	c.exlist = nil
 	c.exlistmu.Unlock()

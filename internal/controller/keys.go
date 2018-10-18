@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tidwall/btree"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/glob"
 	"github.com/tidwall/tile38/internal/server"
@@ -34,8 +33,7 @@ func (c *Controller) cmdKeys(msg *server.Message) (res resp.Value, err error) {
 	var greaterPivot string
 	var vals []resp.Value
 
-	iterator := func(item btree.Item) bool {
-		key := item.(*collectionT).Key
+	iterator := func(key string, value interface{}) bool {
 		var match bool
 		if everything {
 			match = true
@@ -66,24 +64,24 @@ func (c *Controller) cmdKeys(msg *server.Message) (res resp.Value, err error) {
 	}
 	if pattern == "*" {
 		everything = true
-		c.cols.Ascend(iterator)
+		c.cols.Scan(iterator)
 	} else {
 		if strings.HasSuffix(pattern, "*") {
 			greaterPivot = pattern[:len(pattern)-1]
 			if glob.IsGlob(greaterPivot) {
 				greater = false
-				c.cols.Ascend(iterator)
+				c.cols.Scan(iterator)
 			} else {
 				greater = true
-				c.cols.AscendGreaterOrEqual(&collectionT{Key: greaterPivot}, iterator)
+				c.cols.Ascend(greaterPivot, iterator)
 			}
 		} else if glob.IsGlob(pattern) {
 			greater = false
-			c.cols.Ascend(iterator)
+			c.cols.Scan(iterator)
 		} else {
 			greater = true
 			greaterPivot = pattern
-			c.cols.AscendGreaterOrEqual(&collectionT{Key: greaterPivot}, iterator)
+			c.cols.Ascend(greaterPivot, iterator)
 		}
 	}
 	if msg.OutputType == server.JSON {
