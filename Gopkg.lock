@@ -227,7 +227,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:62d3906c154a5fd594c51e434c8d38a3f5ae207f0396bf733fcfbe0ea4796430"
+  digest = "1:c27e7d5bfc68a4ad2166d1ae909917013a985ba4c8b5255b91bd253bf3ab5730"
   name = "github.com/tidwall/geojson"
   packages = [
     ".",
@@ -235,7 +235,7 @@
     "geometry",
   ]
   pruneopts = ""
-  revision = "996bb585989456cda9c8302e89c2fe6e82cc61bf"
+  revision = "5302514a34feb71743bf597938742b51831ba289"
 
 [[projects]]
   digest = "1:211773b67c5594aa92b1e8389c59558fa4927614507ea38237265e00c0ba6b81"
