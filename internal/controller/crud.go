@@ -689,7 +689,7 @@ func (c *Controller) parseSetArgs(vs []resp.Value) (
 			err = errInvalidNumberOfArguments
 			return
 		}
-		d.obj, err = geojson.Parse(object, nil)
+		d.obj, err = geojson.Parse(object, &c.geomParseOpts)
 		if err != nil {
 			return
 		}

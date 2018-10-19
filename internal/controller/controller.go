@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -62,6 +63,9 @@ type Controller struct {
 	started time.Time
 	config  *Config
 	epc     *endpoint.Manager
+
+	// env opts
+	geomParseOpts geojson.ParseOptions
 
 	// atomics
 	followc                aint // counter increases when follow property changes
@@ -140,6 +144,7 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		http:     http,
 		pubsub:   newPubsub(),
 	}
+
 	c.hookex.Expired = func(item expire.Item) {
 		switch v := item.(type) {
 		case *Hook:
@@ -159,6 +164,19 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err != nil {
 		return err
 	}
+
+	c.geomParseOpts = *geojson.DefaultParseOptions
+	n, err := strconv.ParseUint(os.Getenv("T38IDXGEOM"), 10, 32)
+	if err == nil {
+		c.geomParseOpts.IndexGeometry = int(n)
+	}
+	n, err = strconv.ParseUint(os.Getenv("T38IDXMULTI"), 10, 32)
+	if err == nil {
+		c.geomParseOpts.IndexChildren = int(n)
+	}
+	log.Debugf("geom indexing: %d", c.geomParseOpts.IndexGeometry)
+	log.Debugf("multi indexing: %d", c.geomParseOpts.IndexChildren)
+
 	// load the queue before the aof
 	qdb, err := buntdb.Open(core.QueueFileName)
 	if err != nil {
