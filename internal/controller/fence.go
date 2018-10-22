@@ -131,7 +131,7 @@ func fenceMatch(
 							[]geometry.Point{
 								details.oldObj.Center(),
 								details.obj.Center(),
-							}, geometry.DefaultIndex))
+							}, nil))
 						temp := false
 						if fence.cmd == "within" {
 							// because we are testing if the line croses the area we need to use

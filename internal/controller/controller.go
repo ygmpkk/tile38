@@ -19,6 +19,7 @@ import (
 
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
@@ -174,8 +175,33 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 	if err == nil {
 		c.geomParseOpts.IndexChildren = int(n)
 	}
-	log.Debugf("geom indexing: %d", c.geomParseOpts.IndexGeometry)
-	log.Debugf("multi indexing: %d", c.geomParseOpts.IndexChildren)
+	indexKind := os.Getenv("T38IDXGEOMKIND")
+	switch indexKind {
+	default:
+		log.Errorf("Unknown index kind: %s", indexKind)
+	case "":
+	case "None":
+		c.geomParseOpts.IndexGeometryKind = geometry.None
+	case "RTree":
+		c.geomParseOpts.IndexGeometryKind = geometry.RTree
+	case "RTreeCompressed":
+		c.geomParseOpts.IndexGeometryKind = geometry.RTreeCompressed
+	case "QuadTree":
+		c.geomParseOpts.IndexGeometryKind = geometry.QuadTree
+	case "QuadTreeCompressed":
+		c.geomParseOpts.IndexGeometryKind = geometry.QuadTreeCompressed
+	}
+	if c.geomParseOpts.IndexGeometryKind == geometry.None {
+		log.Debugf("Geom indexing: %s",
+			c.geomParseOpts.IndexGeometryKind,
+		)
+	} else {
+		log.Debugf("Geom indexing: %s (%d points)",
+			c.geomParseOpts.IndexGeometryKind,
+			c.geomParseOpts.IndexGeometry,
+		)
+	}
+	log.Debugf("Multi indexing: RTree (%d points)", c.geomParseOpts.IndexChildren)
 
 	// load the queue before the aof
 	qdb, err := buntdb.Open(core.QueueFileName)
