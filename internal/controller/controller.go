@@ -184,12 +184,8 @@ func ListenAndServeEx(host string, port int, dir string, ln *net.Listener, http 
 		c.geomParseOpts.IndexGeometryKind = geometry.None
 	case "RTree":
 		c.geomParseOpts.IndexGeometryKind = geometry.RTree
-	case "RTreeCompressed":
-		c.geomParseOpts.IndexGeometryKind = geometry.RTreeCompressed
 	case "QuadTree":
 		c.geomParseOpts.IndexGeometryKind = geometry.QuadTree
-	case "QuadTreeCompressed":
-		c.geomParseOpts.IndexGeometryKind = geometry.QuadTreeCompressed
 	}
 	if c.geomParseOpts.IndexGeometryKind == geometry.None {
 		log.Debugf("Geom indexing: %s",
