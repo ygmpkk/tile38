@@ -24,7 +24,6 @@ type liveFenceSwitches struct {
 	obj    geojson.Object
 	cmd    string
 	roam   roamSwitches
-	knn    bool
 	groups map[string]string
 }
 
@@ -119,19 +118,6 @@ func (c *Controller) cmdSearchArgs(
 			err = errInvalidNumberOfArguments
 			return
 		}
-		umeters := true
-		if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
-			umeters = false
-			if cmd == "nearby" {
-				// possible that this is KNN search
-				s.knn = s.searchScanBaseTokens.ulimit && // must be true
-					!s.searchScanBaseTokens.usparse // must be false
-			}
-			if !s.knn {
-				err = errInvalidArgument(slat)
-				return
-			}
-		}
 		var lat, lon, meters float64
 		if lat, err = strconv.ParseFloat(slat, 64); err != nil {
 			err = errInvalidArgument(slat)
@@ -141,7 +127,25 @@ func (c *Controller) cmdSearchArgs(
 			err = errInvalidArgument(slon)
 			return
 		}
-		if umeters {
+		// radius is optional for nearby, but mandatory for others
+		if cmd == "nearby" {
+			if vs, smeters, ok = tokenval(vs); ok && smeters != "" {
+				if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
+					err = errInvalidArgument(smeters)
+					return
+				}
+				if meters < 0 {
+					err = errInvalidArgument(smeters)
+					return
+				}
+			} else {
+				meters = -1
+			}
+		} else {
+			if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
+				err = errInvalidNumberOfArguments
+				return
+			}
 			if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
 				err = errInvalidArgument(smeters)
 				return
@@ -151,12 +155,7 @@ func (c *Controller) cmdSearchArgs(
 				return
 			}
 		}
-		if s.knn {
-			s.obj = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
-		} else {
-			s.obj = geojson.NewCircle(geometry.Point{X: lon, Y: lat},
-				meters, defaultCircleSteps)
-		}
+		s.obj = geojson.NewCircle(geometry.Point{X: lon, Y: lat}, meters, defaultCircleSteps)
 	case "object":
 		if s.clip {
 			err = errInvalidArgument("cannnot clip with object")
@@ -388,21 +387,10 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 				fields:          fields,
 				distance:        distance,
 				noLock:          true,
-				ignoreGlobMatch: s.knn,
+				ignoreGlobMatch: true,
 			})
 		}
-		if s.knn {
-			c.nearestNeighbors(&s, sw, s.obj, &matched, iter)
-		} else {
-			sw.col.Intersects(s.obj, s.sparse, func(
-				id string, o geojson.Object, fields []float64,
-			) bool {
-				if c.hasExpired(s.key, id) {
-					return true
-				}
-				return iter(id, o, fields, nil)
-			})
-		}
+		c.nearestNeighbors(&s, sw, s.obj, &matched, iter)
 	}
 	sw.writeFoot()
 	if msg.OutputType == server.JSON {
@@ -437,6 +425,9 @@ func (c *Controller) nearestNeighbors(
 			return true
 		}
 		dist := o.Distance(target)
+		if s.obj.(*geojson.Circle).Meters > 0 && dist > s.obj.(*geojson.Circle).Meters {
+			return false
+		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
 		if !keepGoing {
 			return false
