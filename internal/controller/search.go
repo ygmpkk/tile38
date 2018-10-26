@@ -425,7 +425,7 @@ func (c *Controller) nearestNeighbors(
 			return true
 		}
 		dist := o.Distance(target)
-		if s.obj.(*geojson.Circle).Meters > 0 && dist > s.obj.(*geojson.Circle).Meters {
+		if target.(*geojson.Circle).Meters() > 0 && dist > target.(*geojson.Circle).Meters() {
 			return false
 		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
