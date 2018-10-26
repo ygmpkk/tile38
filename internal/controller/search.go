@@ -390,7 +390,7 @@ func (c *Controller) cmdNearby(msg *server.Message) (res resp.Value, err error) 
 				ignoreGlobMatch: true,
 			})
 		}
-		c.nearestNeighbors(&s, sw, s.obj, &matched, iter)
+		c.nearestNeighbors(&s, sw, s.obj.(*geojson.Circle), &matched, iter)
 	}
 	sw.writeFoot()
 	if msg.OutputType == server.JSON {
@@ -408,7 +408,7 @@ type iterItem struct {
 }
 
 func (c *Controller) nearestNeighbors(
-	s *liveFenceSwitches, sw *scanWriter, target geojson.Object, matched *uint32,
+	s *liveFenceSwitches, sw *scanWriter, target *geojson.Circle, matched *uint32,
 	iter func(id string, o geojson.Object, fields []float64, dist *float64,
 	) bool) {
 	limit := int(sw.cursor + sw.limit)
@@ -425,7 +425,7 @@ func (c *Controller) nearestNeighbors(
 			return true
 		}
 		dist := o.Distance(target)
-		if target.(*geojson.Circle).Meters() > 0 && dist > target.(*geojson.Circle).Meters() {
+		if target.Meters() > 0 && dist > target.Meters() {
 			return false
 		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
