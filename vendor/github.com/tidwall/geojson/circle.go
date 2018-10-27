@@ -10,11 +10,12 @@ import (
 // Circle ...
 type Circle struct {
 	Object
-	center geometry.Point
-	meters float64
-	steps  int
-	km     bool
-	extra  *extra
+	center    geometry.Point
+	meters    float64
+	haversine float64
+	steps     int
+	km        bool
+	extra     *extra
 }
 
 // NewCircle returns an circle object
@@ -29,6 +30,7 @@ func NewCircle(center geometry.Point, meters float64, steps int) *Circle {
 	if meters <= 0 {
 		g.Object = NewPoint(center)
 	} else {
+		meters = geo.NormalizeDistance(meters)
 		var points []geometry.Point
 		step := 360.0 / float64(steps)
 		i := 0
@@ -44,6 +46,7 @@ func NewCircle(center geometry.Point, meters float64, steps int) *Circle {
 		g.Object = NewPolygon(
 			geometry.NewPoly(points, nil, geometry.DefaultIndexOptions),
 		)
+		g.haversine = geo.DistanceToHaversine(meters)
 	}
 	return g
 }
@@ -71,10 +74,110 @@ func (g *Circle) String() string {
 	return string(g.AppendJSON(nil))
 }
 
+// Meters returns the circle's radius
 func (g *Circle) Meters() float64 {
 	return g.meters
 }
 
+// Center returns the circle's center point
 func (g *Circle) Center() geometry.Point {
 	return g.center
+}
+
+// Within returns true if circle is contained inside object
+func (g *Circle) Within(obj Object) bool {
+	return obj.Contains(g)
+}
+
+func (g *Circle) contains(p geometry.Point, allowOnEdge bool) bool {
+	h := geo.Haversine(p.Y, p.X, g.center.Y, g.center.X)
+	if allowOnEdge {
+		return h <= g.haversine
+	}
+	return h < g.haversine
+}
+
+// Contains returns true if the circle contains other object
+func (g *Circle) Contains(obj Object) bool {
+	switch other := obj.(type) {
+	case *Point:
+		return g.contains(other.Center(), false)
+	case *Circle:
+		return other.Distance(g) < (other.meters + g.meters)
+	case *LineString:
+		for i := 0; i < other.base.NumPoints(); i++ {
+			if geoDistancePoints(other.base.PointAt(i), g.center) > g.meters {
+				return false
+			}
+		}
+		return true
+	case Collection:
+		for _, p := range other.Children() {
+			if !g.Contains(p) {
+				return false
+			}
+		}
+		return true
+	default:
+		// No simple cases, so using polygon approximation.
+		return g.Object.Contains(other)
+	}
+}
+
+func (g *Circle) intersectsSegment(seg geometry.Segment) bool {
+	start, end := seg.A, seg.B
+
+	// These are faster checks.  If they succeed there's no need do complicate things.
+	if g.contains(start, true) {
+		return true
+	}
+	if g.contains(end, true) {
+		return true
+	}
+
+	// Distance between start and end
+	l := geo.DistanceTo(start.Y, start.X, end.Y, end.X)
+
+	// Unit direction vector
+	dx := (end.X - start.X) / l
+	dy := (end.Y - start.Y) / l
+
+	// Point of the line closest to the center
+	t := dx*(g.center.X-start.X) + dy*(g.center.Y-start.Y)
+	px := t*dx + start.X
+	py := t*dy + start.Y
+	if px < start.X || px > end.X || py < start.Y || py > end.Y {
+		// closest point is outside the segment
+		return false
+	}
+
+	// Distance from the closest point to the center
+	return g.contains(geometry.Point{X: px, Y: py}, true)
+}
+
+// Intersects returns true the circle intersects other object
+func (g *Circle) Intersects(obj Object) bool {
+	switch other := obj.(type) {
+	case *Point:
+		return g.contains(other.Center(), true)
+	case *Circle:
+		return other.Distance(g) <= (other.meters + g.meters)
+	case *LineString:
+		for i := 0; i < other.base.NumSegments(); i++ {
+			if g.intersectsSegment(other.base.SegmentAt(i)) {
+				return true
+			}
+		}
+		return false
+	case Collection:
+		for _, p := range other.Children() {
+			if g.Intersects(p) {
+				return true
+			}
+		}
+		return false
+	default:
+		// No simple cases, so using polygon approximation.
+		return g.Object.Intersects(obj)
+	}
 }
