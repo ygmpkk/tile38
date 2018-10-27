@@ -61,52 +61,72 @@ var emptyFormat string
 
 // Infof ...
 func Infof(format string, args ...interface{}) {
-	log(1, "INFO", "\x1b[36m", true, format, args...)
+	if Level >= 1 {
+		log(1, "INFO", "\x1b[36m", true, format, args...)
+	}
 }
 
 // Info ...
 func Info(args ...interface{}) {
-	log(1, "INFO", "\x1b[36m", false, emptyFormat, args...)
+	if Level >= 1 {
+		log(1, "INFO", "\x1b[36m", false, emptyFormat, args...)
+	}
 }
 
 // HTTPf ...
 func HTTPf(format string, args ...interface{}) {
-	log(1, "HTTP", "\x1b[1m\x1b[30m", true, format, args...)
+	if Level >= 1 {
+		log(1, "HTTP", "\x1b[1m\x1b[30m", true, format, args...)
+	}
 }
 
 // HTTP ...
 func HTTP(args ...interface{}) {
-	log(1, "HTTP", "\x1b[1m\x1b[30m", false, emptyFormat, args...)
+	if Level >= 1 {
+		log(1, "HTTP", "\x1b[1m\x1b[30m", false, emptyFormat, args...)
+	}
 }
 
 // Errorf ...
 func Errorf(format string, args ...interface{}) {
-	log(1, "ERRO", "\x1b[1m\x1b[31m", true, format, args...)
+	if Level >= 1 {
+		log(1, "ERRO", "\x1b[1m\x1b[31m", true, format, args...)
+	}
 }
 
 // Error ..
 func Error(args ...interface{}) {
-	log(1, "ERRO", "\x1b[1m\x1b[31m", false, emptyFormat, args...)
+	if Level >= 1 {
+		log(1, "ERRO", "\x1b[1m\x1b[31m", false, emptyFormat, args...)
+	}
 }
 
 // Warnf ...
 func Warnf(format string, args ...interface{}) {
-	log(2, "WARN", "\x1b[33m", true, format, args...)
+	if Level >= 2 {
+		log(2, "WARN", "\x1b[33m", true, format, args...)
+	}
 }
 
 // Warn ...
 func Warn(args ...interface{}) {
-	log(2, "WARN", "\x1b[33m", false, emptyFormat, args...)
+	if Level >= 2 {
+		log(2, "WARN", "\x1b[33m", false, emptyFormat, args...)
+	}
 }
 
 // Debugf ...
 func Debugf(format string, args ...interface{}) {
-	log(3, "DEBU", "\x1b[35m", true, format, args...)
+	if Level >= 3 {
+		log(3, "DEBU", "\x1b[35m", true, format, args...)
+	}
 }
 
 // Debug ...
 func Debug(args ...interface{}) {
-	log(3, "DEBU", "\x1b[35m", false, emptyFormat, args...)
+	if Level >= 3 {
+		log(3, "DEBU", "\x1b[35m", false, emptyFormat, args...)
+	}
 }
 
 // Printf ...
