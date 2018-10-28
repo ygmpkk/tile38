@@ -17,3 +17,6 @@ var AppendFileName string
 
 // QueueFileName allows for custom queue.db file path
 var QueueFileName string
+
+// NumThreads is the number of network threads to use.
+var NumThreads int

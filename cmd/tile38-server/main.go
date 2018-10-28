@@ -16,9 +16,9 @@ import (
 	"syscall"
 
 	"github.com/tidwall/tile38/core"
-	"github.com/tidwall/tile38/internal/controller"
 	"github.com/tidwall/tile38/internal/hservice"
 	"github.com/tidwall/tile38/internal/log"
+	"github.com/tidwall/tile38/internal/server"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -79,6 +79,7 @@ Advanced Options:
   --queuefilename path    : Event queue path (default:data/queue.db)
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
+  --threads num           : number of network threads (default: num cores)
 
 Developer Options:
   --dev                             : enable developer mode
@@ -146,10 +147,11 @@ Developer Options:
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
 					core.ProtectedMode = "no"
+					continue
 				case "yes":
 					core.ProtectedMode = "yes"
+					continue
 				}
-				continue
 			}
 			fmt.Fprintf(os.Stderr, "protected-mode must be 'yes' or 'no'\n")
 			os.Exit(1)
@@ -162,10 +164,11 @@ Developer Options:
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
 					core.AppendOnly = "no"
+					continue
 				case "yes":
 					core.AppendOnly = "yes"
+					continue
 				}
-				continue
 			}
 			fmt.Fprintf(os.Stderr, "appendonly must be 'yes' or 'no'\n")
 			os.Exit(1)
@@ -189,9 +192,23 @@ Developer Options:
 				switch strings.ToLower(os.Args[i]) {
 				case "1", "true", "yes":
 					httpTransport = true
+					continue
 				case "0", "false", "no":
 					httpTransport = false
+					continue
 				}
+			}
+			fmt.Fprintf(os.Stderr, "http-transport must be 'yes' or 'no'\n")
+			os.Exit(1)
+		case "--threads", "-threads":
+			i++
+			if i < len(os.Args) {
+				n, err := strconv.ParseUint(os.Args[i], 10, 16)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "threads must be a valid number\n")
+					os.Exit(1)
+				}
+				core.NumThreads = int(n)
 				continue
 			}
 			fmt.Fprintf(os.Stderr, "http-transport must be 'yes' or 'no'\n")
@@ -294,7 +311,7 @@ Developer Options:
 	if pidferr != nil {
 		log.Warnf("pidfile: %v", pidferr)
 	}
-	if err := controller.ListenAndServe(host, port, dir, httpTransport); err != nil {
+	if err := server.Serve(host, port, dir, httpTransport); err != nil {
 		log.Fatal(err)
 	}
 }
