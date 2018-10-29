@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/tile38/core"
 	tlog "github.com/tidwall/tile38/internal/log"
 	"github.com/tidwall/tile38/internal/server"
