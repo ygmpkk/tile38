@@ -28,6 +28,10 @@ func SetOutput(w io.Writer) {
 	wr = w
 }
 
+func init() {
+	SetOutput(os.Stderr)
+}
+
 func log(level int, tag, color string, formatted bool, format string, args ...interface{}) {
 	if Level < level {
 		return
