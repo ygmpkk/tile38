@@ -423,9 +423,18 @@ func (server *Server) nearestNeighbors(
 		if !match {
 			return true
 		}
-		dist := o.Distance(target)
-		if target.Meters() > 0 && dist > target.Meters() {
-			return false
+		var dist float64
+		if s.distance {
+			dist = o.Distance(target)
+			if target.Meters() > 0 && dist > target.Meters() {
+				return false
+			}
+		} else {
+			// don't need actual distances, use haversine as proxy for sorting
+			dist = target.HaversineTo(o.Center())
+			if target.Haversine() > 0 && dist > target.Haversine() {
+				return false
+			}
 		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
 		if !keepGoing {
