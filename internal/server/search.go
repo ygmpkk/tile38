@@ -418,16 +418,16 @@ func (server *Server) nearestNeighbors(
 		if !match {
 			return true
 		}
-		var dist, max_dist float64
+		var dist, maxDist float64
 		if s.distance {
 			dist = o.Distance(target)
-			max_dist = target.Meters()
+			maxDist = target.Meters()
 		} else {
 			// don't need actual distances, use haversine as proxy for sorting
 			dist = target.HaversineTo(o.Center())
-			max_dist = target.Haversine()
+			maxDist = target.Haversine()
 		}
-		if max_dist > 0 && dist > max_dist {
+		if maxDist > 0 && dist > maxDist {
 			return false
 		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
