@@ -10,6 +10,7 @@ import (
 
 	"github.com/mmcloughlin/geohash"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/bing"
@@ -373,7 +374,7 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 		iter := func(id string, o geojson.Object, fields []float64, dist *float64) bool {
 			distance := 0.0
 			if s.distance {
-				distance = *dist
+				distance = geo.DistanceFromHaversine(*dist)
 			}
 			return sw.writeObject(ScanWriterParams{
 				id:              id,
@@ -406,6 +407,7 @@ func (server *Server) nearestNeighbors(
 	iter func(id string, o geojson.Object, fields []float64, dist *float64,
 	) bool) {
 	limit := int(sw.cursor + sw.limit)
+	maxDist := target.Haversine()
 	var items []iterItem
 	sw.col.Nearby(target, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
@@ -418,15 +420,7 @@ func (server *Server) nearestNeighbors(
 		if !match {
 			return true
 		}
-		var dist, maxDist float64
-		if s.distance {
-			dist = o.Distance(target)
-			maxDist = target.Meters()
-		} else {
-			// don't need actual distances, use haversine as proxy for sorting
-			dist = target.HaversineTo(o.Center())
-			maxDist = target.Haversine()
-		}
+		dist := target.HaversineTo(o.Center())
 		if maxDist > 0 && dist > maxDist {
 			return false
 		}
