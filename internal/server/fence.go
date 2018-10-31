@@ -364,7 +364,7 @@ func fenceMatchRoam(
 	prevNearbys := fence.roam.nearbys[tid]
 	var newNearbys map[string]bool
 
-	col.Intersects(obj, 0, func(
+	col.Intersects(obj, 0, 0, func(
 		id string, obj2 geojson.Object, fields []float64,
 	) bool {
 		if c.hasExpired(fence.roam.key, id) {

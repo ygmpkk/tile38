@@ -497,14 +497,21 @@ func (c *Collection) geoSparseInner(
 // Within returns all object that are fully contained within an object or
 // bounding box. Set obj to nil in order to use the bounding box.
 func (c *Collection) Within(
-	obj geojson.Object, sparse uint8,
+	obj geojson.Object,
+	offset uint64,
+	sparse uint8,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
+	var count uint64
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
 				match, ok bool,
 			) {
+				count++
+				if count <= offset {
+					return false, true
+				}
 				if match = o.Within(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -514,6 +521,10 @@ func (c *Collection) Within(
 	}
 	return c.geoSearch(obj.Rect(),
 		func(id string, o geojson.Object, fields []float64) bool {
+			count++
+			if count <= offset {
+				return true
+			}
 			if o.Within(obj) {
 				return iter(id, o, fields)
 			}
@@ -525,14 +536,21 @@ func (c *Collection) Within(
 // Intersects returns all object that are intersect an object or bounding box.
 // Set obj to nil in order to use the bounding box.
 func (c *Collection) Intersects(
-	obj geojson.Object, sparse uint8,
+	obj geojson.Object,
+	offset uint64,
+	sparse uint8,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
+	var count uint64
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
 				match, ok bool,
 			) {
+				count++
+				if count <= offset {
+					return false, true
+				}
 				if match = o.Intersects(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -542,6 +560,10 @@ func (c *Collection) Intersects(
 	}
 	return c.geoSearch(obj.Rect(),
 		func(id string, o geojson.Object, fields []float64) bool {
+			count++
+			if count <= offset {
+				return true
+			}
 			if o.Intersects(obj) {
 				return iter(id, o, fields)
 			}
@@ -553,14 +575,20 @@ func (c *Collection) Intersects(
 // Nearby returns the nearest neighbors
 func (c *Collection) Nearby(
 	target geojson.Object,
+	offset uint64,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	alive := true
 	center := target.Center()
+	var count uint64
 	c.index.Nearby(
 		[]float64{center.X, center.Y},
 		[]float64{center.X, center.Y},
 		func(_, _ []float64, itemv interface{}) bool {
+			count++
+			if count <= offset {
+				return true
+			}
 			item := itemv.(*itemT)
 			alive = iter(item.id, item.obj, c.getFieldValues(item.id))
 			return alive
