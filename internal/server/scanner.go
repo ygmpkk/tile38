@@ -42,6 +42,7 @@ type scanWriter struct {
 	wheres         []whereT
 	whereins       []whereinT
 	whereevals     []whereevalT
+	numberIters    uint64
 	numberItems    uint64
 	nofields       bool
 	cursor         uint64
@@ -166,7 +167,7 @@ func (sw *scanWriter) writeHead() {
 func (sw *scanWriter) writeFoot() {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
-	cursor := sw.cursor + sw.numberItems
+	cursor := sw.numberIters
 	if !sw.hitLimit {
 		cursor = 0
 	}
@@ -323,6 +324,11 @@ func (sw *scanWriter) globMatch(id string, o geojson.Object) (ok, keepGoing bool
 		}
 	}
 	return true, true
+}
+
+// Increment cursor
+func (sw *scanWriter) IncCursor(n uint64) {
+	sw.numberIters += n
 }
 
 // ok is whether the object passes the test and should be written

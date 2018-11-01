@@ -309,10 +309,19 @@ func (c *Collection) FieldArr() []string {
 
 // Scan iterates though the collection ids.
 func (c *Collection) Scan(desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(key string, value interface{}) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -327,10 +336,19 @@ func (c *Collection) Scan(desc bool,
 
 // ScanRange iterates though the collection starting with specified id.
 func (c *Collection) ScanRange(start, end string, desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(key string, value interface{}) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		if !desc {
 			if key >= end {
 				return false
@@ -355,10 +373,19 @@ func (c *Collection) ScanRange(start, end string, desc bool,
 
 // SearchValues iterates though the collection values.
 func (c *Collection) SearchValues(desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(item btree.Item) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -373,10 +400,19 @@ func (c *Collection) SearchValues(desc bool,
 
 // SearchValuesRange iterates though the collection values.
 func (c *Collection) SearchValuesRange(start, end string, desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(item btree.Item) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -500,9 +536,11 @@ func (c *Collection) Within(
 	obj geojson.Object,
 	offset uint64,
 	sparse uint8,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var count uint64
+	inc(offset)
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
@@ -512,6 +550,7 @@ func (c *Collection) Within(
 				if count <= offset {
 					return false, true
 				}
+				inc(1)
 				if match = o.Within(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -525,6 +564,7 @@ func (c *Collection) Within(
 			if count <= offset {
 				return true
 			}
+			inc(1)
 			if o.Within(obj) {
 				return iter(id, o, fields)
 			}
@@ -539,9 +579,11 @@ func (c *Collection) Intersects(
 	obj geojson.Object,
 	offset uint64,
 	sparse uint8,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var count uint64
+	inc(offset)
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
@@ -551,6 +593,7 @@ func (c *Collection) Intersects(
 				if count <= offset {
 					return false, true
 				}
+				inc(1)
 				if match = o.Intersects(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -564,6 +607,7 @@ func (c *Collection) Intersects(
 			if count <= offset {
 				return true
 			}
+			inc(1)
 			if o.Intersects(obj) {
 				return iter(id, o, fields)
 			}
@@ -576,11 +620,13 @@ func (c *Collection) Intersects(
 func (c *Collection) Nearby(
 	target geojson.Object,
 	offset uint64,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	alive := true
 	center := target.Center()
 	var count uint64
+	inc(offset)
 	c.index.Nearby(
 		[]float64{center.X, center.Y},
 		[]float64{center.X, center.Y},
@@ -589,6 +635,7 @@ func (c *Collection) Nearby(
 			if count <= offset {
 				return true
 			}
+			inc(1)
 			item := itemv.(*itemT)
 			alive = iter(item.id, item.obj, c.getFieldValues(item.id))
 			return alive
