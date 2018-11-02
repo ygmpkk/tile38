@@ -309,10 +309,19 @@ func (c *Collection) FieldArr() []string {
 
 // Scan iterates though the collection ids.
 func (c *Collection) Scan(desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(key string, value interface{}) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -327,10 +336,19 @@ func (c *Collection) Scan(desc bool,
 
 // ScanRange iterates though the collection starting with specified id.
 func (c *Collection) ScanRange(start, end string, desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(key string, value interface{}) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		if !desc {
 			if key >= end {
 				return false
@@ -355,10 +373,19 @@ func (c *Collection) ScanRange(start, end string, desc bool,
 
 // SearchValues iterates though the collection values.
 func (c *Collection) SearchValues(desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(item btree.Item) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -373,10 +400,19 @@ func (c *Collection) SearchValues(desc bool,
 
 // SearchValuesRange iterates though the collection values.
 func (c *Collection) SearchValuesRange(start, end string, desc bool,
+	offset uint64,
+	inc func(n uint64),
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
+	var count uint64
+	inc(offset)
 	iter := func(item btree.Item) bool {
+		count++
+		if count <= offset {
+			return true
+		}
+		inc(1)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -497,14 +533,24 @@ func (c *Collection) geoSparseInner(
 // Within returns all object that are fully contained within an object or
 // bounding box. Set obj to nil in order to use the bounding box.
 func (c *Collection) Within(
-	obj geojson.Object, sparse uint8,
+	obj geojson.Object,
+	offset uint64,
+	sparse uint8,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
+	var count uint64
+	inc(offset)
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
 				match, ok bool,
 			) {
+				count++
+				if count <= offset {
+					return false, true
+				}
+				inc(1)
 				if match = o.Within(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -514,6 +560,11 @@ func (c *Collection) Within(
 	}
 	return c.geoSearch(obj.Rect(),
 		func(id string, o geojson.Object, fields []float64) bool {
+			count++
+			if count <= offset {
+				return true
+			}
+			inc(1)
 			if o.Within(obj) {
 				return iter(id, o, fields)
 			}
@@ -525,14 +576,24 @@ func (c *Collection) Within(
 // Intersects returns all object that are intersect an object or bounding box.
 // Set obj to nil in order to use the bounding box.
 func (c *Collection) Intersects(
-	obj geojson.Object, sparse uint8,
+	obj geojson.Object,
+	offset uint64,
+	sparse uint8,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
+	var count uint64
+	inc(offset)
 	if sparse > 0 {
 		return c.geoSparse(obj, sparse,
 			func(id string, o geojson.Object, fields []float64) (
 				match, ok bool,
 			) {
+				count++
+				if count <= offset {
+					return false, true
+				}
+				inc(1)
 				if match = o.Intersects(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -542,6 +603,11 @@ func (c *Collection) Intersects(
 	}
 	return c.geoSearch(obj.Rect(),
 		func(id string, o geojson.Object, fields []float64) bool {
+			count++
+			if count <= offset {
+				return true
+			}
+			inc(1)
 			if o.Intersects(obj) {
 				return iter(id, o, fields)
 			}
@@ -553,14 +619,23 @@ func (c *Collection) Intersects(
 // Nearby returns the nearest neighbors
 func (c *Collection) Nearby(
 	target geojson.Object,
+	offset uint64,
+	inc func(n uint64),
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	alive := true
 	center := target.Center()
+	var count uint64
+	inc(offset)
 	c.index.Nearby(
 		[]float64{center.X, center.Y},
 		[]float64{center.X, center.Y},
 		func(_, _ []float64, itemv interface{}) bool {
+			count++
+			if count <= offset {
+				return true
+			}
+			inc(1)
 			item := itemv.(*itemT)
 			alive = iter(item.id, item.obj, c.getFieldValues(item.id))
 			return alive

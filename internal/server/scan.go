@@ -66,7 +66,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 		} else {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				sw.col.Scan(s.desc,
+				sw.col.Scan(s.desc, s.cursor, sw.IncCursor,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -76,7 +76,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 					},
 				)
 			} else {
-				sw.col.ScanRange(g.Limits[0], g.Limits[1], s.desc,
+				sw.col.ScanRange(g.Limits[0], g.Limits[1], s.desc, s.cursor, sw.IncCursor,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,

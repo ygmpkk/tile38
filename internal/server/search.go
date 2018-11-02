@@ -382,6 +382,7 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 				distance:        meters,
 				noLock:          true,
 				ignoreGlobMatch: true,
+				skipTesting:     true,
 			})
 		}
 		server.nearestNeighbors(&s, sw, s.obj.(*geojson.Circle), iter)
@@ -405,18 +406,15 @@ func (server *Server) nearestNeighbors(
 	s *liveFenceSwitches, sw *scanWriter, target *geojson.Circle,
 	iter func(id string, o geojson.Object, fields []float64, dist float64,
 	) bool) {
-	limit := int(sw.cursor + sw.limit)
 	maxDist := target.Haversine()
+	limit := int(sw.limit)
 	var items []iterItem
-	sw.col.Nearby(target, func(id string, o geojson.Object, fields []float64) bool {
+	sw.col.Nearby(target, sw.cursor, sw.IncCursor, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
 			return true
 		}
-		if _, ok := sw.fieldMatch(fields, o); !ok {
-			return true
-		}
-		match, keepGoing := sw.globMatch(id, o)
-		if !match {
+		ok, keepGoing, _ := sw.testObject(id, o, fields,true)
+		if !ok {
 			return true
 		}
 		dist := target.HaversineTo(o.Center())
@@ -482,7 +480,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 	sw.writeHead()
 	if sw.col != nil {
 		if cmd == "within" {
-			sw.col.Within(s.obj, s.sparse, func(
+			sw.col.Within(s.obj, s.cursor, s.sparse, sw.IncCursor, func(
 				id string, o geojson.Object, fields []float64,
 			) bool {
 				if server.hasExpired(s.key, id) {
@@ -496,7 +494,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 				})
 			})
 		} else if cmd == "intersects" {
-			sw.col.Intersects(s.obj, s.sparse, func(
+			sw.col.Intersects(s.obj, s.cursor, s.sparse, sw.IncCursor, func(
 				id string,
 				o geojson.Object,
 				fields []float64,
@@ -580,7 +578,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 		} else {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				sw.col.SearchValues(s.desc,
+				sw.col.SearchValues(s.desc, s.cursor, sw.IncCursor,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -594,7 +592,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 				// must disable globSingle for string value type matching because
 				// globSingle is only for ID matches, not values.
 				sw.globSingle = false
-				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], s.desc,
+				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], s.desc, s.cursor, sw.IncCursor,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
