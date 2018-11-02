@@ -10,6 +10,7 @@ import (
 
 	"github.com/mmcloughlin/geohash"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/bing"
@@ -371,14 +372,9 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	if sw.col != nil {
 		var matched uint32
 		iter := func(id string, o geojson.Object, fields []float64, dist *float64) bool {
-			// Calculate distance if we need to
 			distance := 0.0
 			if s.distance {
-				if dist != nil {
-					distance = *dist
-				} else {
-					distance = o.Distance(s.obj)
-				}
+				distance = geo.DistanceFromHaversine(*dist)
 			}
 			return sw.writeObject(ScanWriterParams{
 				id:              id,
@@ -411,6 +407,7 @@ func (server *Server) nearestNeighbors(
 	iter func(id string, o geojson.Object, fields []float64, dist *float64,
 	) bool) {
 	limit := int(sw.cursor + sw.limit)
+	maxDist := target.Haversine()
 	var items []iterItem
 	sw.col.Nearby(target, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
@@ -423,8 +420,8 @@ func (server *Server) nearestNeighbors(
 		if !match {
 			return true
 		}
-		dist := o.Distance(target)
-		if target.Meters() > 0 && dist > target.Meters() {
+		dist := target.HaversineTo(o.Center())
+		if maxDist > 0 && dist > maxDist {
 			return false
 		}
 		items = append(items, iterItem{id: id, o: o, fields: fields, dist: dist})
