@@ -370,22 +370,21 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	}
 	sw.writeHead()
 	if sw.col != nil {
-		var matched uint32
-		iter := func(id string, o geojson.Object, fields []float64, dist *float64) bool {
-			distance := 0.0
+		iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
+			meters := 0.0
 			if s.distance {
-				distance = geo.DistanceFromHaversine(*dist)
+				meters = geo.DistanceFromHaversine(dist)
 			}
 			return sw.writeObject(ScanWriterParams{
 				id:              id,
 				o:               o,
 				fields:          fields,
-				distance:        distance,
+				distance:        meters,
 				noLock:          true,
 				ignoreGlobMatch: true,
 			})
 		}
-		server.nearestNeighbors(&s, sw, s.obj.(*geojson.Circle), &matched, iter)
+		server.nearestNeighbors(&s, sw, s.obj.(*geojson.Circle), iter)
 	}
 	sw.writeFoot()
 	if msg.OutputType == JSON {
@@ -403,8 +402,8 @@ type iterItem struct {
 }
 
 func (server *Server) nearestNeighbors(
-	s *liveFenceSwitches, sw *scanWriter, target *geojson.Circle, matched *uint32,
-	iter func(id string, o geojson.Object, fields []float64, dist *float64,
+	s *liveFenceSwitches, sw *scanWriter, target *geojson.Circle,
+	iter func(id string, o geojson.Object, fields []float64, dist float64,
 	) bool) {
 	limit := int(sw.cursor + sw.limit)
 	maxDist := target.Haversine()
@@ -434,7 +433,7 @@ func (server *Server) nearestNeighbors(
 		return items[i].dist < items[j].dist
 	})
 	for _, item := range items {
-		if !iter(item.id, item.o, item.fields, &item.dist) {
+		if !iter(item.id, item.o, item.fields, item.dist) {
 			return
 		}
 	}
