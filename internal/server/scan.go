@@ -66,7 +66,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 		} else {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				sw.col.Scan(s.desc, s.cursor, sw.IncCursor,
+				sw.col.Scan(s.desc, sw,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -76,7 +76,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 					},
 				)
 			} else {
-				sw.col.ScanRange(g.Limits[0], g.Limits[1], s.desc, s.cursor, sw.IncCursor,
+				sw.col.ScanRange(g.Limits[0], g.Limits[1], s.desc, sw,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -95,3 +95,20 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 	}
 	return sw.respOut, nil
 }
+
+// type tCursor struct {
+// 	offset func() uint64
+// 	iter   func(n uint64)
+// }
+
+// func (cursor *tCursor) Offset() uint64 {
+// 	return cursor.offset()
+// }
+
+// func (cursor *tCursor) Step(n uint64) {
+// 	cursor.iter(n)
+// }
+
+// func newCursor(offset func() uint64, iter func(n uint64)) *tCursor {
+// 	return &tCursor{offset, iter}
+// }

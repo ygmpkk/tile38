@@ -327,7 +327,11 @@ func (sw *scanWriter) globMatch(id string, o geojson.Object) (ok, keepGoing bool
 }
 
 // Increment cursor
-func (sw *scanWriter) IncCursor(n uint64) {
+func (sw *scanWriter) Offset() uint64 {
+	return sw.cursor
+}
+
+func (sw *scanWriter) Step(n uint64) {
 	sw.numberIters += n
 }
 
@@ -342,7 +346,7 @@ func (sw *scanWriter) testObject(id string, o geojson.Object, fields []float64, 
 		}
 	}
 	nf, ok := sw.fieldMatch(fields, o)
-	return ok,true, nf
+	return ok, true, nf
 }
 
 //id string, o geojson.Object, fields []float64, noLock bool

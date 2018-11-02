@@ -409,11 +409,11 @@ func (server *Server) nearestNeighbors(
 	maxDist := target.Haversine()
 	limit := int(sw.limit)
 	var items []iterItem
-	sw.col.Nearby(target, sw.cursor, sw.IncCursor, func(id string, o geojson.Object, fields []float64) bool {
+	sw.col.Nearby(target, sw, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
 			return true
 		}
-		ok, keepGoing, _ := sw.testObject(id, o, fields,true)
+		ok, keepGoing, _ := sw.testObject(id, o, fields, true)
 		if !ok {
 			return true
 		}
@@ -480,7 +480,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 	sw.writeHead()
 	if sw.col != nil {
 		if cmd == "within" {
-			sw.col.Within(s.obj, s.cursor, s.sparse, sw.IncCursor, func(
+			sw.col.Within(s.obj, s.sparse, sw, func(
 				id string, o geojson.Object, fields []float64,
 			) bool {
 				if server.hasExpired(s.key, id) {
@@ -494,7 +494,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 				})
 			})
 		} else if cmd == "intersects" {
-			sw.col.Intersects(s.obj, s.cursor, s.sparse, sw.IncCursor, func(
+			sw.col.Intersects(s.obj, s.sparse, sw, func(
 				id string,
 				o geojson.Object,
 				fields []float64,
@@ -578,7 +578,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 		} else {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				sw.col.SearchValues(s.desc, s.cursor, sw.IncCursor,
+				sw.col.SearchValues(s.desc, sw,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -592,7 +592,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 				// must disable globSingle for string value type matching because
 				// globSingle is only for ID matches, not values.
 				sw.globSingle = false
-				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], s.desc, s.cursor, sw.IncCursor,
+				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], s.desc, sw,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
