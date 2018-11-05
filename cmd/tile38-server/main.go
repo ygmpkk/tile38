@@ -35,7 +35,7 @@ var (
 )
 
 // TODO: Set to false in 2.*
-var httpTransport bool = true
+var httpTransport = true
 
 // Fire up a webhook test server by using the --webhook-http-consumer-port
 // for example
@@ -47,7 +47,7 @@ var httpTransport bool = true
 type hserver struct{}
 
 func (s *hserver) Send(ctx context.Context, in *hservice.MessageRequest) (*hservice.MessageReply, error) {
-	return &hservice.MessageReply{true}, nil
+	return &hservice.MessageReply{Ok: true}, nil
 }
 
 func main() {
