@@ -180,7 +180,7 @@ if [ "$1" == "test" ]; then
 	}
 	trap testend EXIT
 	cd tests && go test && cd ..
-	go test $(go list ./... | grep -v /vendor/ | grep -v /tests | grep -v /pkg/geojson_bak)
+	go test $(go list ./... | grep -v /vendor/ | grep -v /tests)
 fi
 
 # cover if requested

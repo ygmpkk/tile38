@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func (c *Controller) writeInfoCPU(w *bytes.Buffer) {
+func (s *Server) writeInfoCPU(w *bytes.Buffer) {
 	fmt.Fprintf(w,
 		"used_cpu_sys:%.2f\r\n"+
 			"used_cpu_user:%.2f\r\n"+
