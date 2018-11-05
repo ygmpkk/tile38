@@ -231,15 +231,15 @@
   revision = "b67b1b8c1658cb01502801c14e33c61e6c4cbb95"
 
 [[projects]]
-  digest = "1:8aa59623aefb49c419e5b24179583e41df4b8c2f6a567f2cb8156a78a32e554a"
+  digest = "1:1f7026c4840ae2a06e892ffcad5a36416de0a7e5be33ce65449435fd8f15414b"
   name = "github.com/tidwall/evio"
   packages = [
     ".",
     "internal",
   ]
   pruneopts = ""
-  revision = "3a190d6d209c66b1fee96ee3db9e70c71e3635d5"
-  version = "v1.0.0"
+  revision = "ea610eff86981249be649bbdcedbf409a2db2173"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
