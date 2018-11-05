@@ -36,8 +36,6 @@ import (
 	"github.com/tidwall/tile38/internal/log"
 )
 
-const useEvio = false
-
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
 
 const goingLive = "going live"
@@ -237,7 +235,7 @@ func Serve(host string, port int, dir string, http bool) error {
 	if err := server.migrateAOF(); err != nil {
 		return err
 	}
-	if core.AppendOnly == "yes" {
+	if core.AppendOnly == true {
 		f, err := os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			return err
@@ -272,14 +270,14 @@ func Serve(host string, port int, dir string, http bool) error {
 	}()
 
 	// Start the network server
-	if useEvio {
+	if core.Evio {
 		return server.evioServe()
 	}
 	return server.netServe()
 }
 
 func (server *Server) isProtected() bool {
-	if core.ProtectedMode == "no" {
+	if core.ProtectedMode == false {
 		// --protected-mode no
 		return false
 	}

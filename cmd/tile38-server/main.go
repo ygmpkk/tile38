@@ -80,6 +80,7 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --threads num           : number of network threads (default: num cores)
+  --evio yes/no           : use the evio package (default: no)
 
 Developer Options:
   --dev                             : enable developer mode
@@ -146,10 +147,10 @@ Developer Options:
 			if i < len(os.Args) {
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
-					core.ProtectedMode = "no"
+					core.ProtectedMode = false
 					continue
 				case "yes":
-					core.ProtectedMode = "yes"
+					core.ProtectedMode = true
 					continue
 				}
 			}
@@ -163,10 +164,10 @@ Developer Options:
 			if i < len(os.Args) {
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
-					core.AppendOnly = "no"
+					core.AppendOnly = false
 					continue
 				case "yes":
-					core.AppendOnly = "yes"
+					core.AppendOnly = true
 					continue
 				}
 			}
@@ -212,6 +213,20 @@ Developer Options:
 				continue
 			}
 			fmt.Fprintf(os.Stderr, "http-transport must be 'yes' or 'no'\n")
+			os.Exit(1)
+		case "--evio", "-evio":
+			i++
+			if i < len(os.Args) {
+				switch strings.ToLower(os.Args[i]) {
+				case "no":
+					core.Evio = false
+					continue
+				case "yes":
+					core.Evio = true
+					continue
+				}
+			}
+			fmt.Fprintf(os.Stderr, "evio must be 'yes' or 'no'\n")
 			os.Exit(1)
 		}
 		nargs = append(nargs, os.Args[i])
