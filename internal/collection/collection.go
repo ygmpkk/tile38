@@ -4,6 +4,7 @@ import (
 	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/tile38/internal/ds"
 )
@@ -673,6 +674,30 @@ func (c *Collection) Nearby(
 	cursor Cursor,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
+
+	if circle, ok := target.(*geojson.Circle); ok {
+
+		meters := circle.Meters()
+		if meters > 0 {
+			center := circle.Center()
+			minLat, minLon, maxLat, maxLon :=
+				geo.RectFromCenter(center.Y, center.X, meters)
+			var exists bool
+			c.index.Search(
+				[]float64{minLon, minLat},
+				[]float64{maxLon, maxLat},
+				func(_, _ []float64, itemv interface{}) bool {
+					exists = true
+					return false
+				},
+			)
+			if !exists {
+				return true
+			}
+			return true
+		}
+	}
+
 	alive := true
 	center := target.Center()
 	var count uint64

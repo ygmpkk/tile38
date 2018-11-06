@@ -2,8 +2,6 @@ package geojson
 
 import (
 	"strconv"
-	"sync/atomic"
-	"unsafe"
 
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
@@ -11,7 +9,7 @@ import (
 
 // Circle ...
 type Circle struct {
-	object    *Object
+	object    Object
 	center    geometry.Point
 	meters    float64
 	haversine float64
@@ -29,6 +27,10 @@ func NewCircle(center geometry.Point, meters float64, steps int) *Circle {
 	g.center = center
 	g.meters = meters
 	g.steps = steps
+	if meters > 0 {
+		meters = geo.NormalizeDistance(meters)
+		g.haversine = geo.DistanceToHaversine(meters)
+	}
 	return g
 }
 
@@ -182,6 +184,7 @@ func (g *Circle) ForEach(iter func(geom Object) bool) bool {
 
 // NumPoints ...
 func (g *Circle) NumPoints() int {
+	// should this be g.steps?
 	return 1
 }
 
@@ -201,21 +204,10 @@ func (g *Circle) Spatial() Spatial {
 }
 
 func (g *Circle) getObject() Object {
-	for {
-		object := (*Object)(atomic.LoadPointer(
-			(*unsafe.Pointer)(unsafe.Pointer(&g.object))),
-		)
-		if object != nil {
-			return *object
-		}
-		newObject := makeCircleObject(g.center, g.meters, g.steps)
-		if atomic.CompareAndSwapPointer(
-			(*unsafe.Pointer)(unsafe.Pointer(&g.object)),
-			nil, unsafe.Pointer(&newObject),
-		) {
-			return *object
-		}
+	if g.object != nil {
+		return g.object
 	}
+	return makeCircleObject(g.center, g.meters, g.steps)
 }
 
 func makeCircleObject(center geometry.Point, meters float64, steps int) Object {

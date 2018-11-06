@@ -23,7 +23,7 @@ var (
 	pipeline = 1
 	csv      = false
 	json     = false
-	tests    = "PING,SET,GET,SEARCH,EVAL"
+	tests    = "PING,SET,GET,INTERSECTS,WITHIN,NEARBY,EVAL"
 	redis    = false
 )
 
@@ -270,33 +270,69 @@ func main() {
 					},
 				)
 			}
-		case "SEARCH":
+		case "INTERSECTS":
 			if !redis {
-				redbench.Bench("SEARCH (nearby 1km)", addr, opts, prepFn,
+
+				redbench.Bench("INTERSECTS (intersects-circle 1km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
-						return redbench.AppendCommand(buf, "NEARBY", "key:bench", "COUNT", "POINT",
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "CIRCLE",
 							strconv.FormatFloat(lat, 'f', 5, 64),
 							strconv.FormatFloat(lon, 'f', 5, 64),
 							"1000")
 					},
 				)
-				redbench.Bench("SEARCH (nearby 10km)", addr, opts, prepFn,
+				redbench.Bench("INTERSECTS (intersects-circle 10km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
-						return redbench.AppendCommand(buf, "NEARBY", "key:bench", "COUNT", "POINT",
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "CIRCLE",
 							strconv.FormatFloat(lat, 'f', 5, 64),
 							strconv.FormatFloat(lon, 'f', 5, 64),
 							"10000")
 					},
 				)
-				redbench.Bench("SEARCH (nearby 100km)", addr, opts, prepFn,
+				redbench.Bench("INTERSECTS (intersects-circle 100km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
-						return redbench.AppendCommand(buf, "NEARBY", "key:bench", "COUNT", "POINT",
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "CIRCLE",
 							strconv.FormatFloat(lat, 'f', 5, 64),
 							strconv.FormatFloat(lon, 'f', 5, 64),
 							"100000")
+					},
+				)
+			}
+		case "NEARBY":
+			if !redis {
+				redbench.Bench("NEARBY (limit 1)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "LIMIT", "1", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+						)
+					},
+				)
+				redbench.Bench("NEARBY (limit 10)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "LIMIT", "10", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+						)
+					},
+				)
+				redbench.Bench("NEARBY (limit 100)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "LIMIT", "100", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64))
 					},
 				)
 			}
