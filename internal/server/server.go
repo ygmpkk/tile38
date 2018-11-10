@@ -92,14 +92,15 @@ type Server struct {
 	exlistmu sync.RWMutex
 	exlist   []exitem
 
-	mu      sync.RWMutex
-	aof     *os.File                        // active aof file
-	aofbuf  []byte                          // prewrite buffer
-	aofsz   int                             // active size of the aof file
-	qdb     *buntdb.DB                      // hook queue log
-	qidx    uint64                          // hook queue log last idx
-	cols    ds.BTree                        // data collections
-	expires map[string]map[string]time.Time // synced with cols
+	mu       sync.RWMutex
+	aof      *os.File                        // active aof file
+	aofdirty int32                           // mark the aofbuf as having data
+	aofbuf   []byte                          // prewrite buffer
+	aofsz    int                             // active size of the aof file
+	qdb      *buntdb.DB                      // hook queue log
+	qidx     uint64                          // hook queue log last idx
+	cols     ds.BTree                        // data collections
+	expires  map[string]map[string]time.Time // synced with cols
 
 	follows    map[*bytes.Buffer]bool
 	fcond      *sync.Cond
@@ -476,9 +477,12 @@ func (server *Server) evioServe() error {
 	}
 
 	events.PreWrite = func() {
-		server.mu.Lock()
-		defer server.mu.Unlock()
-		server.flushAOF()
+		if atomic.LoadInt32(&server.aofdirty) != 0 {
+			server.mu.Lock()
+			defer server.mu.Unlock()
+			server.flushAOF()
+			atomic.StoreInt32(&server.aofdirty, 1)
+		}
 	}
 
 	return evio.Serve(events, fmt.Sprintf("%s:%d", server.host, server.port))
