@@ -295,11 +295,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:630381558bc538e831db8468dd0dc2702d81789f79b8ddf665eeebc729e2a055"
+  digest = "1:e84d0aa788bd55e938ebbaa62782385ca4da00b63c1d6bf23270c031a2ae9a88"
   name = "github.com/tidwall/redbench"
   packages = ["."]
   pruneopts = ""
-  revision = "637a608ebec1acbf049c2e4a5eda6c2d72aa3af1"
+  revision = "17c5b5b864a4b072481036ac689913156f5bb81c"
 
 [[projects]]
   branch = "master"
