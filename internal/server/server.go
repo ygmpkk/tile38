@@ -653,14 +653,18 @@ func (server *Server) netServe() error {
 
 				// write to client
 				if len(client.out) > 0 {
-					func() {
-						// prewrite
-						server.mu.Lock()
-						defer server.mu.Unlock()
-						server.flushAOF()
-					}()
+					if atomic.LoadInt32(&server.aofdirty) != 0 {
+						func() {
+							// prewrite
+							server.mu.Lock()
+							defer server.mu.Unlock()
+							server.flushAOF()
+						}()
+						atomic.StoreInt32(&server.aofdirty, 0)
+					}
 					conn.Write(client.out)
 					client.out = nil
+
 				}
 				if close {
 					break
