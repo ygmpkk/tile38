@@ -656,7 +656,7 @@ func (server *Server) netServe() error {
 						server.flushAOF()
 					}()
 					conn.Write(client.out)
-					client.out = client.out[:0]
+					client.out = nil
 				}
 				if close {
 					break
@@ -853,6 +853,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 			return err
 		}
 	}
+
 	// Ping. Just send back the response. No need to put through the pipeline.
 	if msg.Command() == "ping" || msg.Command() == "echo" {
 		switch msg.OutputType {
@@ -870,6 +871,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		}
 		return nil
 	}
+
 	writeErr := func(errMsg string) error {
 		switch msg.OutputType {
 		case JSON:
@@ -913,6 +915,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 			return writeErr("invalid password")
 		}
 	}
+
 	// choose the locking strategy
 	switch msg.Command() {
 	default:
@@ -946,6 +949,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		"chans", "search", "ttl", "bounds", "server", "info", "type", "jget",
 		"evalro", "evalrosha":
 		// read operations
+
 		server.mu.RLock()
 		defer server.mu.RUnlock()
 		if server.config.followHost() != "" && !server.fcuponce {
@@ -984,7 +988,6 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	}
 
 	res, d, err := server.command(msg, client)
-
 	if res.Type() == resp.Error {
 		return writeErr(res.String())
 	}
@@ -1003,7 +1006,6 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 			return err
 		}
 	}
-
 	if !isRespValueEmptyString(res) {
 		var resStr string
 		resStr, err := serializeOutput(res)
@@ -1275,6 +1277,7 @@ const (
 
 // Message is a resp message
 type Message struct {
+	_command   string
 	Args       []string
 	ConnType   Type
 	OutputType Type
@@ -1283,7 +1286,10 @@ type Message struct {
 
 // Command returns the first argument as a lowercase string
 func (msg *Message) Command() string {
-	return strings.ToLower(msg.Args[0])
+	if msg._command == "" {
+		msg._command = strings.ToLower(msg.Args[0])
+	}
+	return msg._command
 }
 
 // PipelineReader ...
