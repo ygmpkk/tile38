@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.14.0] - 2018-11-11
+### Added
+- INTERSECT/WITHIN optimization that may drastically improve searching polygons that have lots of points.
+- Faster responses for write operations such as SET/DEL
+- NEARBY now always returns objects from nearest to farthest (@rshura)
+- kNN haversine distance optimization (@rshura)
+- Evio networking beta using the "-evio yes" and "-threads num" flags
+
+### Fixes
+- #369: Fix poly in hole query
+
+
 ## [1.13.0] - 2018-08-29
 ### Added
 - eef5f3c: Add geofence notifications over pub/sub channels
