@@ -674,9 +674,9 @@ func (c *Collection) Nearby(
 	cursor Cursor,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
-
+	// First look to see if there's at least one candidate in the circle's
+	// outer rectangle. This is a fast-fail operation.
 	if circle, ok := target.(*geojson.Circle); ok {
-
 		meters := circle.Meters()
 		if meters > 0 {
 			center := circle.Center()
@@ -692,12 +692,12 @@ func (c *Collection) Nearby(
 				},
 			)
 			if !exists {
+				// no candidates
 				return true
 			}
-			return true
 		}
 	}
-
+	// do the kNN operation
 	alive := true
 	center := target.Center()
 	var count uint64
