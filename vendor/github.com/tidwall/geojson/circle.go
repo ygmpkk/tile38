@@ -3,7 +3,6 @@ package geojson
 import (
 	"math"
 	"strconv"
-	"sync"
 
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
@@ -212,10 +211,7 @@ func (g *Circle) getObject() Object {
 	return makeCircleObject(g.center, g.meters, g.steps)
 }
 
-var llmu sync.RWMutex
-var llobj Object
-
-func makeCircleObjectA(center geometry.Point, meters float64, steps int) Object {
+func makeCircleObject(center geometry.Point, meters float64, steps int) Object {
 	if meters <= 0 {
 		return NewPoint(center)
 	}
@@ -227,9 +223,15 @@ func makeCircleObjectA(center geometry.Point, meters float64, steps int) Object 
 	_, maxX := geo.DestinationPoint(center.Y, center.X, meters, 90)
 	minY, _ := geo.DestinationPoint(center.Y, center.X, meters, 180)
 	_, minX := geo.DestinationPoint(center.Y, center.X, meters, 270)
+
+	// TODO: detect of pole and antimeridian crossing and generate a
+	// valid multigeometry
+
+	// use the half width of the lat and lon
 	lons := (maxX - minX) / 2
 	lats := (maxY - minY) / 2
 
+	// generate the
 	for th := 0.0; th <= 360.0; th += 360.0 / float64(steps) {
 		radians := (math.Pi / 180) * th
 		x := center.X + lats*math.Cos(radians)
@@ -244,74 +246,4 @@ func makeCircleObjectA(center geometry.Point, meters float64, steps int) Object 
 			Kind: geometry.None,
 		}),
 	)
-}
-func makeCircleObjectB(center geometry.Point, meters float64, steps int) Object {
-	if meters <= 0 {
-		return NewPoint(center)
-	}
-	meters = geo.NormalizeDistance(meters)
-	points := make([]geometry.Point, 0, steps+1)
-
-	step := 360.0 / float64(steps)
-	i := 0
-	for deg := 360.0; deg > 0; deg -= step {
-		lat, lon := geo.DestinationPoint(center.Y, center.X, meters, deg)
-		points = append(points, geometry.Point{X: lon, Y: lat})
-		i++
-	}
-	// add last connecting point, make a total of steps+1
-	points = append(points, points[0])
-
-	return NewPolygon(
-		geometry.NewPoly(points, nil, &geometry.IndexOptions{
-			Kind: geometry.None,
-		}),
-	)
-}
-
-func makeCircleObject(center geometry.Point, meters float64, steps int) Object {
-	if meters <= 0 {
-		return NewPoint(center)
-	}
-
-	meters = geo.NormalizeDistance(meters)
-	points := make([]geometry.Point, 0, steps+1)
-	return makeCircleObjectA(center, meters, steps)
-
-	llmu.RLock()
-	if llobj != nil {
-		llmu.RUnlock()
-		return llobj
-	}
-	llmu.RUnlock()
-	llmu.Lock()
-	if llobj != nil {
-		llmu.Unlock()
-		return llobj
-	}
-	defer llmu.Unlock()
-
-	step := 360.0 / float64(steps)
-	i := 0
-	for deg := 360.0; deg > 0; deg -= step {
-		lat, lon := geo.DestinationPoint(center.Y, center.X, meters, deg)
-		points = append(points, geometry.Point{X: lon, Y: lat})
-		i++
-	}
-	// add last connecting point, make a total of steps+1
-	points = append(points, points[0])
-
-	// for i := 0; i < steps; i++ {
-	// 	fmt.Printf("%d: %v\n", i, points[i].X)
-	// }
-
-	// TODO: account for the pole and antimerdian. In most cases only a
-	// polygon is needed, but when the circle bounds passes the 90/180
-	// lines, we need to create a multipolygon
-
-	llobj = NewPolygon(
-		geometry.NewPoly(points, nil, geometry.DefaultIndexOptions),
-	)
-	// println(llobj.String())
-	return llobj
 }
