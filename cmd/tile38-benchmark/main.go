@@ -27,7 +27,8 @@ var (
 	pipeline = 1
 	csv      = false
 	json     = false
-	tests    = "PING,SET,GET,INTERSECTS,WITHIN,NEARBY,EVAL"
+	allTests = "PING,SET,GET,INTERSECTS,WITHIN,NEARBY,EVAL"
+	tests    = allTests
 	redis    = false
 )
 
@@ -182,7 +183,34 @@ func main() {
 	}
 	opts := fillOpts()
 	addr = fmt.Sprintf("%s:%d", hostname, port)
+
+	testsArr := strings.Split(allTests, ",")
+	var subtract bool
+	var add bool
 	for _, test := range strings.Split(tests, ",") {
+		if strings.HasPrefix(test, "-") {
+			if add {
+				os.Stderr.Write([]byte("test flag cannot mix add and subtract\n"))
+				os.Exit(1)
+			}
+			subtract = true
+			for i := range testsArr {
+				if strings.ToLower(testsArr[i]) == strings.ToLower(test[1:]) {
+					testsArr = append(testsArr[:i], testsArr[i+1:]...)
+					break
+				}
+			}
+		} else if subtract {
+			add = true
+			os.Stderr.Write([]byte("test flag cannot mix add and subtract\n"))
+			os.Exit(1)
+		}
+	}
+	if !subtract {
+		testsArr = strings.Split(tests, ",")
+	}
+
+	for _, test := range testsArr {
 		switch strings.ToUpper(strings.TrimSpace(test)) {
 		case "PING":
 			redbench.Bench("PING", addr, opts, prepFn,
@@ -390,7 +418,7 @@ func main() {
 						if err != nil {
 							panic(err)
 						}
-						if string(p[:n]) != ":-1\r\n" {
+						if string(p[:n]) != "$-1\r\n" {
 							return
 						}
 						args := []string{"SET", "key:bench:geo", "az", "object", az.JSON}
