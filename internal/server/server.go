@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/klauspost/cpuid"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/evio"
 	"github.com/tidwall/geojson"
@@ -294,7 +295,12 @@ func (server *Server) isProtected() bool {
 func (server *Server) evioServe() error {
 	var events evio.Events
 	if core.NumThreads == 0 {
-		events.NumLoops = -1
+		cores := cpuid.CPU.PhysicalCores
+		if cores == 0 {
+			events.NumLoops = -1
+		} else {
+			events.NumLoops = cores
+		}
 	} else {
 		events.NumLoops = core.NumThreads
 	}
