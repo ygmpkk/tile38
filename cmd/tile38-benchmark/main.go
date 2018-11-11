@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -146,15 +147,23 @@ func randPoint() (lat, lon float64) {
 	return rand.Float64()*180 - 90, rand.Float64()*360 - 180
 }
 
-func randRect() (minlat, minlon, maxlat, maxlon float64) {
+func isValidRect(minlat, minlon, maxlat, maxlon float64) bool {
+	return minlat > -90 && maxlat < 90 && minlon > -180 && maxlon < 180
+}
+
+func randRect(meters float64) (minlat, minlon, maxlat, maxlon float64) {
 	for {
-		minlat, minlon = randPoint()
-		maxlat, maxlon = minlat+1, minlon+1
-		if maxlat <= 180 && maxlon <= 180 {
+		lat, lon := randPoint()
+		maxlat, _ = destinationPoint(lat, lon, meters, 0)
+		_, maxlon = destinationPoint(lat, lon, meters, 90)
+		minlat, _ = destinationPoint(lat, lon, meters, 180)
+		_, minlon = destinationPoint(lat, lon, meters, 270)
+		if isValidRect(minlat, minlon, maxlat, maxlon) {
 			return
 		}
 	}
 }
+
 func prepFn(conn net.Conn) bool {
 	if json {
 		conn.Write([]byte("output json\r\n"))
@@ -222,7 +231,7 @@ func main() {
 					redbench.Bench("SET (rect)", addr, opts, prepFn,
 						func(buf []byte) []byte {
 							i := atomic.AddInt64(&i, 1)
-							minlat, minlon, maxlat, maxlon := randRect()
+							minlat, minlon, maxlat, maxlon := randRect(10000)
 							return redbench.AppendCommand(buf, "SET", "key:bench", "id:"+strconv.FormatInt(i, 10), "BOUNDS",
 								strconv.FormatFloat(minlat, 'f', 5, 64),
 								strconv.FormatFloat(minlon, 'f', 5, 64),
@@ -270,9 +279,14 @@ func main() {
 					},
 				)
 			}
-		case "INTERSECTS":
-			if !redis {
-
+		case "INTERSECTS",
+			"INTERSECTS-RECT", "INTERSECTS-RECT-1000", "INTERSECTS-RECT-10000", "INTERSECTS-RECT-100000",
+			"INTERSECTS-CIRCLE", "INTERSECTS-CIRCLE-1000", "INTERSECTS-CIRCLE-10000", "INTERSECTS-CIRCLE-100000":
+			if redis {
+				break
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-CIRCLE", "INTERSECTS-CIRCLE-1000":
 				redbench.Bench("INTERSECTS (intersects-circle 1km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
@@ -283,6 +297,9 @@ func main() {
 							"1000")
 					},
 				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-CIRCLE", "INTERSECTS-CIRCLE-10000":
 				redbench.Bench("INTERSECTS (intersects-circle 10km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
@@ -293,6 +310,9 @@ func main() {
 							"10000")
 					},
 				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-CIRCLE", "INTERSECTS-CIRCLE-100000":
 				redbench.Bench("INTERSECTS (intersects-circle 100km)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
@@ -304,8 +324,146 @@ func main() {
 					},
 				)
 			}
-		case "NEARBY":
-			if !redis {
+			// INTERSECTS-BOUNDS
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-BOUNDS", "INTERSECTS-BOUNDS-1000":
+				minlat, minlon, maxlat, maxlon := randRect(1000)
+				redbench.Bench("INTERSECTS (intersects-bounds 1km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-BOUNDS", "INTERSECTS-BOUNDS-10000":
+				minlat, minlon, maxlat, maxlon := randRect(10000)
+				redbench.Bench("INTERSECTS (intersects-bounds 10km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "INTERSECTS", "INTERSECTS-BOUNDS", "INTERSECTS-BOUNDS-100000":
+				minlat, minlon, maxlat, maxlon := randRect(10000)
+				redbench.Bench("INTERSECTS (intersects-bounds 100km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"INTERSECTS", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+
+		case "WITHIN",
+			"WITHIN-RECT", "WITHIN-RECT-1000", "WITHIN-RECT-10000", "WITHIN-RECT-100000",
+			"WITHIN-CIRCLE", "WITHIN-CIRCLE-1000", "WITHIN-CIRCLE-10000", "WITHIN-CIRCLE-100000":
+			if redis {
+				break
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-CIRCLE", "WITHIN-CIRCLE-1000":
+				redbench.Bench("WITHIN (within-circle 1km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "CIRCLE",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"1000")
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-CIRCLE", "WITHIN-CIRCLE-10000":
+				redbench.Bench("WITHIN (within-circle 10km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "CIRCLE",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"10000")
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-CIRCLE", "WITHIN-CIRCLE-100000":
+				redbench.Bench("WITHIN (within-circle 100km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "CIRCLE",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"100000")
+					},
+				)
+			}
+			// WITHIN-BOUNDS
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-BOUNDS", "WITHIN-BOUNDS-1000":
+				minlat, minlon, maxlat, maxlon := randRect(1000)
+				redbench.Bench("WITHIN (within-bounds 1km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-BOUNDS", "WITHIN-BOUNDS-10000":
+				minlat, minlon, maxlat, maxlon := randRect(10000)
+				redbench.Bench("WITHIN (within-bounds 10km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "WITHIN", "WITHIN-BOUNDS", "WITHIN-BOUNDS-100000":
+				minlat, minlon, maxlat, maxlon := randRect(10000)
+				redbench.Bench("WITHIN (within-bounds 100km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						return redbench.AppendCommand(buf,
+							"WITHIN", "key:bench", "COUNT", "BOUNDS",
+							strconv.FormatFloat(minlat, 'f', 5, 64),
+							strconv.FormatFloat(minlon, 'f', 5, 64),
+							strconv.FormatFloat(maxlat, 'f', 5, 64),
+							strconv.FormatFloat(maxlon, 'f', 5, 64))
+					},
+				)
+			}
+		case "NEARBY",
+			"NEARBY-KNN", "NEARBY-KNN-1", "NEARBY-KNN-10", "NEARBY-KNN-100",
+			"NEARBY-POINT", "NEARBY-POINT-1000", "NEARBY-POINT-10000", "NEARBY-POINT-100000":
+			if redis {
+				break
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-KNN", "NEARBY-KNN-1":
 				redbench.Bench("NEARBY (limit 1)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
@@ -316,6 +474,9 @@ func main() {
 						)
 					},
 				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-KNN", "NEARBY-KNN-10":
 				redbench.Bench("NEARBY (limit 10)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
@@ -326,13 +487,59 @@ func main() {
 						)
 					},
 				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-KNN", "NEARBY-KNN-100":
 				redbench.Bench("NEARBY (limit 100)", addr, opts, prepFn,
 					func(buf []byte) []byte {
 						lat, lon := randPoint()
 						return redbench.AppendCommand(buf,
 							"NEARBY", "key:bench", "LIMIT", "100", "COUNT", "POINT",
 							strconv.FormatFloat(lat, 'f', 5, 64),
-							strconv.FormatFloat(lon, 'f', 5, 64))
+							strconv.FormatFloat(lon, 'f', 5, 64),
+						)
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-POINT", "NEARBY-POINT-1000":
+				redbench.Bench("NEARBY (point 1km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"1000",
+						)
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-POINT", "NEARBY-POINT-10000":
+				redbench.Bench("NEARBY (point 10km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"10000",
+						)
+					},
+				)
+			}
+			switch strings.ToUpper(strings.TrimSpace(test)) {
+			case "NEARBY", "NEARBY-POINT", "NEARBY-POINT-100000":
+				redbench.Bench("NEARBY (point 100km)", addr, opts, prepFn,
+					func(buf []byte) []byte {
+						lat, lon := randPoint()
+						return redbench.AppendCommand(buf,
+							"NEARBY", "key:bench", "COUNT", "POINT",
+							strconv.FormatFloat(lat, 'f', 5, 64),
+							strconv.FormatFloat(lon, 'f', 5, 64),
+							"100000",
+						)
 					},
 				)
 			}
@@ -406,4 +613,22 @@ func main() {
 			}
 		}
 	}
+}
+
+const earthRadius = 6371e3
+
+func toRadians(deg float64) float64 { return deg * math.Pi / 180 }
+func toDegrees(rad float64) float64 { return rad * 180 / math.Pi }
+
+// destinationPoint return the destination from a point based on a distance and bearing.
+func destinationPoint(lat, lon, meters, bearingDegrees float64) (destLat, destLon float64) {
+	// see http://williams.best.vwh.net/avform.htm#LL
+	δ := meters / earthRadius // angular distance in radians
+	θ := toRadians(bearingDegrees)
+	φ1 := toRadians(lat)
+	λ1 := toRadians(lon)
+	φ2 := math.Asin(math.Sin(φ1)*math.Cos(δ) + math.Cos(φ1)*math.Sin(δ)*math.Cos(θ))
+	λ2 := λ1 + math.Atan2(math.Sin(θ)*math.Sin(δ)*math.Cos(φ1), math.Cos(δ)-math.Sin(φ1)*math.Sin(φ2))
+	λ2 = math.Mod(λ2+3*math.Pi, 2*math.Pi) - math.Pi // normalise to -180..+180°
+	return toDegrees(φ2), toDegrees(λ2)
 }
