@@ -63,7 +63,7 @@ type Endpoint struct {
 	Kafka struct {
 		Host      string
 		Port      int
-		QueueName string
+		TopicName string
 	}
 	AMQP struct {
 		URI          string
@@ -157,8 +157,8 @@ func (epc *Manager) Validate(url string) error {
 func (epc *Manager) Send(endpoint, msg string) error {
 	for {
 		epc.mu.Lock()
-		conn, ok := epc.conns[endpoint]
-		if !ok || conn.Expired() {
+		conn, exists := epc.conns[endpoint]
+		if !exists || conn.Expired() {
 			ep, err := parseEndpoint(endpoint)
 			if err != nil {
 				epc.mu.Unlock()
@@ -370,14 +370,14 @@ func parseEndpoint(s string) (Endpoint, error) {
 		// Parsing Kafka queue name
 		if len(sp) > 1 {
 			var err error
-			endpoint.Kafka.QueueName, err = url.QueryUnescape(sp[1])
+			endpoint.Kafka.TopicName, err = url.QueryUnescape(sp[1])
 			if err != nil {
 				return endpoint, errors.New("invalid kafka topic name")
 			}
 		}
 
 		// Throw error if we not provide any queue name
-		if endpoint.Kafka.QueueName == "" {
+		if endpoint.Kafka.TopicName == "" {
 			return endpoint, errors.New("missing kafka topic name")
 		}
 	}
