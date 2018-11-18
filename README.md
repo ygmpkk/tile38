@@ -1,7 +1,7 @@
 <p align="center">
   <a href="http://tile38.com"><img 
-    src="/internal/assets/logo1500.png" 
-    width="200" height="200" border="0" alt="Tile38"></a>
+    src="/internal/assets/logo.png" 
+    width="315" height="120" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
 <a href="https://join.slack.com/t/tile38/shared_invite/enQtMzQ0OTEwMDUxMzc5LTc0NTJjZmM3YjFhOGZiZGU2NDNjOWEwM2Q5ZWE3MzFiYWZkZDIyN2U2ZmUzZDBmODU0MjI1ZjQ0N2Y1M2I1NTg"><img src="https://img.shields.io/badge/slack-channel-orange.svg" alt="Slack Channel"></a>
