@@ -2,17 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.14.3] - 2018-11-20
+### Fixes
+- Hotfix SCRIPT LOAD not executing from cli. (@rshura)
+
 ## [1.14.2] - 2018-11-15
 ### Fixes
 - #386: Fix version not being set at build. (@stevelacy)
-
 
 ## [1.14.1] - 2018-11-15
 ### Fixes
 - #385: Add `version` to SERVER command response (@stevelacy)
 - Hotfix replica sync needs flushing (@rshura)
 - Fixed a bug where some AOF commands where corrupted during reload
-
 
 ## [1.14.0] - 2018-11-11
 ### Added
@@ -24,7 +26,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixes
 - #369: Fix poly in hole query
-
 
 ## [1.13.0] - 2018-08-29
 ### Added
