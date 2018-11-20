@@ -1170,9 +1170,9 @@ func (server *Server) command(msg *Message, client *Client) (
 		// These get rewritten into "config foo" and "script bar"
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 		if len(msg.Args) > 1 {
-			command := msg.Args[0] + " " + msg.Args[1]
-			msg.Args[1] = command
+			msg.Args[1] = msg.Args[0] + " " + msg.Args[1]
 			msg.Args = msg.Args[1:]
+			msg._command = ""
 			return server.command(msg, client)
 		}
 	case "client":
