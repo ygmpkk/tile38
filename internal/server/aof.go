@@ -101,23 +101,6 @@ func (server *Server) loadAOF() error {
 	}
 }
 
-// func qlower(s []byte) string {
-// 	if len(s) == 3 {
-// 		if s[0] == 'S' && s[1] == 'E' && s[2] == 'T' {
-// 			return "set"
-// 		}
-// 		if s[0] == 'D' && s[1] == 'E' && s[2] == 'L' {
-// 			return "del"
-// 		}
-// 	}
-// 	for i := 0; i < len(s); i++ {
-// 		if s[i] >= 'A' || s[i] <= 'Z' {
-// 			return strings.ToLower(string(s))
-// 		}
-// 	}
-// 	return string(s)
-// }
-
 func commandErrIsFatal(err error) bool {
 	// FSET (and other writable commands) may return errors that we need
 	// to ignore during the loading process. These errors may occur (though unlikely)
