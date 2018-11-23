@@ -172,16 +172,18 @@ func (server *Server) writeAOF(args []string, d *commandDetailsT) error {
 
 		// live geofences
 		server.lcond.L.Lock()
-		if d.parent {
-			// queue children
-			for _, d := range d.children {
+		if len(server.lives) > 0 {
+			if d.parent {
+				// queue children
+				for _, d := range d.children {
+					server.lstack = append(server.lstack, d)
+				}
+			} else {
+				// queue parent
 				server.lstack = append(server.lstack, d)
 			}
-		} else {
-			// queue parent
-			server.lstack = append(server.lstack, d)
+			server.lcond.Broadcast()
 		}
-		server.lcond.Broadcast()
 		server.lcond.L.Unlock()
 	}
 	return nil
