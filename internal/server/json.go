@@ -156,7 +156,7 @@ func (c *Server) cmdJget(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err error) {
 	// JSET key path value [RAW]
 	start := time.Now()
 
@@ -248,7 +248,7 @@ func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetailsT, err e
 	return NOMessage, d, nil
 }
 
-func (c *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (c *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 
 	if len(msg.Args) != 4 {

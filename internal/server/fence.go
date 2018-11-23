@@ -12,7 +12,7 @@ import (
 )
 
 // FenceMatch executes a fence match returns back json messages for fence detection.
-func FenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas []FenceMeta, details *commandDetailsT) []string {
+func FenceMatch(hookName string, sw *scanWriter, fence *liveFenceSwitches, metas []FenceMeta, details *commandDetails) []string {
 	msgs := fenceMatch(hookName, sw, fence, metas, details)
 	if len(fence.accept) == 0 {
 		return msgs
@@ -55,7 +55,7 @@ func hookJSONString(hookName string, metas []FenceMeta) string {
 }
 func fenceMatch(
 	hookName string, sw *scanWriter, fence *liveFenceSwitches,
-	metas []FenceMeta, details *commandDetailsT,
+	metas []FenceMeta, details *commandDetails,
 ) []string {
 	if details.command == "drop" {
 		return []string{

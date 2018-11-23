@@ -36,7 +36,7 @@ func (a hooksByName) Swap(i, j int) {
 }
 
 func (c *Server) cmdSetHook(msg *Message, chanCmd bool) (
-	res resp.Value, d commandDetailsT, err error,
+	res resp.Value, d commandDetails, err error,
 ) {
 	start := time.Now()
 	vs := msg.Args[1:]
@@ -204,7 +204,7 @@ func (c *Server) cmdSetHook(msg *Message, chanCmd bool) (
 }
 
 func (c *Server) cmdDelHook(msg *Message, chanCmd bool) (
-	res resp.Value, d commandDetailsT, err error,
+	res resp.Value, d commandDetails, err error,
 ) {
 	start := time.Now()
 	vs := msg.Args[1:]
@@ -240,7 +240,7 @@ func (c *Server) cmdDelHook(msg *Message, chanCmd bool) (
 }
 
 func (c *Server) cmdPDelHook(msg *Message, channel bool) (
-	res resp.Value, d commandDetailsT, err error,
+	res resp.Value, d commandDetails, err error,
 ) {
 	start := time.Now()
 	vs := msg.Args[1:]

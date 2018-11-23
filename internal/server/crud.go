@@ -293,7 +293,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -337,7 +337,7 @@ func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetailsT, e
 	return
 }
 
-func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -356,7 +356,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetailsT, 
 	now := time.Now()
 	iter := func(id string, o geojson.Object, fields []float64) bool {
 		if match, _ := glob.Match(d.pattern, id); match {
-			d.children = append(d.children, &commandDetailsT{
+			d.children = append(d.children, &commandDetails{
 				command:   "del",
 				updated:   true,
 				timestamp: now,
@@ -388,7 +388,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetailsT, 
 			server.clearIDExpires(d.key, dc.id)
 		}
 		if atLeastOneNotDeleted {
-			var nchildren []*commandDetailsT
+			var nchildren []*commandDetails
 			for _, dc := range d.children {
 				if dc.command == "del" {
 					nchildren = append(nchildren, dc)
@@ -417,7 +417,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetailsT, 
 	return
 }
 
-func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -453,7 +453,7 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetailsT, 
 	return
 }
 
-func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	if len(vs) != 0 {
@@ -480,7 +480,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 }
 
 func (server *Server) parseSetArgs(vs []string) (
-	d commandDetailsT, fields []string, values []float64,
+	d commandDetails, fields []string, values []float64,
 	xx, nx bool,
 	expires *float64, etype []byte, evs []string, err error,
 ) {
@@ -699,7 +699,7 @@ func (server *Server) parseSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, err error) {
 	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
 		err = errOOM
 		return
@@ -770,7 +770,7 @@ notok:
 }
 
 func (server *Server) parseFSetArgs(vs []string) (
-	d commandDetailsT, fields []string, values []float64, xx bool, err error,
+	d commandDetails, fields []string, values []float64, xx bool, err error,
 ) {
 	var ok bool
 	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
@@ -812,7 +812,7 @@ func (server *Server) parseFSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetails, err error) {
 	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
 		err = errOOM
 		return
@@ -856,7 +856,7 @@ func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetailsT, 
 	return
 }
 
-func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var key, id, svalue string
@@ -910,7 +910,7 @@ func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetailsT
 	return
 }
 
-func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetailsT, err error) {
+func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var key, id string

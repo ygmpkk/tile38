@@ -15,7 +15,7 @@ type liveBuffer struct {
 	key     string
 	glob    string
 	fence   *liveFenceSwitches
-	details []*commandDetailsT
+	details []*commandDetails
 	cond    *sync.Cond
 }
 

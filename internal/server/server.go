@@ -38,26 +38,26 @@ import (
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
 
-const goingLive = "going live"
+const (
+	goingLive     = "going live"
+	hookLogPrefix = "hook:log:"
+)
 
-const hookLogPrefix = "hook:log:"
-
-type commandDetailsT struct {
-	command   string
-	key, id   string
-	field     string
-	value     float64
-	obj       geojson.Object
-	fields    []float64
-	fmap      map[string]int
-	oldObj    geojson.Object
-	oldFields []float64
-	updated   bool
-	timestamp time.Time
-
-	parent   bool               // when true, only children are forwarded
-	pattern  string             // PDEL key pattern
-	children []*commandDetailsT // for multi actions such as "PDEL"
+// commandDetails is detailed information about a mutable command. It's used
+// for geofence formulas.
+type commandDetails struct {
+	command   string            // client command, like "SET" or "DEL"
+	key, id   string            // collection key and object id of object
+	fmap      map[string]int    // map of field names to value indexes
+	obj       geojson.Object    // new object
+	fields    []float64         // array of field values
+	oldObj    geojson.Object    // previous object, if any
+	oldFields []float64         // previous object field values
+	updated   bool              // object was updated
+	timestamp time.Time         // timestamp when the update occured
+	parent    bool              // when true, only children are forwarded
+	pattern   string            // PDEL key pattern
+	children  []*commandDetails // for multi actions such as "PDEL"
 }
 
 // Server is a tile38 controller
@@ -101,7 +101,7 @@ type Server struct {
 
 	follows    map[*bytes.Buffer]bool
 	fcond      *sync.Cond
-	lstack     []*commandDetailsT
+	lstack     []*commandDetails
 	lives      map[*liveBuffer]bool
 	lcond      *sync.Cond
 	fcup       bool                        // follow caught up
@@ -1053,7 +1053,7 @@ func (server *Server) reset() {
 }
 
 func (server *Server) command(msg *Message, client *Client) (
-	res resp.Value, d commandDetailsT, err error,
+	res resp.Value, d commandDetails, err error,
 ) {
 	switch msg.Command() {
 	default:

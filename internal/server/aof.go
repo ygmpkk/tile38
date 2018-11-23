@@ -122,7 +122,7 @@ func (server *Server) flushAOF() {
 	}
 }
 
-func (server *Server) writeAOF(args []string, d *commandDetailsT) error {
+func (server *Server) writeAOF(args []string, d *commandDetails) error {
 
 	if d != nil && !d.updated {
 		// just ignore writes if the command did not update
@@ -189,7 +189,7 @@ func (server *Server) writeAOF(args []string, d *commandDetailsT) error {
 	return nil
 }
 
-func (server *Server) queueHooks(d *commandDetailsT) error {
+func (server *Server) queueHooks(d *commandDetails) error {
 	// big list of all of the messages
 	var hmsgs []string
 	var hooks []*Hook

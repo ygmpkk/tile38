@@ -558,7 +558,7 @@ func (c *Server) cmdScriptFlush(msg *Message) (resp.Value, error) {
 }
 
 func (c *Server) commandInScript(msg *Message) (
-	res resp.Value, d commandDetailsT, err error,
+	res resp.Value, d commandDetails, err error,
 ) {
 	switch msg.Command() {
 	default:

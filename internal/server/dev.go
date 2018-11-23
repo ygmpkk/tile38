@@ -80,7 +80,7 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 		nmsg := &Message{}
 		*nmsg = *msg
 		nmsg.Args = args
-		var d commandDetailsT
+		var d commandDetails
 		_, d, err = c.command(nmsg, nil)
 		if err != nil {
 			return err
