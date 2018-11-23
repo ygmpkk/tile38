@@ -75,15 +75,13 @@ type Server struct {
 	geomParseOpts geojson.ParseOptions
 
 	// atomics
-	followc                aint // counter increases when follow property changes
-	statsTotalConns        aint // counter for total connections
-	statsTotalCommands     aint // counter for total commands
-	statsExpired           aint // item expiration counter
-	lastShrinkDuration     aint
-	stopBackgroundExpiring abool
-	stopWatchingMemory     abool
-	stopWatchingAutoGC     abool
-	outOfMemory            abool
+	followc            aint // counter increases when follow property changes
+	statsTotalConns    aint // counter for total connections
+	statsTotalCommands aint // counter for total commands
+	statsExpired       aint // item expiration counter
+	lastShrinkDuration aint
+	stopServer         abool
+	outOfMemory        abool
 
 	connsmu sync.RWMutex
 	conns   map[int]*Client
@@ -263,10 +261,13 @@ func Serve(host string, port int, dir string, http bool) error {
 	go server.backgroundExpiring()
 	defer func() {
 		// Stop background routines
-		server.stopBackgroundExpiring.set(true)
-		server.stopWatchingMemory.set(true)
-		server.stopWatchingAutoGC.set(true)
 		server.followc.add(1) // this will force any follow communication to die
+		server.stopServer.set(true)
+
+		// notify the live geofence connections that we are stopping.
+		server.lcond.L.Lock()
+		server.lcond.Wait()
+		server.lcond.L.Lock()
 	}()
 
 	// Start the network server
@@ -714,7 +715,7 @@ func (server *Server) watchAutoGC() {
 	defer t.Stop()
 	s := time.Now()
 	for range t.C {
-		if server.stopWatchingAutoGC.on() {
+		if server.stopServer.on() {
 			return
 		}
 		autoGC := server.config.autoGC()
@@ -746,7 +747,7 @@ func (server *Server) watchOutOfMemory() {
 	var mem runtime.MemStats
 	for range t.C {
 		func() {
-			if server.stopWatchingMemory.on() {
+			if server.stopServer.on() {
 				return
 			}
 			oom := server.outOfMemory.on()

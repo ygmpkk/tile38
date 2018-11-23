@@ -19,16 +19,20 @@ type liveBuffer struct {
 	cond    *sync.Cond
 }
 
-func (c *Server) processLives() {
+func (server *Server) processLives() {
+	server.lcond.L.Lock()
+	defer server.lcond.L.Unlock()
 	for {
-		c.lcond.L.Lock()
-		for len(c.lstack) > 0 {
-			item := c.lstack[0]
-			c.lstack = c.lstack[1:]
-			if len(c.lstack) == 0 {
-				c.lstack = nil
+		if server.stopServer.on() {
+			return
+		}
+		for len(server.lstack) > 0 {
+			item := server.lstack[0]
+			server.lstack = server.lstack[1:]
+			if len(server.lstack) == 0 {
+				server.lstack = nil
 			}
-			for lb := range c.lives {
+			for lb := range server.lives {
 				lb.cond.L.Lock()
 				if lb.key != "" && lb.key == item.key {
 					lb.details = append(lb.details, item)
@@ -37,8 +41,7 @@ func (c *Server) processLives() {
 				lb.cond.L.Unlock()
 			}
 		}
-		c.lcond.Wait()
-		c.lcond.L.Unlock()
+		server.lcond.Wait()
 	}
 }
 
@@ -68,7 +71,7 @@ func writeLiveMessage(
 	return err
 }
 
-func (c *Server) goLive(
+func (server *Server) goLive(
 	inerr error, conn net.Conn, rd *PipelineReader, msg *Message, websocket bool,
 ) error {
 	addr := conn.RemoteAddr().String()
@@ -80,9 +83,9 @@ func (c *Server) goLive(
 	default:
 		return errors.New("invalid live type switches")
 	case liveAOFSwitches:
-		return c.liveAOF(s.pos, conn, rd, msg)
+		return server.liveAOF(s.pos, conn, rd, msg)
 	case liveSubscriptionSwitches:
-		return c.liveSubscription(conn, rd, msg, websocket)
+		return server.liveSubscription(conn, rd, msg, websocket)
 	case liveFenceSwitches:
 		// fallthrough
 	}
@@ -98,23 +101,23 @@ func (c *Server) goLive(
 	lb.glob = s.glob
 	lb.key = s.key
 	lb.fence = &s
-	c.mu.RLock()
-	sw, err = c.newScanWriter(
+	server.mu.RLock()
+	sw, err = server.newScanWriter(
 		&wr, msg, s.key, s.output, s.precision, s.glob, false,
 		s.cursor, s.limit, s.wheres, s.whereins, s.whereevals, s.nofields)
-	c.mu.RUnlock()
+	server.mu.RUnlock()
 
 	// everything below if for live SCAN, NEARBY, WITHIN, INTERSECTS
 	if err != nil {
 		return err
 	}
-	c.lcond.L.Lock()
-	c.lives[lb] = true
-	c.lcond.L.Unlock()
+	server.lcond.L.Lock()
+	server.lives[lb] = true
+	server.lcond.L.Unlock()
 	defer func() {
-		c.lcond.L.Lock()
-		delete(c.lives, lb)
-		c.lcond.L.Unlock()
+		server.lcond.L.Lock()
+		delete(server.lives, lb)
+		server.lcond.L.Unlock()
 		conn.Close()
 	}()
 
@@ -181,8 +184,8 @@ func (c *Server) goLive(
 			var msgs []string
 			func() {
 				// safely lock the fence because we are outside the main loop
-				c.mu.RLock()
-				defer c.mu.RUnlock()
+				server.mu.RLock()
+				defer server.mu.RUnlock()
 				msgs = FenceMatch("", sw, fence, nil, details)
 			}()
 			for _, msg := range msgs {

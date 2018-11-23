@@ -105,7 +105,7 @@ func (c *Server) backgroundExpiring() {
 	rand.Seed(time.Now().UnixNano())
 	var purgelist []exitem
 	for {
-		if c.stopBackgroundExpiring.on() {
+		if c.stopServer.on() {
 			return
 		}
 		now := time.Now()
