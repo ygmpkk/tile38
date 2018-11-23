@@ -80,7 +80,6 @@ type Server struct {
 	statsTotalCommands     aint // counter for total commands
 	statsExpired           aint // item expiration counter
 	lastShrinkDuration     aint
-	currentShrinkStart     atime
 	stopBackgroundExpiring abool
 	stopWatchingMemory     abool
 	stopWatchingAutoGC     abool

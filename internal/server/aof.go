@@ -169,6 +169,7 @@ func (server *Server) writeAOF(args []string, d *commandDetailsT) error {
 				}
 			}
 		}
+
 		// live geofences
 		server.lcond.L.Lock()
 		if d.parent {
