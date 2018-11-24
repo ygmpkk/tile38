@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/evio"
 	"github.com/tidwall/geojson"
@@ -104,12 +105,13 @@ type Server struct {
 	lstack     []*commandDetails
 	lives      map[*liveBuffer]bool
 	lcond      *sync.Cond
-	fcup       bool                        // follow caught up
-	fcuponce   bool                        // follow caught up once
-	shrinking  bool                        // aof shrinking flag
-	shrinklog  [][]string                  // aof shrinking log
-	hooks      map[string]*Hook            // hook name
-	hookcols   map[string]map[string]*Hook // col key
+	fcup       bool             // follow caught up
+	fcuponce   bool             // follow caught up once
+	shrinking  bool             // aof shrinking flag
+	shrinklog  [][]string       // aof shrinking log
+	hooks      map[string]*Hook // hook name
+	hookTree   d2.BoxTree       // hook spatial tree containing all
+	hooksOut   map[string]*Hook // hooks with "outside" detection
 	aofconnM   map[net.Conn]bool
 	luascripts *lScriptMap
 	luapool    *lStatePool
@@ -138,7 +140,7 @@ func Serve(host string, port int, dir string, http bool) error {
 		lives:    make(map[*liveBuffer]bool),
 		lcond:    sync.NewCond(&sync.Mutex{}),
 		hooks:    make(map[string]*Hook),
-		hookcols: make(map[string]map[string]*Hook),
+		hooksOut: make(map[string]*Hook),
 		aofconnM: make(map[net.Conn]bool),
 		expires:  make(map[string]map[string]time.Time),
 		started:  time.Now(),

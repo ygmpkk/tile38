@@ -154,15 +154,16 @@ func (c *Server) cmdSetHook(msg *Message, chanCmd bool) (
 
 		return NOMessage, d, err
 	}
-	if h, ok := c.hooks[name]; ok {
-		if h.channel != chanCmd {
+	prevHook := c.hooks[name]
+	if prevHook != nil {
+		if prevHook.channel != chanCmd {
 			return NOMessage, d,
 				errors.New("hooks and channels cannot share the same name")
 		}
-		if h.Equals(hook) {
+		if prevHook.Equals(hook) {
 			// it was a match so we do nothing. But let's signal just
 			// for good measure.
-			h.Signal()
+			prevHook.Signal()
 			if !hook.expires.IsZero() {
 				c.hookex.Push(hook)
 			}
@@ -173,23 +174,36 @@ func (c *Server) cmdSetHook(msg *Message, chanCmd bool) (
 				return resp.IntegerValue(0), d, nil
 			}
 		}
-		h.Close()
-		// delete the previous hook
-		if hm, ok := c.hookcols[h.Key]; ok {
-			delete(hm, h.Name)
-		}
-		delete(c.hooks, h.Name)
+		prevHook.Close()
+		delete(c.hooks, name)
+		delete(c.hooksOut, name)
 	}
 
 	d.updated = true
 	d.timestamp = time.Now()
+
 	c.hooks[name] = hook
-	hm, ok := c.hookcols[hook.Key]
-	if !ok {
-		hm = make(map[string]*Hook)
-		c.hookcols[hook.Key] = hm
+	if hook.Fence.detect == nil || hook.Fence.detect["outside"] {
+		c.hooksOut[name] = hook
 	}
-	hm[name] = hook
+
+	// remove previous hook from spatial index
+	if prevHook != nil && prevHook.Fence != nil && prevHook.Fence.obj != nil {
+		rect := prevHook.Fence.obj.Rect()
+		c.hookTree.Delete(
+			[]float64{rect.Min.X, rect.Min.Y},
+			[]float64{rect.Max.X, rect.Max.Y},
+			prevHook)
+	}
+	// add hook to spatial index
+	if hook != nil && hook.Fence != nil && hook.Fence.obj != nil {
+		rect := hook.Fence.obj.Rect()
+		c.hookTree.Insert(
+			[]float64{rect.Min.X, rect.Min.Y},
+			[]float64{rect.Max.X, rect.Max.Y},
+			hook)
+	}
+
 	hook.Open()
 	if !hook.expires.IsZero() {
 		c.hookex.Push(hook)
@@ -217,13 +231,21 @@ func (c *Server) cmdDelHook(msg *Message, chanCmd bool) (
 	if len(vs) != 0 {
 		return NOMessage, d, errInvalidNumberOfArguments
 	}
-	if h, ok := c.hooks[name]; ok && h.channel == chanCmd {
-		h.Close()
-		if hm, ok := c.hookcols[h.Key]; ok {
-			delete(hm, h.Name)
-		}
-		delete(c.hooks, h.Name)
+	if hook, ok := c.hooks[name]; ok && hook.channel == chanCmd {
+		hook.Close()
+		delete(c.hooks, hook.Name)
+		delete(c.hooksOut, hook.Name)
+
 		d.updated = true
+
+		// remove hook from spatial index
+		if hook != nil && hook.Fence != nil && hook.Fence.obj != nil {
+			rect := hook.Fence.obj.Rect()
+			c.hookTree.Delete(
+				[]float64{rect.Min.X, rect.Min.Y},
+				[]float64{rect.Max.X, rect.Max.Y},
+				hook)
+		}
 	}
 	d.timestamp = time.Now()
 
@@ -264,9 +286,6 @@ func (c *Server) cmdPDelHook(msg *Message, channel bool) (
 			continue
 		}
 		h.Close()
-		if hm, ok := c.hookcols[h.Key]; ok {
-			delete(hm, h.Name)
-		}
 		delete(c.hooks, h.Name)
 		d.updated = true
 		count++

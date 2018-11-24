@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tidwall/buntdb"
+	"github.com/tidwall/geojson"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/log"
@@ -189,23 +190,60 @@ func (server *Server) writeAOF(args []string, d *commandDetails) error {
 	return nil
 }
 
+func (server *Server) getQueueCandidates(d *commandDetails) []*Hook {
+	var candidates []*Hook
+	// add the hooks with "outside" detection
+	if len(server.hooksOut) > 0 {
+		for _, hook := range server.hooksOut {
+			if hook.Key == d.key {
+				candidates = append(candidates, hook)
+			}
+		}
+	}
+	// search the hook spatial tree
+	for _, obj := range []geojson.Object{d.obj, d.oldObj} {
+		if obj == nil {
+			continue
+		}
+		rect := obj.Rect()
+		server.hookTree.Search(
+			[]float64{rect.Min.X, rect.Min.Y},
+			[]float64{rect.Max.X, rect.Max.Y},
+			func(_, _ []float64, value interface{}) bool {
+				hook := value.(*Hook)
+				var found bool
+				for _, candidate := range candidates {
+					if candidate == hook {
+						found = true
+						break
+					}
+				}
+				if !found {
+					candidates = append(candidates, hook)
+				}
+				return true
+			},
+		)
+	}
+	return candidates
+}
+
 func (server *Server) queueHooks(d *commandDetails) error {
 	// big list of all of the messages
 	var hmsgs []string
 	var hooks []*Hook
-	// find the hook by the key
-	if hm, ok := server.hookcols[d.key]; ok {
-		for _, hook := range hm {
-			// match the fence
-			msgs := FenceMatch(hook.Name, hook.ScanWriter, hook.Fence, hook.Metas, d)
-			if len(msgs) > 0 {
-				if hook.channel {
-					server.Publish(hook.Name, msgs...)
-				} else {
-					// append each msg to the big list
-					hmsgs = append(hmsgs, msgs...)
-					hooks = append(hooks, hook)
-				}
+
+	candidates := server.getQueueCandidates(d)
+	for _, hook := range candidates {
+		// match the fence
+		msgs := FenceMatch(hook.Name, hook.ScanWriter, hook.Fence, hook.Metas, d)
+		if len(msgs) > 0 {
+			if hook.channel {
+				server.Publish(hook.Name, msgs...)
+			} else {
+				// append each msg to the big list
+				hmsgs = append(hmsgs, msgs...)
+				hooks = append(hooks, hook)
 			}
 		}
 	}
