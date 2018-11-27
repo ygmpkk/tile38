@@ -3,6 +3,7 @@ package endpoint
 import (
 	"errors"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"sync"
 	"time"
 
@@ -71,8 +72,14 @@ func (conn *KafkaConn) Send(msg string) error {
 		conn.conn = c
 	}
 
+	// parse json again to get out info for our kafka key
+	key := gjson.Get(msg, "key")
+	id := gjson.Get(msg, "id")
+	keyValue := fmt.Sprintf("%s-%s", key.String(), id.String())
+
 	message := &sarama.ProducerMessage{
-		Topic: conn.ep.Kafka.QueueName,
+		Topic: conn.ep.Kafka.TopicName,
+		Key:   sarama.StringEncoder(keyValue),
 		Value: sarama.StringEncoder(msg),
 	}
 
