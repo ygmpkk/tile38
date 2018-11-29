@@ -66,16 +66,44 @@ func (c *Server) cmdStats(msg *Message) (res resp.Value, err error) {
 	}
 	return res, nil
 }
+
 func (c *Server) cmdServer(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
+	m := make(map[string]interface{})
+	args := msg.Args[1:]
 
-	if len(msg.Args) != 1 {
+	// Switch on the type of stats requested
+	switch len(args) {
+	case 0:
+		c.basicStats(m)
+	case 1:
+		if strings.ToLower(args[0]) == "ext" {
+			c.extStats(m)
+		}
+	default:
 		return NOMessage, errInvalidNumberOfArguments
 	}
-	m := make(map[string]interface{})
+
+	switch msg.OutputType {
+	case JSON:
+		data, err := json.Marshal(m)
+		if err != nil {
+			return NOMessage, err
+		}
+		res = resp.StringValue(`{"ok":true,"stats":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
+	case RESP:
+		vals := respValuesSimpleMap(m)
+		res = resp.ArrayValue(vals)
+	}
+	return res, nil
+}
+
+// basicStats populates the passed map with basic system/go/tile38 statistics
+func (c *Server) basicStats(m map[string]interface{}) {
 	m["id"] = c.config.serverID()
 	if c.config.followHost() != "" {
-		m["following"] = fmt.Sprintf("%s:%d", c.config.followHost(), c.config.followPort())
+		m["following"] = fmt.Sprintf("%s:%d", c.config.followHost(),
+			c.config.followPort())
 		m["caught_up"] = c.fcup
 		m["caught_up_once"] = c.fcuponce
 	}
@@ -119,26 +147,175 @@ func (c *Server) cmdServer(msg *Message) (res resp.Value, err error) {
 	m["pointer_size"] = (32 << uintptr(uint64(^uintptr(0))>>63)) / 8
 	m["read_only"] = c.config.readOnly()
 	m["cpus"] = runtime.NumCPU()
-	m["threads"] = runtime.GOMAXPROCS(0)
+	n, _ := runtime.ThreadCreateProfile(nil)
+	m["threads"] = float64(n)
+}
 
-	switch msg.OutputType {
-	case JSON:
-		data, err := json.Marshal(m)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"stats":` + string(data) + `,"elapsed":"` + time.Now().Sub(start).String() + "\"}")
-	case RESP:
-		vals := respValuesSimpleMap(m)
-		res = resp.ArrayValue(vals)
+// extStats populates the passed map with extended system/go/tile38 statistics
+func (c *Server) extStats(m map[string]interface{}) {
+	var mem runtime.MemStats
+	n, _ := runtime.ThreadCreateProfile(nil)
+	runtime.ReadMemStats(&mem)
+
+	// Go/Memory Stats
+
+	// Number of goroutines that currently exist
+	m["go_goroutines"] = runtime.NumGoroutine()
+	// Number of OS threads created
+	m["go_threads"] = float64(n)
+	// A summary of the GC invocation durations
+	m["go_version"] = runtime.Version()
+	// Number of bytes allocated and still in use
+	m["alloc_bytes"] = mem.Alloc
+	// Total number of bytes allocated, even if freed
+	m["alloc_bytes_total"] = mem.TotalAlloc
+	// Number of CPUS available on the system
+	m["sys_cpus"] = runtime.NumCPU()
+	// Number of bytes obtained from system
+	m["sys_bytes"] = mem.Sys
+	// Total number of pointer lookups
+	m["lookups_total"] = mem.Lookups
+	// Total number of mallocs
+	m["mallocs_total"] = mem.Mallocs
+	// Total number of frees
+	m["frees_total"] = mem.Frees
+	// Number of heap bytes allocated and still in use
+	m["heap_alloc_bytes"] = mem.HeapAlloc
+	// Number of heap bytes obtained from system
+	m["heap_sys_bytes"] = mem.HeapSys
+	// Number of heap bytes waiting to be used
+	m["heap_idle_bytes"] = mem.HeapIdle
+	// Number of heap bytes that are in use
+	m["heap_inuse_bytes"] = mem.HeapInuse
+	// Number of heap bytes released to OS
+	m["heap_released_bytes"] = mem.HeapReleased
+	// Number of allocated objects
+	m["heap_objects"] = mem.HeapObjects
+	// Number of bytes in use by the stack allocator
+	m["stack_inuse_bytes"] = mem.StackInuse
+	// Number of bytes obtained from system for stack allocator
+	m["stack_sys_bytes"] = mem.StackSys
+	// Number of bytes in use by mspan structures
+	m["mspan_inuse_bytes"] = mem.MSpanInuse
+	// Number of bytes used for mspan structures obtained from system
+	m["mspan_sys_bytes"] = mem.MSpanSys
+	// Number of bytes in use by mcache structures
+	m["mcache_inuse_bytes"] = mem.MCacheInuse
+	// Number of bytes used for mcache structures obtained from system
+	m["mcache_sys_bytes"] = mem.MCacheSys
+	// Number of bytes used by the profiling bucket hash table
+	m["buck_hash_sys_bytes"] = mem.BuckHashSys
+	// Number of bytes used for garbage collection system metadata
+	m["gc_sys_bytes"] = mem.GCSys
+	// Number of bytes used for other system allocations
+	m["other_sys_bytes"] = mem.OtherSys
+	// Number of heap bytes when next garbage collection will take place
+	m["next_gc_bytes"] = mem.NextGC
+	// Number of seconds since 1970 of last garbage collection
+	m["last_gc_time_seconds"] = float64(mem.LastGC) / 1e9
+	// The fraction of this program's available CPU time used by the GC since
+	// the program started
+	m["gc_cpu_fraction"] = mem.GCCPUFraction
+
+	// Tile38 Stats
+
+	// ID of the server
+	m["tile38_id"] = c.config.serverID()
+	// The process ID of the server
+	m["tile38_pid"] = os.Getpid()
+	// Version of Tile38 running
+	m["tile38_version"] = core.Version
+	// Maximum heap size allowed
+	m["tile38_max_heap_size"] = c.config.maxMemory()
+	// Type of instance running
+	if c.config.followHost() == "" {
+		m["tile38_type"] = "leader"
+	} else {
+		m["tile38_type"] = "follower"
 	}
-	return res, nil
+	// Whether or not the server is read-only
+	m["tile38_read_only"] = c.config.readOnly()
+	// Size of pointer
+	m["tile38_pointer_size"] = (32 << uintptr(uint64(^uintptr(0))>>63)) / 8
+	// Uptime of the Tile38 server in seconds
+	m["tile38_uptime_in_seconds"] = time.Since(c.started).Seconds()
+	// Number of currently connected Tile38 clients
+	c.connsmu.RLock()
+	m["tile38_connected_clients"] = len(c.conns)
+	c.connsmu.RUnlock()
+	// Whether or not a cluster is enabled
+	m["tile38_cluster_enabled"] = false
+	// Whether or not the Tile38 AOF is enabled
+	m["tile38_aof_enabled"] = core.AppendOnly
+	// Whether or not an AOF shrink is currently in progress
+	m["tile38_aof_rewrite_in_progress"] = c.shrinking
+	// Length of time the last AOF shrink took
+	m["tile38_aof_last_rewrite_time_sec"] = c.lastShrinkDuration.get() / int(time.Second)
+	// Duration of the on-going AOF rewrite operation if any
+	var currentShrinkStart time.Time
+	if currentShrinkStart.IsZero() {
+		m["tile38_aof_current_rewrite_time_sec"] = 0
+	} else {
+		m["tile38_aof_current_rewrite_time_sec"] = time.Since(currentShrinkStart).Seconds()
+	}
+	// Total size of the AOF in bytes
+	m["tile38_aof_size"] = c.aofsz
+	// Whether or no the HTTP transport is being served
+	m["tile38_http_transport"] = c.http
+	// Number of connections accepted by the server
+	m["tile38_total_connections_received"] = c.statsTotalConns.get()
+	// Number of commands processed by the server
+	m["tile38_total_commands_processed"] = c.statsTotalCommands.get()
+	// Number of key expiration events
+	m["tile38_expired_keys"] = c.statsExpired.get()
+	// Number of connected slaves
+	m["tile38_connected_slaves"] = len(c.aofconnM)
+
+	points := 0
+	objects := 0
+	strings := 0
+	c.cols.Scan(func(key string, value interface{}) bool {
+		col := value.(*collection.Collection)
+		points += col.PointCount()
+		objects += col.Count()
+		strings += col.StringCount()
+		return true
+	})
+
+	// Number of points in the database
+	m["tile38_num_points"] = points
+	// Number of objects in the database
+	m["tile38_num_objects"] = objects
+	// Number of string in the database
+	m["tile38_num_strings"] = strings
+	// Number of collections in the database
+	m["tile38_num_collections"] = c.cols.Len()
+	// Number of hooks in the database
+	m["tile38_num_hooks"] = len(c.hooks)
+
+	avgsz := 0
+	if points != 0 {
+		avgsz = int(mem.HeapAlloc) / points
+	}
+
+	// Average point size in bytes
+	m["tile38_avg_point_size"] = avgsz
+
+	sz := 0
+	c.cols.Scan(func(key string, value interface{}) bool {
+		col := value.(*collection.Collection)
+		sz += col.TotalWeight()
+		return true
+	})
+
+	// Total in memory size of all collections
+	m["tile38_in_memory_size"] = sz
 }
 
 func (c *Server) writeInfoServer(w *bytes.Buffer) {
 	fmt.Fprintf(w, "tile38_version:%s\r\n", core.Version)
-	fmt.Fprintf(w, "redis_version:%s\r\n", core.Version)                              //Version of the Redis server
-	fmt.Fprintf(w, "uptime_in_seconds:%d\r\n", time.Now().Sub(c.started)/time.Second) //Number of seconds since Redis server start
+	fmt.Fprintf(w, "redis_version:%s\r\n", core.Version)                             // Version of the Redis server
+	fmt.Fprintf(w, "uptime_in_seconds:%d\r\n", int(time.Since(c.started).Seconds())) // Number of seconds since Redis server start
 }
 func (c *Server) writeInfoClients(w *bytes.Buffer) {
 	c.connsmu.RLock()
@@ -157,7 +334,7 @@ func boolInt(t bool) int {
 	return 0
 }
 func (c *Server) writeInfoPersistence(w *bytes.Buffer) {
-	fmt.Fprintf(w, "aof_enabled:1\r\n")
+	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(core.AppendOnly))
 	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(c.shrinking))                          // Flag indicating a AOF rewrite operation is on-going
 	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", c.lastShrinkDuration.get()/int(time.Second)) // Duration of the last AOF rewrite operation in seconds
 
