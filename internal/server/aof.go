@@ -211,6 +211,9 @@ func (server *Server) getQueueCandidates(d *commandDetails) []*Hook {
 			[]float64{rect.Max.X, rect.Max.Y},
 			func(_, _ []float64, value interface{}) bool {
 				hook := value.(*Hook)
+				if hook.Key != d.key {
+					return true
+				}
 				var found bool
 				for _, candidate := range candidates {
 					if candidate == hook {
