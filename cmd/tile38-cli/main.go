@@ -133,6 +133,10 @@ func refusedErrorString(addr string) string {
 
 var groupsM = make(map[string][]string)
 
+func jsonOK(msg []byte) bool {
+	return gjson.GetBytes(msg, "ok").Bool()
+}
+
 func main() {
 	if !parseArgs() {
 		return
@@ -335,13 +339,14 @@ func main() {
 						output = "resp"
 					}
 				case "output json":
-					if strings.HasPrefix(string(msg), `{"ok":true`) {
+					if jsonOK(msg) {
 						output = "json"
 					}
 				}
 
 				mustOutput := true
-				if oneCommand == "" && !strings.HasPrefix(string(msg), `{"ok":true`) {
+
+				if oneCommand == "" && !jsonOK(msg) {
 					var cerr connError
 					if err := json.Unmarshal(msg, &cerr); err == nil {
 						fmt.Fprintln(os.Stderr, "(error) "+cerr.Err)
@@ -361,6 +366,7 @@ func main() {
 						}
 						fmt.Fprintln(os.Stdout, string(msg))
 					} else {
+						msg = bytes.TrimSpace(msg)
 						if raw {
 							fmt.Fprintln(os.Stdout, string(msg))
 						} else {

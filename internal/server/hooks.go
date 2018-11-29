@@ -233,11 +233,9 @@ func (c *Server) cmdDelHook(msg *Message, chanCmd bool) (
 	}
 	if hook, ok := c.hooks[name]; ok && hook.channel == chanCmd {
 		hook.Close()
+		// remove hook from maps
 		delete(c.hooks, hook.Name)
 		delete(c.hooksOut, hook.Name)
-
-		d.updated = true
-
 		// remove hook from spatial index
 		if hook != nil && hook.Fence != nil && hook.Fence.obj != nil {
 			rect := hook.Fence.obj.Rect()
@@ -246,6 +244,7 @@ func (c *Server) cmdDelHook(msg *Message, chanCmd bool) (
 				[]float64{rect.Max.X, rect.Max.Y},
 				hook)
 		}
+		d.updated = true
 	}
 	d.timestamp = time.Now()
 
@@ -277,16 +276,26 @@ func (c *Server) cmdPDelHook(msg *Message, channel bool) (
 	}
 
 	count := 0
-	for name, h := range c.hooks {
-		if h.channel != channel {
+	for name, hook := range c.hooks {
+		if hook.channel != channel {
 			continue
 		}
 		match, _ := glob.Match(pattern, name)
 		if !match {
 			continue
 		}
-		h.Close()
-		delete(c.hooks, h.Name)
+		hook.Close()
+		// remove hook from maps
+		delete(c.hooks, hook.Name)
+		delete(c.hooksOut, hook.Name)
+		// remove hook from spatial index
+		if hook != nil && hook.Fence != nil && hook.Fence.obj != nil {
+			rect := hook.Fence.obj.Rect()
+			c.hookTree.Delete(
+				[]float64{rect.Min.X, rect.Min.Y},
+				[]float64{rect.Max.X, rect.Max.Y},
+				hook)
+		}
 		d.updated = true
 		count++
 	}
