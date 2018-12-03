@@ -77,11 +77,12 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 		return NOMessage, errInvalidArgument(snumPoints)
 	}
 	docmd := func(args []string) error {
-		nmsg := &Message{}
-		*nmsg = *msg
+		var nmsg Message
+		nmsg = *msg
+		nmsg._command = ""
 		nmsg.Args = args
 		var d commandDetails
-		_, d, err = c.command(nmsg, nil)
+		_, d, err = c.command(&nmsg, nil)
 		if err != nil {
 			return err
 		}
