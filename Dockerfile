@@ -1,4 +1,5 @@
-FROM alpine:3.4
+FROM alpine:3.8
+RUN apk add --no-cache ca-certificates
 
 ADD tile38-server /usr/local/bin
 ADD tile38-cli /usr/local/bin
