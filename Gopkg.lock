@@ -86,6 +86,17 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:9525d0e79ccf382e32edeef466b9a91f16eb0eebdca5971a03fad1bb3be9cd89"
+  name = "github.com/garyburd/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = ""
+  revision = "a69d19351219b6dd56f274f96d85a7014a2ec34e"
+  version = "v1.6.0"
+
+[[projects]]
   digest = "1:e26d0f8ccaf4087b93306d5e20e4816258116868ad6c6da0f2b4926c72fb92fa"
   name = "github.com/go-ini/ini"
   packages = ["."]
@@ -456,6 +467,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/eclipse/paho.mqtt.golang",
+    "github.com/garyburd/redigo/redis",
     "github.com/golang/protobuf/proto",
     "github.com/gomodule/redigo/redis",
     "github.com/mmcloughlin/geohash",
