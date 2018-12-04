@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.14.4] - 2018-12-03
+### Fixes
+- #394: Hotfix MultiPolygon intersect failure. (@contra)
+- #392: Fix TLS certs missing in Docker. (@vziukas, @s32x)
+
+### Added
+- Add extended server stats with SERVER EXT. (@s32x)
+- Add Kafka key to match notication key. (Josef Simonson)
+- Add optimized spatial index for fences
+
 ## [1.14.3] - 2018-11-20
 ### Fixes
 - Hotfix SCRIPT LOAD not executing from cli. (@rshura)
