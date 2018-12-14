@@ -164,9 +164,8 @@ You can choose a value between 1 and 8. The value 1 will result in no more than 
 <td>Sparse 4<img src="/internal/assets/sparse-4.png" width="100" height="100" border="0" alt="Search Within"></td>
 <td>Sparse 5<img src="/internal/assets/sparse-5.png" width="100" height="100" border="0" alt="Search Within"></td>
 </table>
+
 *Please note that the higher the sparse value, the slower the performance. Also, LIMIT and CURSOR are not available when using SPARSE.* 
-
-
 
 **WHERE** - This option allows for filtering out results based on [field](#fields) values. For example<br>```nearby fleet where speed 70 +inf point 33.462 -112.268 6000``` will return only the objects in the 'fleet' collection that are within the 6 km radius **and** have a field named `speed` that is greater than `70`. <br><br>Multiple WHEREs are concatenated as **and** clauses. ```WHERE speed 70 +inf WHERE age -inf 24``` would be interpreted as *speed is over 70 <b>and</b> age is less than 24.*<br><br>The default value for a field is always `0`. Thus if you do a WHERE on the field `speed` and an object does not have that field set, the server will pretend that the object does and that the value is Zero.
 
