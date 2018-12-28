@@ -64,6 +64,13 @@ func (c *Server) clearKeyExpires(key string) {
 	delete(c.expires, key)
 }
 
+// moveKeyExpires moves all items that are marked as expires from a key to a newKey.
+func (c *Server) moveKeyExpires(key, newKey string) {
+	val := c.expires[key]
+	delete(c.expires, key)
+	c.expires[newKey] = val
+}
+
 // expireAt marks an item as expires at a specific time.
 func (c *Server) expireAt(key, id string, at time.Time) {
 	m := c.expires[key]

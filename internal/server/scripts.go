@@ -575,6 +575,10 @@ func (c *Server) commandInScript(msg *Message) (
 		res, d, err = c.cmdDrop(msg)
 	case "expire":
 		res, d, err = c.cmdExpire(msg)
+	case "rename":
+		res, d, err = c.cmdRename(msg, false)
+	case "renamenx":
+		res, d, err = c.cmdRename(msg, true)
 	case "persist":
 		res, d, err = c.cmdPersist(msg)
 	case "ttl":
@@ -642,7 +646,8 @@ func (c *Server) luaTile38AtomicRW(msg *Message) (resp.Value, error) {
 	switch msg.Command() {
 	default:
 		return resp.NullValue(), errCmdNotSupported
-	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel":
+	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel",
+		"rename", "renamenx":
 		// write operations
 		write = true
 		if c.config.followHost() != "" {
@@ -678,7 +683,9 @@ func (c *Server) luaTile38AtomicRO(msg *Message) (resp.Value, error) {
 	default:
 		return resp.NullValue(), errCmdNotSupported
 
-	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel":
+	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel",
+		"rename", "renamenx":
+		// write operations
 		return resp.NullValue(), errReadOnly
 
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks", "search",
@@ -704,7 +711,8 @@ func (c *Server) luaTile38NonAtomic(msg *Message) (resp.Value, error) {
 	switch msg.Command() {
 	default:
 		return resp.NullValue(), errCmdNotSupported
-	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel":
+	case "set", "del", "drop", "fset", "flushdb", "expire", "persist", "jset", "pdel",
+		"rename", "renamenx":
 		// write operations
 		write = true
 		c.mu.Lock()
