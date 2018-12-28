@@ -470,26 +470,27 @@ func (server *Server) cmdRename(msg *Message, nx bool) (res resp.Value, d comman
 		err = errInvalidNumberOfArguments
 		return
 	}
+	col := server.getCol(d.key)
+	if col == nil {
+		err = errKeyNotFound
+		return
+	}
 	for _, h := range server.hooks {
 		if h.Key == d.key || h.Key == d.newKey {
 			err = errKeyHasHooksSet
 			return
 		}
 	}
-	col := server.getCol(d.key)
-	if col == nil {
-		err = errKeyNotFound
-		return
-	}
 	d.command = "rename"
-	d.updated = true
 	newCol := server.getCol(d.newKey)
-	if newCol != nil {
-		if nx {
-			d.updated = false
-		} else {
-			server.deleteCol(d.newKey)
-		}
+	if newCol == nil {
+		d.updated = true
+	} else if nx {
+		d.updated = false
+	} else {
+		server.deleteCol(d.newKey)
+		server.clearKeyExpires(d.newKey)
+		d.updated = true
 	}
 	if d.updated {
 		server.deleteCol(d.key)
@@ -501,7 +502,9 @@ func (server *Server) cmdRename(msg *Message, nx bool) (res resp.Value, d comman
 	case JSON:
 		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Now().Sub(start).String() + "\"}")
 	case RESP:
-		if d.updated {
+		if !nx {
+			res = resp.SimpleStringValue("OK")
+		} else if d.updated {
 			res = resp.IntegerValue(1)
 		} else {
 			res = resp.IntegerValue(0)
