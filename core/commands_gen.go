@@ -448,6 +448,38 @@ var commandsJSON = `{
     "since": "1.0.0",
     "group": "keys"
   },
+  "RENAME": {
+    "summary": "Rename a key to be stored under a different name.",
+    "complexity": "O(1)",
+    "arguments": [
+      {
+        "name": "key",
+        "type": "string"
+      },
+      {
+        "name": "newkey",
+        "type": "string"
+      }
+    ],
+    "since": "1.14.5",
+    "group": "keys"
+  },
+  "RENAMENX": {
+    "summary": "Rename a key to be stored under a different name, if a new key does not exist.",
+    "complexity": "O(1)",
+    "arguments": [
+      {
+        "name": "key",
+        "type": "string"
+      },
+      {
+        "name": "newkey",
+        "type": "string"
+      }
+    ],
+    "since": "1.14.5",
+    "group": "keys"
+  },
   "KEYS": {
     "summary": "Finds all keys matching the given pattern",
     "complexity": "O(N) where N is the number of keys in the database",
@@ -1723,7 +1755,7 @@ var commandsJSON = `{
   },
   "EVAL":{
     "summary": "Evaluates a Lua script",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "script",
@@ -1751,7 +1783,7 @@ var commandsJSON = `{
   },
   "EVALSHA":{
     "summary": "Evaluates a Lua script cached on the server by its SHA1 digest",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "sha1",
@@ -1779,7 +1811,7 @@ var commandsJSON = `{
   },
   "EVALRO":{
     "summary": "Evaluates a read-only Lua script",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "script",
@@ -1807,7 +1839,7 @@ var commandsJSON = `{
   },
   "EVALROSHA":{
     "summary": "Evaluates a read-only Lua script cached on the server by its SHA1 digest",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "script",
@@ -1835,7 +1867,7 @@ var commandsJSON = `{
   },
   "EVALNA":{
     "summary": "Evaluates a Lua script in a non-atomic fashion",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "script",
@@ -1863,7 +1895,7 @@ var commandsJSON = `{
   },
   "EVALNASHA":{
     "summary": "Evaluates, in a non-atomic fashion, a Lua script cached on the server by its SHA1 digest",
-    "complecxity": "Depends on the evaluated script",
+    "complexity": "Depends on the evaluated script",
     "arguments": [
       {
         "name": "sha1",
