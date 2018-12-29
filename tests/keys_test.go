@@ -18,6 +18,8 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "BOUNDS", keys_BOUNDS_test)
 	runStep(t, mc, "DEL", keys_DEL_test)
 	runStep(t, mc, "DROP", keys_DROP_test)
+	runStep(t, mc, "RENAME", keys_RENAME_test)
+	runStep(t, mc, "RENAMENX", keys_RENAMENX_test)
 	runStep(t, mc, "EXPIRE", keys_EXPIRE_test)
 	runStep(t, mc, "FSET", keys_FSET_test)
 	runStep(t, mc, "GET", keys_GET_test)
@@ -63,6 +65,40 @@ func keys_DROP_test(mc *mockServer) error {
 		{"SCAN", "mykey", "COUNT"}, {0},
 		{"DROP", "mykey"}, {0},
 		{"SCAN", "mykey", "COUNT"}, {0},
+	})
+}
+func keys_RENAME_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "myid1", "HASH", "9my5xp7"}, {"OK"},
+		{"SET", "mykey", "myid2", "HASH", "9my5xp8"}, {"OK"},
+		{"SCAN", "mykey", "COUNT"}, {2},
+		{"RENAME", "mykey", "mynewkey"}, {"OK"},
+		{"SCAN", "mykey", "COUNT"}, {0},
+		{"SCAN", "mynewkey", "COUNT"}, {2},
+		{"SET", "mykey", "myid3", "HASH", "9my5xp7"}, {"OK"},
+		{"RENAME", "mykey", "mynewkey"}, {"OK"},
+		{"SCAN", "mykey", "COUNT"}, {0},
+		{"SCAN", "mynewkey", "COUNT"}, {1},
+		{"RENAME", "foo", "mynewkey"}, {"ERR key not found"},
+		{"SCAN", "mynewkey", "COUNT"}, {1},
+	})
+}
+func keys_RENAMENX_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "myid1", "HASH", "9my5xp7"}, {"OK"},
+		{"SET", "mykey", "myid2", "HASH", "9my5xp8"}, {"OK"},
+		{"SCAN", "mykey", "COUNT"}, {2},
+		{"RENAMENX", "mykey", "mynewkey"}, {1},
+		{"SCAN", "mykey", "COUNT"}, {0},
+		{"DROP", "mykey"}, {0},
+		{"SCAN", "mykey", "COUNT"}, {0},
+		{"SCAN", "mynewkey", "COUNT"}, {2},
+		{"SET", "mykey", "myid3", "HASH", "9my5xp7"}, {"OK"},
+		{"RENAMENX", "mykey", "mynewkey"}, {0},
+		{"SCAN", "mykey", "COUNT"}, {1},
+		{"SCAN", "mynewkey", "COUNT"}, {2},
+		{"RENAMENX", "foo", "mynewkey"}, {"ERR key not found"},
+		{"SCAN", "mynewkey", "COUNT"}, {2},
 	})
 }
 func keys_EXPIRE_test(mc *mockServer) error {

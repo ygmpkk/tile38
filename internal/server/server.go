@@ -49,6 +49,7 @@ const (
 type commandDetails struct {
 	command   string            // client command, like "SET" or "DEL"
 	key, id   string            // collection key and object id of object
+	newKey    string            // new key, for RENAME command
 	fmap      map[string]int    // map of field names to value indexes
 	obj       geojson.Object    // new object
 	fields    []float64         // array of field values
@@ -934,7 +935,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	case "set", "del", "drop", "fset", "flushdb",
 		"setchan", "pdelchan", "delchan",
 		"sethook", "pdelhook", "delhook",
-		"expire", "persist", "jset", "pdel":
+		"expire", "persist", "jset", "pdel", "rename", "renamenx":
 		// write operations
 		write = true
 		server.mu.Lock()
@@ -1072,6 +1073,10 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, d, err = server.cmdDrop(msg)
 	case "flushdb":
 		res, d, err = server.cmdFlushDB(msg)
+	case "rename":
+		res, d, err = server.cmdRename(msg, false)
+	case "renamenx":
+		res, d, err = server.cmdRename(msg, true)
 
 	case "sethook":
 		res, d, err = server.cmdSetHook(msg, false)
