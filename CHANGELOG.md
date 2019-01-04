@@ -9,7 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Add extended server stats with SERVER EXT. (@s32x)
-- Add Kafka key to match notication key. (Josef Simonson)
+- Add Kafka key to match notication key. (@Joey92)
 - Add optimized spatial index for fences
 
 ## [1.14.3] - 2018-11-20
