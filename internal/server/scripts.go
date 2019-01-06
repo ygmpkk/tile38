@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/log"
 	"github.com/yuin/gopher-lua"
@@ -142,12 +143,22 @@ func (pl *lStatePool) New() *lua.LState {
 		ls.Push(lua.LString(shaSum))
 		return 1
 	}
+	distanceTo := func(ls *lua.LState) int {
+		dt := geo.DistanceTo(
+			float64(ls.ToNumber(1)),
+			float64(ls.ToNumber(2)),
+			float64(ls.ToNumber(3)),
+			float64(ls.ToNumber(4)))
+		ls.Push(lua.LNumber(dt))
+		return 1
+	}
 	var exports = map[string]lua.LGFunction{
 		"call":         call,
 		"pcall":        pcall,
 		"error_reply":  errorReply,
 		"status_reply": statusReply,
 		"sha1hex":      sha1hex,
+		"distance_to":	distanceTo,
 	}
 	L.SetGlobal("tile38", L.SetFuncs(L.NewTable(), exports))
 

@@ -24,6 +24,8 @@ func scripts_BASIC_test(mc *mockServer) error {
 		{"EVAL", "return KEYS[1] .. ' only'", 1, "key1"}, {"key1 only"},
 		{"EVAL", "return KEYS[1] .. ' and ' .. ARGV[1]", 1, "key1", "arg1"}, {"key1 and arg1"},
 		{"EVAL", "return ARGV[1] .. ' and ' .. ARGV[2]", 0, "arg1", "arg2"}, {"arg1 and arg2"},
+		{"EVAL", "return tile38.sha1hex('asdf')", 0}, {"3da541559918a808c2402bba5012f6c60b27661c"},
+		{"EVAL", "return tile38.distance_to(37.7341129, -122.4408378, 37.733, -122.43)", 0}, {"961"},
 	})
 }
 
