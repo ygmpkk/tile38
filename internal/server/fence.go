@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/tile38/internal/glob"
@@ -356,15 +357,20 @@ func fenceMatchRoam(
 	c *Server, fence *liveFenceSwitches,
 	tkey, tid string, obj geojson.Object,
 ) (nearbys, faraways []roamMatch) {
-
 	col := c.getCol(fence.roam.key)
 	if col == nil {
 		return
 	}
 	prevNearbys := fence.roam.nearbys[tid]
 	var newNearbys map[string]bool
-
-	col.Intersects(obj, 0, nil, func(
+	center := obj.Center()
+	minLat, minLon, maxLat, maxLon :=
+		geo.RectFromCenter(center.Y, center.X, fence.roam.meters)
+	rect := geometry.Rect{
+		Min: geometry.Point{X: minLon, Y: minLat},
+		Max: geometry.Point{X: maxLon, Y: maxLat},
+	}
+	col.Intersects(geojson.NewRect(rect), 0, nil, func(
 		id string, obj2 geojson.Object, fields []float64,
 	) bool {
 		if c.hasExpired(fence.roam.key, id) {
@@ -395,6 +401,7 @@ func fenceMatchRoam(
 			obj:    obj2,
 			meters: obj.Distance(obj2),
 		}
+
 		if !prev || !fence.nodwell {
 			// brand new "nearby"
 			nearbys = append(nearbys, match)
