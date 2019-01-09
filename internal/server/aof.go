@@ -260,8 +260,12 @@ func (server *Server) queueHooks(d *commandDetails) error {
 	}
 
 	// Sort both message channel and webhook message slices
-	sortMsgs(cmsgs)
-	sortMsgs(wmsgs)
+	if len(cmsgs) > 1 {
+		sortMsgs(cmsgs)
+	}
+	if len(wmsgs) > 1 {
+		sortMsgs(wmsgs)
+	}
 
 	// Publish all channel messages if any exist
 	if len(cmsgs) > 0 {
@@ -298,8 +302,9 @@ func (server *Server) queueHooks(d *commandDetails) error {
 	return nil
 }
 
+// sortMsgs sorts passed notification messages by their detect and hook fields
 func sortMsgs(msgs []string) {
-	sort.Slice(msgs, func(i, j int) bool {
+	sort.SliceStable(msgs, func(i, j int) bool {
 		detectI := msgDetectCode(gjson.Get(msgs[i], "detect").String())
 		detectJ := msgDetectCode(gjson.Get(msgs[j], "detect").String())
 		if detectI < detectJ {
@@ -314,8 +319,9 @@ func sortMsgs(msgs []string) {
 	})
 }
 
-func msgDetectCode(msg string) int {
-	switch msg {
+// msgDetectCode returns a weight value for the passed detect value
+func msgDetectCode(detect string) int {
+	switch detect {
 	case "exit":
 		return 1
 	case "outside":
