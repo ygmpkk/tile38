@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/log"
@@ -232,34 +234,48 @@ func (server *Server) getQueueCandidates(d *commandDetails) []*Hook {
 }
 
 func (server *Server) queueHooks(d *commandDetails) error {
-	// big list of all of the messages
-	var hmsgs []string
-	var hooks []*Hook
+	// Create the slices that will store all messages and hooks
+	var cmsgs, wmsgs []string
+	var whooks []*Hook
 
+	// Compile a slice of potential hook recipients
 	candidates := server.getQueueCandidates(d)
 	for _, hook := range candidates {
-		// match the fence
+		// Calculate all matching fence messages for all candidates and append
+		// them to the appropriate message slice
 		msgs := FenceMatch(hook.Name, hook.ScanWriter, hook.Fence, hook.Metas, d)
 		if len(msgs) > 0 {
 			if hook.channel {
-				server.Publish(hook.Name, msgs...)
+				cmsgs = append(cmsgs, msgs...)
 			} else {
-				// append each msg to the big list
-				hmsgs = append(hmsgs, msgs...)
-				hooks = append(hooks, hook)
+				wmsgs = append(wmsgs, msgs...)
+				whooks = append(whooks, hook)
 			}
 		}
 	}
-	if len(hmsgs) == 0 {
+
+	// Return nil if there are no messages to be sent
+	if len(cmsgs)+len(wmsgs) == 0 {
 		return nil
 	}
 
-	// queue the message in the buntdb database
+	// Sort both message channel and webhook message slices
+	sortMsgs(cmsgs)
+	sortMsgs(wmsgs)
+
+	// Publish all channel messages if any exist
+	if len(cmsgs) > 0 {
+		for _, m := range cmsgs {
+			server.Publish(gjson.Get(m, "hook").String(), m)
+		}
+	}
+
+	// Queue the webhook messages in the buntdb database
 	err := server.qdb.Update(func(tx *buntdb.Tx) error {
-		for _, msg := range hmsgs {
+		for _, msg := range wmsgs {
 			server.qidx++ // increment the log id
 			key := hookLogPrefix + uint64ToString(server.qidx)
-			_, _, err := tx.Set(key, string(msg), hookLogSetDefaults)
+			_, _, err := tx.Set(key, msg, hookLogSetDefaults)
 			if err != nil {
 				return err
 			}
@@ -276,10 +292,41 @@ func (server *Server) queueHooks(d *commandDetails) error {
 	}
 	// all the messages have been queued.
 	// notify the hooks
-	for _, hook := range hooks {
+	for _, hook := range whooks {
 		hook.Signal()
 	}
 	return nil
+}
+
+func sortMsgs(msgs []string) {
+	sort.Slice(msgs, func(i, j int) bool {
+		detectI := msgDetectCode(gjson.Get(msgs[i], "detect").String())
+		detectJ := msgDetectCode(gjson.Get(msgs[j], "detect").String())
+		if detectI < detectJ {
+			return true
+		}
+		if detectI > detectJ {
+			return false
+		}
+		hookI := gjson.Get(msgs[i], "hook").String()
+		hookJ := gjson.Get(msgs[j], "hook").String()
+		return hookI < hookJ
+	})
+}
+
+func msgDetectCode(msg string) int {
+	switch msg {
+	case "exit":
+		return 1
+	case "outside":
+		return 2
+	case "enter":
+		return 3
+	case "inside":
+		return 4
+	default:
+		return 0
+	}
 }
 
 // Converts string to an integer
