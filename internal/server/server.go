@@ -183,6 +183,10 @@ func Serve(host string, port int, dir string, http bool) error {
 	if err == nil {
 		server.geomParseOpts.IndexChildren = int(n)
 	}
+	requireValid := os.Getenv("REQUIREVALID")
+	if requireValid != "" {
+		server.geomParseOpts.RequireValid = true
+	}
 	indexKind := os.Getenv("T38IDXGEOMKIND")
 	switch indexKind {
 	default:
