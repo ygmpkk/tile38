@@ -18,9 +18,15 @@ import (
 )
 
 func subTestFence(t *testing.T, mc *mockServer) {
+	// Standard
 	runStep(t, mc, "basic", fence_basic_test)
 	runStep(t, mc, "channel message order", fence_channel_message_order_test)
 	runStep(t, mc, "detect inside,outside", fence_detect_inside_test)
+
+	// Roaming
+	runStep(t, mc, "roaming live", fence_roaming_live_test)
+	runStep(t, mc, "roaming channel", fence_roaming_channel_test)
+	runStep(t, mc, "roaming webhook", fence_roaming_webhook_test)
 }
 
 type fenceReader struct {
@@ -205,7 +211,7 @@ func fence_channel_message_order_test(mc *mockServer) error {
 		finalErr <- nil
 	}()
 
-	// Create the base connection for setting up points and geofences geofences
+	// Create the base connection for setting up points and geofences
 	bc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port))
 	if err != nil {
 		return err
