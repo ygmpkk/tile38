@@ -29,7 +29,7 @@ func (s String) Empty() bool {
 
 // Valid ...
 func (s String) Valid() bool {
-	return s.Valid()
+	return false
 }
 
 // Rect ...
