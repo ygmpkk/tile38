@@ -166,7 +166,7 @@ func (server *Server) cmdSearchArgs(
 			err = errInvalidNumberOfArguments
 			return
 		}
-		s.obj, err = geojson.Parse(obj, nil)
+		s.obj, err = geojson.Parse(obj, &server.geomParseOpts)
 		if err != nil {
 			return
 		}

@@ -27,6 +27,11 @@ func (s String) Empty() bool {
 	return true
 }
 
+// Valid ...
+func (s String) Valid() bool {
+	return s.Valid()
+}
+
 // Rect ...
 func (s String) Rect() geometry.Rect {
 	return geometry.Rect{}
