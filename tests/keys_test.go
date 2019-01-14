@@ -162,6 +162,7 @@ func keys_KEYS_test(mc *mockServer) error {
 		{"KEYS", "*1*"}, {"[mykey11 mykey31 mykey310]"},
 		{"KEYS", "mykey"}, {"[]"},
 		{"KEYS", "mykey31"}, {"[mykey31]"},
+		{"KEYS", "mykey[^3]*"}, {"[mykey11 mykey22 mykey42]"},
 	})
 }
 func keys_PERSIST_test(mc *mockServer) error {
