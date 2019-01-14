@@ -142,6 +142,8 @@ if [ "$1" == "package" ]; then
 	package "Mac" "darwin" "amd64"
 	package "Linux" "linux" "amd64"
 	package "FreeBSD" "freebsd" "amd64"
+	package "ARM" "linux" "arm"
+	package "ARM64" "linux" "arm64"
 	exit
 fi
 
