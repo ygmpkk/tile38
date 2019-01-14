@@ -149,14 +149,19 @@ func keys_KEYS_test(mc *mockServer) error {
 		{"SET", "mykey11", "myid3", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`}, {"OK"},
 		{"SET", "mykey42", "myid2", "HASH", "9my5xp7"}, {"OK"},
 		{"SET", "mykey31", "myid4", "STRING", "value"}, {"OK"},
-		{"KEYS", "*"}, {"[mykey11 mykey22 mykey31 mykey42]"},
-		{"KEYS", "*key*"}, {"[mykey11 mykey22 mykey31 mykey42]"},
-		{"KEYS", "mykey*"}, {"[mykey11 mykey22 mykey31 mykey42]"},
+		{"SET", "mykey310", "myid5", "STRING", "value"}, {"OK"},
+		{"KEYS", "*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
+		{"KEYS", "*key*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
+		{"KEYS", "mykey*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
 		{"KEYS", "mykey4*"}, {"[mykey42]"},
 		{"KEYS", "mykey*1"}, {"[mykey11 mykey31]"},
+		{"KEYS", "mykey*1*"}, {"[mykey11 mykey31 mykey310]"},
+		{"KEYS", "mykey*10"}, {"[mykey310]"},
 		{"KEYS", "mykey*2"}, {"[mykey22 mykey42]"},
 		{"KEYS", "*2"}, {"[mykey22 mykey42]"},
-		{"KEYS", "*1*"}, {"[mykey11 mykey31]"},
+		{"KEYS", "*1*"}, {"[mykey11 mykey31 mykey310]"},
+		{"KEYS", "mykey"}, {"[]"},
+		{"KEYS", "mykey31"}, {"[mykey31]"},
 	})
 }
 func keys_PERSIST_test(mc *mockServer) error {

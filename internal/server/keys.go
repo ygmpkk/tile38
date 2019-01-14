@@ -27,6 +27,10 @@ func (c *Server) cmdKeys(msg *Message) (res resp.Value, err error) {
 	if msg.OutputType == JSON {
 		wr.WriteString(`{"ok":true,"keys":[`)
 	}
+	var wild bool
+	if strings.Contains(pattern, "*") {
+		wild = true
+	}
 	var everything bool
 	var greater bool
 	var greaterPivot string
@@ -58,30 +62,29 @@ func (c *Server) cmdKeys(msg *Message) (res resp.Value, err error) {
 			case RESP:
 				vals = append(vals, resp.StringValue(key))
 			}
+
+			// If no more than one match is expected, stop searching
+			if !wild {
+				return false
+			}
 		}
 		return true
 	}
+
+	// TODO: This can be further optimized by using glob.Parse and limits
 	if pattern == "*" {
 		everything = true
 		c.cols.Scan(iterator)
-	} else {
-		if strings.HasSuffix(pattern, "*") {
-			greaterPivot = pattern[:len(pattern)-1]
-			if glob.IsGlob(greaterPivot) {
-				greater = false
-				c.cols.Scan(iterator)
-			} else {
-				greater = true
-				c.cols.Ascend(greaterPivot, iterator)
-			}
-		} else if glob.IsGlob(pattern) {
-			greater = false
+	} else if strings.HasSuffix(pattern, "*") {
+		greaterPivot = pattern[:len(pattern)-1]
+		if glob.IsGlob(greaterPivot) {
 			c.cols.Scan(iterator)
 		} else {
 			greater = true
-			greaterPivot = pattern
 			c.cols.Ascend(greaterPivot, iterator)
 		}
+	} else {
+		c.cols.Scan(iterator)
 	}
 	if msg.OutputType == JSON {
 		wr.WriteString(`],"elapsed":"` + time.Now().Sub(start).String() + "\"}")
