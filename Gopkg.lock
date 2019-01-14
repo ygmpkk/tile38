@@ -231,19 +231,19 @@
   revision = "b67b1b8c1658cb01502801c14e33c61e6c4cbb95"
 
 [[projects]]
-  digest = "1:1f7026c4840ae2a06e892ffcad5a36416de0a7e5be33ce65449435fd8f15414b"
+  digest = "1:91acf4d86b348c1f1832336836035373b047ffcb16a0fde066bd531bbe3452b2"
   name = "github.com/tidwall/evio"
   packages = [
     ".",
     "internal",
   ]
   pruneopts = ""
-  revision = "ea610eff86981249be649bbdcedbf409a2db2173"
-  version = "v1.0.1"
+  revision = "b353be3a765785dafabbb63a7b25aadec3533946"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:24cb019229d3a4d0febd3934800b3759df35c722e93d63d9cfe32015d7abfec3"
+  digest = "1:0a6da4a08925415ab3326e140985ec628417903637461e9b68c07a03dfcc918d"
   name = "github.com/tidwall/geojson"
   packages = [
     ".",
@@ -251,7 +251,7 @@
     "geometry",
   ]
   pruneopts = ""
-  revision = "ade1bcf7b6db0e5ffb0605fea152254d2c002d6a"
+  revision = "d0a98d02b48e887b4de454d80c61ef5fb9312482"
 
 [[projects]]
   digest = "1:3ddca2bd5496c6922a2a9e636530e178a43c2a534ea6634211acdc7d10222794"
@@ -472,6 +472,7 @@
     "github.com/tidwall/gjson",
     "github.com/tidwall/lotsa",
     "github.com/tidwall/match",
+    "github.com/tidwall/pretty",
     "github.com/tidwall/redbench",
     "github.com/tidwall/redcon",
     "github.com/tidwall/resp",
