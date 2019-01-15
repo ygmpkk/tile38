@@ -92,17 +92,26 @@ func (c *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 		switch msg.OutputType {
 		case JSON:
 			// Create a map of all key/value info fields
-			m := make(map[string]interface{})
-			res := strings.TrimSpace(string(buf))
-			for _, kv := range strings.Split(res, " ") {
-				kv = strings.TrimSpace(kv)
-				if split := strings.SplitN(kv, "=", 2); len(split) == 2 {
-					m[split[0]] = tryParseType(split[1])
+			var cmap []map[string]interface{}
+			clients := strings.Split(string(buf), "\n")
+			for _, client := range clients {
+				client = strings.TrimSpace(client)
+				m := make(map[string]interface{})
+				var hasFields bool
+				for _, kv := range strings.Split(client, " ") {
+					kv = strings.TrimSpace(kv)
+					if split := strings.SplitN(kv, "=", 2); len(split) == 2 {
+						hasFields = true
+						m[split[0]] = tryParseType(split[1])
+					}
+				}
+				if hasFields {
+					cmap = append(cmap, m)
 				}
 			}
 
 			// Marshal the map and use the output in the JSON response
-			data, err := json.Marshal(m)
+			data, err := json.Marshal(cmap)
 			if err != nil {
 				return NOMessage, err
 			}
