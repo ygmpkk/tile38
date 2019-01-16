@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -90,7 +91,31 @@ func (c *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 		}
 		switch msg.OutputType {
 		case JSON:
-			return resp.StringValue(`{"ok":true,"list":` + jsonString(string(buf)) + `,"elapsed":"` + time.Now().Sub(start).String() + "\"}"), nil
+			// Create a map of all key/value info fields
+			var cmap []map[string]interface{}
+			clients := strings.Split(string(buf), "\n")
+			for _, client := range clients {
+				client = strings.TrimSpace(client)
+				m := make(map[string]interface{})
+				var hasFields bool
+				for _, kv := range strings.Split(client, " ") {
+					kv = strings.TrimSpace(kv)
+					if split := strings.SplitN(kv, "=", 2); len(split) == 2 {
+						hasFields = true
+						m[split[0]] = tryParseType(split[1])
+					}
+				}
+				if hasFields {
+					cmap = append(cmap, m)
+				}
+			}
+
+			// Marshal the map and use the output in the JSON response
+			data, err := json.Marshal(cmap)
+			if err != nil {
+				return NOMessage, err
+			}
+			return resp.StringValue(`{"ok":true,"list":` + string(data) + `,"elapsed":"` + time.Now().Sub(start).String() + "\"}"), nil
 		case RESP:
 			return resp.BytesValue(buf), nil
 		}

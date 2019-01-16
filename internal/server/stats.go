@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -414,7 +415,19 @@ func (c *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 
 	switch msg.OutputType {
 	case JSON:
-		data, err := json.Marshal(w.String())
+		// Create a map of all key/value info fields
+		m := make(map[string]interface{})
+		for _, kv := range strings.Split(w.String(), "\r\n") {
+			kv = strings.TrimSpace(kv)
+			if !strings.HasPrefix(kv, "#") {
+				if split := strings.SplitN(kv, ":", 2); len(split) == 2 {
+					m[split[0]] = tryParseType(split[1])
+				}
+			}
+		}
+
+		// Marshal the map and use the output in the JSON response
+		data, err := json.Marshal(m)
 		if err != nil {
 			return NOMessage, err
 		}
@@ -422,9 +435,25 @@ func (c *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 	case RESP:
 		res = resp.BytesValue(w.Bytes())
 	}
-
 	return res, nil
 }
+
+// tryParseType attempts to parse the passed string as an integer, float64 and
+// a bool returning any successful parsed values. It returns the passed string
+// if all tries fail
+func tryParseType(str string) interface{} {
+	if v, err := strconv.ParseInt(str, 10, 64); err == nil {
+		return v
+	}
+	if v, err := strconv.ParseFloat(str, 64); err == nil {
+		return v
+	}
+	if v, err := strconv.ParseBool(str); err == nil {
+		return v
+	}
+	return str
+}
+
 func respValuesSimpleMap(m map[string]interface{}) []resp.Value {
 	var keys []string
 	for key := range m {
