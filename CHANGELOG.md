@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.0] - 2019-01-16
+### Fixes
+- #403: JSON Output for INFO and CLIENT (@s32x)
+- #401: Fixing KEYS command (@s32x)
+- #398: Ensuring channel publish order (@s32x)
+- d7d0baa: Fix roam fence missing
+
+### Added
+- #402: Adding ARM and ARM64 packages (@s32x)
+- #399: Add RequireValid and update geojson dependency (@stevelacy)
+- #396: Add distance_to function to the tile38 namespace in lua. (@rshura)
+- #395: Add RENAME and RENAMENX commands. (@rshura)
+
 ## [1.14.4] - 2018-12-03
 ### Fixes
 - #394: Hotfix MultiPolygon intersect failure. (@contra)
