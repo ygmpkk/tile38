@@ -352,9 +352,27 @@ func (c *Server) writeInfoStats(w *bytes.Buffer) {
 	fmt.Fprintf(w, "total_commands_processed:%d\r\n", c.statsTotalCommands.get()) // Total number of commands processed by the server
 	fmt.Fprintf(w, "expired_keys:%d\r\n", c.statsExpired.get())                   // Total number of key expiration events
 }
+
+// writeInfoReplication writes all replication data to the 'info' response
 func (c *Server) writeInfoReplication(w *bytes.Buffer) {
+	if c.config.followHost() != "" {
+		fmt.Fprintf(w, "role:slave\r\n")
+		fmt.Fprintf(w, "master_host:%s\r\n", c.config.followHost())
+		fmt.Fprintf(w, "master_port:%v\r\n", c.config.followPort())
+	} else {
+		fmt.Fprintf(w, "role:master\r\n")
+		var i int
+		for _, cc := range c.conns {
+			if cc.replPort != 0 {
+				fmt.Fprintf(w, "slave%v:ip=%s,port=%v,state=online\r\n", i,
+					strings.Split(cc.remoteAddr, ":")[0], cc.replPort)
+				i++
+			}
+		}
+	}
 	fmt.Fprintf(w, "connected_slaves:%d\r\n", len(c.aofconnM)) // Number of connected slaves
 }
+
 func (c *Server) writeInfoCluster(w *bytes.Buffer) {
 	fmt.Fprintf(w, "cluster_enabled:0\r\n")
 }
