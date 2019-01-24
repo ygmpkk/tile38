@@ -17,6 +17,7 @@ import (
 // Client is an remote connection into to Tile38
 type Client struct {
 	id         int              // unique id
+	replPort   int              // the known replication port for follower connections
 	authd      bool             // client has been authenticated
 	outputType Type             // Null, JSON, or RESP
 	remoteAddr string           // original remote address

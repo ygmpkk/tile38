@@ -970,7 +970,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		if server.config.followHost() != "" && !server.fcuponce {
 			return writeErr("catching up to leader")
 		}
-	case "follow", "readonly", "config":
+	case "follow", "slaveof", "replconf", "readonly", "config":
 		// system operations
 		// does not write to aof, but requires a write lock.
 		server.mu.Lock()
@@ -1081,7 +1081,6 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, d, err = server.cmdRename(msg, false)
 	case "renamenx":
 		res, d, err = server.cmdRename(msg, true)
-
 	case "sethook":
 		res, d, err = server.cmdSetHook(msg, false)
 	case "delhook":
@@ -1090,7 +1089,6 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, d, err = server.cmdPDelHook(msg, false)
 	case "hooks":
 		res, err = server.cmdHooks(msg, false)
-
 	case "setchan":
 		res, d, err = server.cmdSetHook(msg, true)
 	case "delchan":
@@ -1099,7 +1097,6 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, d, err = server.cmdPDelHook(msg, true)
 	case "chans":
 		res, err = server.cmdHooks(msg, true)
-
 	case "expire":
 		res, d, err = server.cmdExpire(msg)
 	case "persist":
@@ -1124,8 +1121,10 @@ func (server *Server) command(msg *Message, client *Client) (
 			return
 		}
 		res, err = server.cmdSleep(msg)
-	case "follow":
+	case "follow", "slaveof":
 		res, err = server.cmdFollow(msg)
+	case "replconf":
+		res, err = server.cmdReplConf(msg, client)
 	case "readonly":
 		res, err = server.cmdReadOnly(msg)
 	case "stats":

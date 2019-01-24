@@ -96,6 +96,41 @@ func (c *Server) cmdFollow(msg *Message) (res resp.Value, err error) {
 	return OKMessage(msg, start), nil
 }
 
+// cmdReplConf is a command handler that sets replication configuration info
+func (c *Server) cmdReplConf(msg *Message, client *Client) (res resp.Value, err error) {
+	start := time.Now()
+	vs := msg.Args[1:]
+	var ok bool
+	var cmd, val string
+
+	// Parse the message
+	if vs, cmd, ok = tokenval(vs); !ok || cmd == "" {
+		return NOMessage, errInvalidNumberOfArguments
+	}
+	if vs, val, ok = tokenval(vs); !ok || val == "" {
+		return NOMessage, errInvalidNumberOfArguments
+	}
+
+	// Switch on the command received
+	switch cmd {
+	case "listening-port":
+		// Parse the port as an integer
+		port, err := strconv.Atoi(val)
+		if err != nil {
+			return NOMessage, errInvalidArgument(val)
+		}
+
+		// Apply the replication port to the client and return
+		for _, c := range c.conns {
+			if c.remoteAddr == client.remoteAddr {
+				c.replPort = port
+				return OKMessage(msg, start), nil
+			}
+		}
+	}
+	return NOMessage, fmt.Errorf("cannot find follower")
+}
+
 func doServer(conn *RESPConn) (map[string]string, error) {
 	v, err := conn.Do("server")
 	if err != nil {
@@ -191,7 +226,22 @@ func (c *Server) followStep(host string, port int, followc int) error {
 		return err
 	}
 
-	v, err := conn.Do("aof", pos)
+	// Send the replication port to the leader
+	v, err := conn.Do("replconf", "listening-port", c.port)
+	if err != nil {
+		return err
+	}
+	if v.Error() != nil {
+		return v.Error()
+	}
+	if v.String() != "OK" {
+		return errors.New("invalid response to replconf request")
+	}
+	if core.ShowDebugMessages {
+		log.Debug("follow:", addr, ":replconf")
+	}
+
+	v, err = conn.Do("aof", pos)
 	if err != nil {
 		return err
 	}
