@@ -57,8 +57,10 @@ func (conn *HTTPConn) Send(msg string) error {
 	if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
 		return err
 	}
-	// we only care about the 200 response
-	if resp.StatusCode != 200 {
+	// Only allow responses with status code 200, 201, and 202
+	if resp.StatusCode != http.StatusOK &&
+		resp.StatusCode != http.StatusCreated &&
+		resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("invalid status: %s", resp.Status)
 	}
 	return nil
