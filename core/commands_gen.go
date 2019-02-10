@@ -1953,12 +1953,25 @@ var commandsJSON = `{
     "group": "scripting"
   },
   "TEST":{
-    "summary": "Performs spatial tests",
+    "summary": "Performs spatial test",
     "complexity": "One test per command, complexity depends on the test",
     "arguments": [
       {
         "name": "area1",
         "enumargs": [
+          {
+            "name": "POINT",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              }
+            ]
+          },
           {
             "name": "GET",
             "arguments": [
@@ -2076,6 +2089,19 @@ var commandsJSON = `{
       {
         "name": "area2",
         "enumargs": [
+          {
+            "name": "POINT",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              }
+            ]
+          },
           {
             "name": "GET",
             "arguments": [

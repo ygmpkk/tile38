@@ -1794,6 +1794,19 @@
         "name": "area1",
         "enumargs": [
           {
+            "name": "POINT",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              }
+            ]
+          },
+          {
             "name": "GET",
             "arguments": [
               {
@@ -1910,6 +1923,19 @@
       {
         "name": "area2",
         "enumargs": [
+          {
+            "name": "POINT",
+            "arguments": [
+              {
+                "name": "lat",
+                "type": "double"
+              },
+              {
+                "name": "lon",
+                "type": "double"
+              }
+            ]
+          },
           {
             "name": "GET",
             "arguments": [
