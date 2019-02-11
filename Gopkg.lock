@@ -335,6 +335,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:251d31d1270dfc5d995c5ff7ee26dc783a34392b2d692e97e273146d082e25bd"
+  name = "github.com/tidwall/tinybtree"
+  packages = ["."]
+  pruneopts = ""
+  revision = "de5932d649b50053050d43056146b960f3d90ca5"
+
+[[projects]]
+  branch = "master"
   digest = "1:9d71091ff8756d88318a4334be685d311b10e1a01c0290ce743187b3bfb1b3f6"
   name = "github.com/yuin/gopher-lua"
   packages = [
@@ -477,6 +485,7 @@
     "github.com/tidwall/redcon",
     "github.com/tidwall/resp",
     "github.com/tidwall/sjson",
+    "github.com/tidwall/tinybtree",
     "github.com/yuin/gopher-lua",
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/context",

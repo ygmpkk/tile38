@@ -6,7 +6,7 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/tidwall/tile38/internal/ds"
+	"github.com/tidwall/tinybtree"
 )
 
 // Cursor allows for quickly paging through Scan, Within, Intersects, and Nearby
@@ -35,9 +35,9 @@ func (item *itemT) Less(other btree.Item, ctx interface{}) bool {
 
 // Collection represents a collection of geojson objects.
 type Collection struct {
-	items       ds.BTree     // items sorted by keys
-	index       d2.BoxTree   // items geospatially indexed
-	values      *btree.BTree // items sorted by value+key
+	items       tinybtree.BTree // items sorted by keys
+	index       d2.BoxTree      // items geospatially indexed
+	values      *btree.BTree    // items sorted by value+key
 	fieldMap    map[string]int
 	fieldValues map[string][]float64
 	weight      int

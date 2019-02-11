@@ -29,6 +29,10 @@ required = [
 
 [[constraint]]
   branch = "master"
+  name = "github.com/tidwall/tinybtree"
+
+[[constraint]]
+  branch = "master"
   name = "github.com/tidwall/boxtree"
 
 [[constraint]]

@@ -31,10 +31,10 @@ import (
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
-	"github.com/tidwall/tile38/internal/ds"
 	"github.com/tidwall/tile38/internal/endpoint"
 	"github.com/tidwall/tile38/internal/expire"
 	"github.com/tidwall/tile38/internal/log"
+	"github.com/tidwall/tinybtree"
 )
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
@@ -98,7 +98,7 @@ type Server struct {
 	aofsz    int                             // active size of the aof file
 	qdb      *buntdb.DB                      // hook queue log
 	qidx     uint64                          // hook queue log last idx
-	cols     ds.BTree                        // data collections
+	cols     tinybtree.BTree                 // data collections
 	expires  map[string]map[string]time.Time // synced with cols
 
 	follows    map[*bytes.Buffer]bool
@@ -1052,7 +1052,7 @@ func randomKey(n int) string {
 
 func (server *Server) reset() {
 	server.aofsz = 0
-	server.cols = ds.BTree{}
+	server.cols = tinybtree.BTree{}
 	server.exlistmu.Lock()
 	server.exlist = nil
 	server.exlistmu.Unlock()

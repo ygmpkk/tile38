@@ -1,8 +1,9 @@
-package ds
+package tinybtree
 
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -408,7 +409,30 @@ func TestBTree(t *testing.T) {
 	}
 }
 
-func BenchmarkTidwallSet(b *testing.B) {
+func BenchmarkTidwallSequentialSet(b *testing.B) {
+	var tr BTree
+	keys := randKeys(b.N)
+	sort.Strings(keys)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tr.Set(keys[i], nil)
+	}
+}
+
+func BenchmarkTidwallSequentialGet(b *testing.B) {
+	var tr BTree
+	keys := randKeys(b.N)
+	sort.Strings(keys)
+	for i := 0; i < b.N; i++ {
+		tr.Set(keys[i], nil)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tr.Get(keys[i])
+	}
+}
+
+func BenchmarkTidwallRandomSet(b *testing.B) {
 	var tr BTree
 	keys := randKeys(b.N)
 	b.ResetTimer()
@@ -417,7 +441,7 @@ func BenchmarkTidwallSet(b *testing.B) {
 	}
 }
 
-func BenchmarkTidwallGet(b *testing.B) {
+func BenchmarkTidwallRandomGet(b *testing.B) {
 	var tr BTree
 	keys := randKeys(b.N)
 	for i := 0; i < b.N; i++ {
@@ -428,6 +452,74 @@ func BenchmarkTidwallGet(b *testing.B) {
 		tr.Get(keys[i])
 	}
 }
+
+// type googleKind struct {
+// 	key string
+// }
+
+// func (a *googleKind) Less(b btree.Item) bool {
+// 	return a.key < b.(*googleKind).key
+// }
+
+// func BenchmarkGoogleSequentialSet(b *testing.B) {
+// 	tr := btree.New(32)
+// 	keys := randKeys(b.N)
+// 	sort.Strings(keys)
+// 	gkeys := make([]*googleKind, len(keys))
+// 	for i := 0; i < b.N; i++ {
+// 		gkeys[i] = &googleKind{keys[i]}
+// 	}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		tr.ReplaceOrInsert(gkeys[i])
+// 	}
+// }
+
+// func BenchmarkGoogleSequentialGet(b *testing.B) {
+// 	tr := btree.New(32)
+// 	keys := randKeys(b.N)
+// 	gkeys := make([]*googleKind, len(keys))
+// 	for i := 0; i < b.N; i++ {
+// 		gkeys[i] = &googleKind{keys[i]}
+// 	}
+// 	for i := 0; i < b.N; i++ {
+// 		tr.ReplaceOrInsert(gkeys[i])
+// 	}
+// 	sort.Strings(keys)
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		tr.Get(gkeys[i])
+// 	}
+// }
+
+// func BenchmarkGoogleRandomSet(b *testing.B) {
+// 	tr := btree.New(32)
+// 	keys := randKeys(b.N)
+// 	gkeys := make([]*googleKind, len(keys))
+// 	for i := 0; i < b.N; i++ {
+// 		gkeys[i] = &googleKind{keys[i]}
+// 	}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		tr.ReplaceOrInsert(gkeys[i])
+// 	}
+// }
+
+// func BenchmarkGoogleRandomGet(b *testing.B) {
+// 	tr := btree.New(32)
+// 	keys := randKeys(b.N)
+// 	gkeys := make([]*googleKind, len(keys))
+// 	for i := 0; i < b.N; i++ {
+// 		gkeys[i] = &googleKind{keys[i]}
+// 	}
+// 	for i := 0; i < b.N; i++ {
+// 		tr.ReplaceOrInsert(gkeys[i])
+// 	}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		tr.Get(gkeys[i])
+// 	}
+// }
 
 func TestBTreeOne(t *testing.T) {
 	var tr BTree

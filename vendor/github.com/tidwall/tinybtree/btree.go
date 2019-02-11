@@ -1,7 +1,7 @@
-package ds
+package tinybtree
 
 const maxItems = 31 // use an odd number
-const minItems = maxItems / 2
+const minItems = maxItems * 40 / 100
 
 type item struct {
 	key   string
@@ -12,11 +12,6 @@ type node struct {
 	numItems int
 	items    [maxItems]item
 	children [maxItems + 1]*node
-}
-
-type leaf struct {
-	numItems int
-	items    [maxItems]item
 }
 
 // BTree is an ordered set of key/value pairs where the key is a string
