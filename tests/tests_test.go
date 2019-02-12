@@ -42,6 +42,7 @@ func TestAll(t *testing.T) {
 	runSubTest(t, "keys", mc, subTestKeys)
 	runSubTest(t, "json", mc, subTestJSON)
 	runSubTest(t, "search", mc, subTestSearch)
+	runSubTest(t, "testcmd", mc, subTestTestCmd)
 	runSubTest(t, "fence", mc, subTestFence)
 	runSubTest(t, "scripts", mc, subTestScripts)
 	runSubTest(t, "info", mc, subTestInfo)
