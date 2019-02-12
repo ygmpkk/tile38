@@ -57,7 +57,9 @@ func runSubTest(t *testing.T, name string, mc *mockServer, test func(t *testing.
 }
 
 func runStep(t *testing.T, mc *mockServer, name string, step func(mc *mockServer) error) {
+	t.Helper()
 	t.Run(name, func(t *testing.T) {
+		t.Helper()
 		if err := func() error {
 			// reset the current server
 			mc.ResetConn()
