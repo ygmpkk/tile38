@@ -104,9 +104,10 @@ func testcmd_INTERSECTS_CLIP_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
 		{"SET", "mykey", "point1", "POINT", 37.7335, -122.4412}, {"OK"},
 
-		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "OBJECT", "{}"}, {"ERR invalid argument 'cannot clip with object'"},
-		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "CIRCLE", "1", "2", "3"}, {"ERR invalid argument 'cannot clip with circle'"},
-		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "GET", "mykey", "point1"}, {"ERR invalid argument 'cannot clip with get'"},
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "OBJECT", "{}"}, {"ERR invalid clip type 'OBJECT'"},
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "CIRCLE", "1", "2", "3"}, {"ERR invalid clip type 'CIRCLE'"},
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "GET", "mykey", "point1"}, {"ERR invalid clip type 'GET'"},
+		{"TEST", "OBJECT", poly9, "WITHIN", "CLIP", "BOUNDS", 10, 10, 20, 20}, {"ERR invalid argument 'CLIP'"},
 
 		{"TEST", "OBJECT", poly9, "INTERSECTS", "CLIP", "BOUNDS", 37.732906137107, -122.44126439094543, 37.73421283683962, -122.43980526924135}, {"[1 " + poly9 + "]"},
 		{"TEST", "OBJECT", poly8, "INTERSECTS", "CLIP", "BOUNDS", 37.733, -122.4408378, 37.7341129, -122.44}, {"[1 " + poly8 + "]"},

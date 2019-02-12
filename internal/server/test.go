@@ -1,5 +1,6 @@
-// TEST command: spatial tests without walking the tree.
 package server
+
+// TEST command: spatial tests without walking the tree.
 
 import (
 	"bytes"
@@ -16,7 +17,7 @@ import (
 	"github.com/tidwall/tile38/internal/clip"
 )
 
-func (s * Server) parseArea(ovs[]string, doClip bool) (vs []string, o geojson.Object, err error) {
+func (s *Server) parseArea(ovs []string, doClip bool) (vs []string, o geojson.Object, err error) {
 	var ok bool
 	var typ string
 	vs = ovs[:]
@@ -48,7 +49,7 @@ func (s * Server) parseArea(ovs[]string, doClip bool) (vs []string, o geojson.Ob
 		o = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
 	case "circle":
 		if doClip {
-			err = errInvalidArgument("cannot clip with " + ltyp)
+			err = fmt.Errorf("invalid clip type '%s'", typ)
 			return
 		}
 		var slat, slon, smeters string
@@ -84,7 +85,7 @@ func (s * Server) parseArea(ovs[]string, doClip bool) (vs []string, o geojson.Ob
 		o = geojson.NewCircle(geometry.Point{X: lon, Y: lat}, meters, defaultCircleSteps)
 	case "object":
 		if doClip {
-			err = errInvalidArgument("cannot clip with " + ltyp)
+			err = fmt.Errorf("invalid clip type '%s'", typ)
 			return
 		}
 		var obj string
@@ -198,7 +199,7 @@ func (s * Server) parseArea(ovs[]string, doClip bool) (vs []string, o geojson.Ob
 		})
 	case "get":
 		if doClip {
-			err = errInvalidArgument("cannot clip with " + ltyp)
+			err = fmt.Errorf("invalid clip type '%s'", typ)
 			return
 		}
 		var key, id string
@@ -224,7 +225,7 @@ func (s * Server) parseArea(ovs[]string, doClip bool) (vs []string, o geojson.Ob
 	return
 }
 
-func (s *Server) cmdTest (msg *Message) (res resp.Value, err error) {
+func (s *Server) cmdTest(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -252,7 +253,7 @@ func (s *Server) cmdTest (msg *Message) (res resp.Value, err error) {
 		case "clip":
 			vs = nvs
 			if lTest != "intersects" {
-				err = errInvalidArgument("cannot clip with" + wtok)
+				err = errInvalidArgument(wtok)
 				return
 			}
 			doClip = true
@@ -282,7 +283,11 @@ func (s *Server) cmdTest (msg *Message) (res resp.Value, err error) {
 	case JSON:
 		var buf bytes.Buffer
 		buf.WriteString(`{"ok":true`)
-		buf.WriteString(fmt.Sprintf(`,"result":%d`, result))
+		if result != 0 {
+			buf.WriteString(`,"result":true`)
+		} else {
+			buf.WriteString(`,"result":false`)
+		}
 		if clipped != nil {
 			buf.WriteString(`,"object":` + clipped.JSON())
 		}
