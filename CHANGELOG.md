@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.16.1] - 2019-03-01
+### Fixes
+- #421: Nearby with MATCH is returning invalid results (@nithinkota)
+
 ## [1.16.0] - 2019-02-25
 ### Fixes
 - #415: Fix overlapping geofences sending notifcation to wrong endpoint. (@belek, @s32x)
