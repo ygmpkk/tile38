@@ -342,7 +342,7 @@ func (sw *scanWriter) testObject(id string, o geojson.Object, fields []float64, 
 	if !ignoreGlobMatch {
 		match, kg := sw.globMatch(id, o)
 		if !match {
-			return true, kg, fieldVals
+			return false, kg, fieldVals
 		}
 	}
 	nf, ok := sw.fieldMatch(fields, o)
