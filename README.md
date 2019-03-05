@@ -272,7 +272,7 @@ set city tempe object {"type":"Polygon","coordinates":[[[0,0],[10,10],[10,0],[0,
 
 #### XYZ Tile
 An XYZ tile is rectangle bounding area on earth that is represented by an X, Y coordinate and a Z (zoom) level.
-Check out [maptiler.org](https://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) for an interactive example.
+Check out [maptiler.org](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) for an interactive example.
 
 #### QuadKey
 A QuadKey used the same coordinate system as an XYZ tile except that the string representation is a string characters composed of 0, 1, 2, or 3. For a detailed explanation checkout [The Bing Maps Tile System](https://msdn.microsoft.com/en-us/library/bb259689.aspx).
