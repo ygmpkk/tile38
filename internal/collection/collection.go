@@ -1,6 +1,8 @@
 package collection
 
 import (
+	"runtime"
+
 	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geojson"
@@ -8,6 +10,9 @@ import (
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/tinybtree"
 )
+
+// yieldStep forces the iterator to yield goroutine every N steps.
+const yieldStep = 0xFF
 
 // Cursor allows for quickly paging through Scan, Within, Intersects, and Nearby
 type Cursor interface {
@@ -330,6 +335,9 @@ func (c *Collection) Scan(desc bool, cursor Cursor,
 		if count <= offset {
 			return true
 		}
+		if count&yieldStep == yieldStep {
+			runtime.Gosched()
+		}
 		if cursor != nil {
 			cursor.Step(1)
 		}
@@ -360,6 +368,9 @@ func (c *Collection) ScanRange(start, end string, desc bool, cursor Cursor,
 		count++
 		if count <= offset {
 			return true
+		}
+		if count&yieldStep == yieldStep {
+			runtime.Gosched()
 		}
 		if cursor != nil {
 			cursor.Step(1)
@@ -402,6 +413,9 @@ func (c *Collection) SearchValues(desc bool, cursor Cursor,
 		if count <= offset {
 			return true
 		}
+		if count&yieldStep == yieldStep {
+			runtime.Gosched()
+		}
 		if cursor != nil {
 			cursor.Step(1)
 		}
@@ -433,6 +447,9 @@ func (c *Collection) SearchValuesRange(start, end string, desc bool,
 		count++
 		if count <= offset {
 			return true
+		}
+		if count&yieldStep == yieldStep {
+			runtime.Gosched()
 		}
 		if cursor != nil {
 			cursor.Step(1)
@@ -467,6 +484,9 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		count++
 		if count <= offset {
 			return true
+		}
+		if count&yieldStep == yieldStep {
+			runtime.Gosched()
 		}
 		if cursor != nil {
 			cursor.Step(1)
@@ -591,6 +611,9 @@ func (c *Collection) Within(
 				if count <= offset {
 					return false, true
 				}
+				if count&yieldStep == yieldStep {
+					runtime.Gosched()
+				}
 				if cursor != nil {
 					cursor.Step(1)
 				}
@@ -606,6 +629,9 @@ func (c *Collection) Within(
 			count++
 			if count <= offset {
 				return true
+			}
+			if count&yieldStep == yieldStep {
+				runtime.Gosched()
 			}
 			if cursor != nil {
 				cursor.Step(1)
@@ -641,6 +667,9 @@ func (c *Collection) Intersects(
 				if count <= offset {
 					return false, true
 				}
+				if count&yieldStep == yieldStep {
+					runtime.Gosched()
+				}
 				if cursor != nil {
 					cursor.Step(1)
 				}
@@ -656,6 +685,9 @@ func (c *Collection) Intersects(
 			count++
 			if count <= offset {
 				return true
+			}
+			if count&yieldStep == yieldStep {
+				runtime.Gosched()
 			}
 			if cursor != nil {
 				cursor.Step(1)
@@ -713,6 +745,9 @@ func (c *Collection) Nearby(
 			count++
 			if count <= offset {
 				return true
+			}
+			if count&yieldStep == yieldStep {
+				runtime.Gosched()
 			}
 			if cursor != nil {
 				cursor.Step(1)
