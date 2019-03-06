@@ -254,9 +254,9 @@ A bounding box consists of two points. The first being the southwestern most poi
 set fleet truck1 bounds 30 -110 40 -100
 ```
 #### Geohash
-A [geohash](https://en.wikipedia.org/wiki/Geohash) is a string respresentation of a point. With the length of the string indicating the precision of the point. 
+A [geohash](https://en.wikipedia.org/wiki/Geohash) is a string representation of a point. With the length of the string indicating the precision of the point. 
 ```
-set fleet truck1 hash 9tbnthxzr # this would be equivlent to 'point 33.5123 -112.2693'
+set fleet truck1 hash 9tbnthxzr # this would be equivalent to 'point 33.5123 -112.2693'
 ```
 
 #### GeoJSON
