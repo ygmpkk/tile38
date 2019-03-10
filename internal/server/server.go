@@ -250,7 +250,7 @@ func Serve(host string, port int, dir string, http bool) error {
 			return err
 		}
 		defer func() {
-			server.flushAOF()
+			server.flushAOF(false)
 			server.aof.Sync()
 		}()
 	}
@@ -266,6 +266,7 @@ func Serve(host string, port int, dir string, http bool) error {
 	go server.watchLuaStatePool()
 	go server.watchAutoGC()
 	go server.backgroundExpiring()
+	go server.backgroundSyncAOF()
 	defer func() {
 		// Stop background routines
 		server.followc.add(1) // this will force any follow communication to die
@@ -487,7 +488,7 @@ func (server *Server) evioServe() error {
 		if atomic.LoadInt32(&server.aofdirty) != 0 {
 			server.mu.Lock()
 			defer server.mu.Unlock()
-			server.flushAOF()
+			server.flushAOF(false)
 			atomic.StoreInt32(&server.aofdirty, 1)
 		}
 	}
@@ -665,7 +666,7 @@ func (server *Server) netServe() error {
 							// prewrite
 							server.mu.Lock()
 							defer server.mu.Unlock()
-							server.flushAOF()
+							server.flushAOF(false)
 						}()
 						atomic.StoreInt32(&server.aofdirty, 0)
 					}
@@ -779,6 +780,25 @@ func (server *Server) watchLuaStatePool() {
 	for range t.C {
 		func() {
 			server.luapool.Prune()
+		}()
+	}
+}
+
+// backgroundSyncAOF ensures that the aof buffer is does not grow too big.
+func (server *Server) backgroundSyncAOF() {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+	for range t.C {
+		if server.stopServer.on() {
+			return
+		}
+		func() {
+			server.mu.Lock()
+			defer server.mu.Unlock()
+			if len(server.aofbuf) > 0 {
+				server.flushAOF(true)
+			}
+			server.aofbuf = nil
 		}()
 	}
 }
