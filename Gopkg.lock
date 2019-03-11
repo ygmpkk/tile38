@@ -10,7 +10,7 @@
   version = "v1.13.0"
 
 [[projects]]
-  digest = "1:11c577e4f8478a8b397adb7976f1f201b31951a5473d7e794c6423a1224dab80"
+  digest = "1:718dd81b0dcfc49323360bcc7b4f940c9d5f27106d17eddb25a714e9b2563d24"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -22,13 +22,19 @@
     "aws/credentials",
     "aws/credentials/ec2rolecreds",
     "aws/credentials/endpointcreds",
+    "aws/credentials/processcreds",
     "aws/credentials/stscreds",
+    "aws/csm",
     "aws/defaults",
     "aws/ec2metadata",
     "aws/endpoints",
     "aws/request",
     "aws/session",
     "aws/signer/v4",
+    "internal/ini",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/query",
@@ -39,8 +45,8 @@
     "service/sts",
   ]
   pruneopts = ""
-  revision = "da415b5fa0ff3f91d4707348a8ea1be53f700c22"
-  version = "v1.12.6"
+  revision = "8b705a6dec722bcda3a9309c0924d4eca24f7c72"
+  version = "v1.17.14"
 
 [[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
@@ -86,14 +92,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:e26d0f8ccaf4087b93306d5e20e4816258116868ad6c6da0f2b4926c72fb92fa"
-  name = "github.com/go-ini/ini"
-  packages = ["."]
-  pruneopts = ""
-  revision = "20b96f641a5ea98f2f8619ff4f3e061cff4833bd"
-  version = "v1.28.2"
-
-[[projects]]
   branch = "master"
   digest = "1:27854310d59099f8dcc61dd8af4a69f0a3597f001154b2fb4d1c41baf2e31ec1"
   name = "github.com/golang/protobuf"
@@ -124,11 +122,11 @@
   revision = "e8fc0692a7e26a05b06517348ed466349062eb47"
 
 [[projects]]
-  digest = "1:6f49eae0c1e5dab1dafafee34b207aeb7a42303105960944828c2079b92fc88e"
+  digest = "1:13fe471d0ed891e8544eddfeeb0471fd3c9f2015609a1c000aefdedf52a19d40"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   pruneopts = ""
-  revision = "0b12d6b5"
+  revision = "c2b33e84"
 
 [[projects]]
   digest = "1:be1d3b7623f11b628068933282015f3dbcd522fa8e6b16d2931edffd42ef2c0b"
