@@ -65,37 +65,30 @@ func (conn *SQSConn) Send(msg string) error {
 	conn.t = time.Now()
 
 	if conn.svc == nil && conn.session == nil {
+		var creds *credentials.Credentials
 		credPath := conn.ep.SQS.CredPath
-		credProfile := conn.ep.SQS.CredProfile
-		var sess *session.Session
-		if credPath != "" && credProfile != "" {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:      aws.String(conn.ep.SQS.Region),
-				Credentials: credentials.NewSharedCredentials(credPath, credProfile),
-				MaxRetries:  aws.Int(5),
-			}))
-		} else if credPath != "" {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:      aws.String(conn.ep.SQS.Region),
-				Credentials: credentials.NewSharedCredentials(credPath, "default"),
-				MaxRetries:  aws.Int(5),
-			}))
-		} else {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:     aws.String(conn.ep.SQS.Region),
-				MaxRetries: aws.Int(5),
-			}))
+		if credPath != "" {
+			credProfile := conn.ep.SQS.CredProfile
+			if credProfile == "" {
+				credProfile = "default"
+			}
+			creds = credentials.NewSharedCredentials(credPath, credProfile)
 		}
-		// Create a SQS service client.
+		sess := session.Must(session.NewSession(&aws.Config{
+			Region:      aws.String(conn.ep.SQS.Region),
+			Credentials: creds,
+			MaxRetries:  aws.Int(5),
+		}))
 		svc := sqs.New(sess)
-
-		svc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName: aws.String(conn.ep.SQS.QueueName),
-			Attributes: map[string]*string{
-				"DelaySeconds":           aws.String("60"),
-				"MessageRetentionPeriod": aws.String("86400"),
-			},
-		})
+		if conn.ep.SQS.CreateQueue {
+			svc.CreateQueue(&sqs.CreateQueueInput{
+				QueueName: aws.String(conn.ep.SQS.QueueName),
+				Attributes: map[string]*string{
+					"DelaySeconds":           aws.String("60"),
+					"MessageRetentionPeriod": aws.String("86400"),
+				},
+			})
+		}
 		conn.session = sess
 		conn.svc = svc
 	}

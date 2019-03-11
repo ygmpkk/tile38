@@ -95,6 +95,7 @@ type Endpoint struct {
 		CredPath    string
 		CredProfile string
 		QueueName   string
+		CreateQueue bool
 	}
 	NATS struct {
 		Host  string
@@ -502,10 +503,15 @@ func parseEndpoint(s string) (Endpoint, error) {
 					endpoint.SQS.CredPath = val[0]
 				case "credprofile":
 					endpoint.SQS.CredProfile = val[0]
+				case "createqueue":
+					switch strings.ToLower(val[0]) {
+					case "0", "false":
+					default:
+						endpoint.SQS.CreateQueue = true
+					}
 				}
 			}
 		}
-
 		// Throw error if we not provide any queue name
 		if endpoint.SQS.QueueName == "" {
 			return endpoint, errors.New("missing SQS queue name")
