@@ -90,6 +90,7 @@ type Endpoint struct {
 		KeyFile    string
 	}
 	SQS struct {
+		PlainURL    string
 		QueueID     string
 		Region      string
 		CredPath    string
@@ -217,7 +218,12 @@ func parseEndpoint(s string) (Endpoint, error) {
 	case strings.HasPrefix(s, "http:"):
 		endpoint.Protocol = HTTP
 	case strings.HasPrefix(s, "https:"):
-		endpoint.Protocol = HTTP
+		if probeSQS(s) {
+			endpoint.SQS.PlainURL = s
+			endpoint.Protocol = SQS
+		} else {
+			endpoint.Protocol = HTTP
+		}
 	case strings.HasPrefix(s, "disque:"):
 		endpoint.Protocol = Disque
 	case strings.HasPrefix(s, "grpc:"):
@@ -469,22 +475,28 @@ func parseEndpoint(s string) (Endpoint, error) {
 	// credpath - path where aws credentials are located
 	// credprofile - credential profile
 	if endpoint.Protocol == SQS {
-		// Parsing connection from URL string
-		hp := strings.Split(s, ":")
-		switch len(hp) {
-		default:
-			return endpoint, errors.New("invalid SQS url")
-		case 2:
-			endpoint.SQS.Region = hp[0]
-			endpoint.SQS.QueueID = hp[1]
-		}
+		if endpoint.SQS.PlainURL == "" {
+			// Parsing connection from URL string
+			hp := strings.Split(s, ":")
+			switch len(hp) {
+			default:
+				return endpoint, errors.New("invalid SQS url")
+			case 2:
+				endpoint.SQS.Region = hp[0]
+				endpoint.SQS.QueueID = hp[1]
+			}
 
-		// Parsing SQS queue name
-		if len(sp) > 1 {
-			var err error
-			endpoint.SQS.QueueName, err = url.QueryUnescape(sp[1])
-			if err != nil {
-				return endpoint, errors.New("invalid SQS queue name")
+			// Parsing SQS queue name
+			if len(sp) > 1 {
+				var err error
+				endpoint.SQS.QueueName, err = url.QueryUnescape(sp[1])
+				if err != nil {
+					return endpoint, errors.New("invalid SQS queue name")
+				}
+			}
+			// Throw error if we not provide any queue name
+			if endpoint.SQS.QueueName == "" {
+				return endpoint, errors.New("missing SQS queue name")
 			}
 		}
 
@@ -511,10 +523,6 @@ func parseEndpoint(s string) (Endpoint, error) {
 					}
 				}
 			}
-		}
-		// Throw error if we not provide any queue name
-		if endpoint.SQS.QueueName == "" {
-			return endpoint, errors.New("missing SQS queue name")
 		}
 	}
 
