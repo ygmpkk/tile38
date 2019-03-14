@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"net"
@@ -21,6 +22,7 @@ import (
 var (
 	hostname = "127.0.0.1"
 	port     = 9851
+	auth     = ""
 	clients  = 50
 	requests = 100000
 	quiet    = false
@@ -46,6 +48,7 @@ func showHelp() bool {
 
 	fmt.Fprintf(os.Stdout, " -h <hostname>      Server hostname (default: %s)\n", hostname)
 	fmt.Fprintf(os.Stdout, " -p <port>          Server port (default: %d)\n", port)
+	fmt.Fprintf(os.Stdout, " -a <password>      Password for Tile38 Auth\n")
 	fmt.Fprintf(os.Stdout, " -c <clients>       Number of parallel connections (default %d)\n", clients)
 	fmt.Fprintf(os.Stdout, " -n <requests>      Total number or requests (default %d)\n", requests)
 	fmt.Fprintf(os.Stdout, " -q                 Quiet. Just show query/sec values\n")
@@ -105,6 +108,8 @@ func parseArgs() bool {
 			hostname = readArg(arg)
 		case "-p":
 			port = readIntArg(arg)
+		case "-a":
+			auth = readArg(arg)
 		case "-c":
 			clients = readIntArg(arg)
 			if clients <= 0 {
@@ -169,10 +174,31 @@ func randRect(meters float64) (minlat, minlon, maxlat, maxlon float64) {
 }
 
 func prepFn(conn net.Conn) bool {
+	var resp [64]byte
+	conn.Write([]byte("CONFIG GET requirepass\r\n"))
+	n, err := conn.Read(resp[:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	if string(resp[:n]) == "-ERR authentication required\r\n" {
+		if auth == "" {
+			log.Fatal("invalid auth")
+		} else {
+			cmd := redcon.AppendArray(nil, 2)
+			cmd = redcon.AppendBulkString(cmd, "AUTH")
+			cmd = redcon.AppendBulkString(cmd, auth)
+			conn.Write(cmd)
+			n, err := conn.Read(resp[:])
+			if err != nil || string(resp[:n]) != "+OK\r\n" {
+				log.Fatal("invalid auth")
+			}
+		}
+	} else if auth != "" {
+		log.Fatal("invalid auth")
+	}
 	if json {
 		conn.Write([]byte("output json\r\n"))
-		resp := make([]byte, 100)
-		conn.Read(resp)
+		conn.Read(make([]byte, 64))
 	}
 	return true
 }
