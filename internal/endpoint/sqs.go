@@ -3,6 +3,7 @@ package endpoint
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,7 +32,11 @@ type SQSConn struct {
 }
 
 func (conn *SQSConn) generateSQSURL() string {
-	return "https://sqs." + conn.ep.SQS.Region + "amazonaws.com/" + conn.ep.SQS.QueueID + "/" + conn.ep.SQS.QueueName
+	if conn.ep.SQS.PlainURL != "" {
+		return conn.ep.SQS.PlainURL
+	}
+	return "https://sqs." + conn.ep.SQS.Region + ".amazonaws.com/" +
+		conn.ep.SQS.QueueID + "/" + conn.ep.SQS.QueueName
 }
 
 // Expired returns true if the connection has expired
@@ -65,37 +70,36 @@ func (conn *SQSConn) Send(msg string) error {
 	conn.t = time.Now()
 
 	if conn.svc == nil && conn.session == nil {
+		var creds *credentials.Credentials
 		credPath := conn.ep.SQS.CredPath
-		credProfile := conn.ep.SQS.CredProfile
-		var sess *session.Session
-		if credPath != "" && credProfile != "" {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:      aws.String(conn.ep.SQS.Region),
-				Credentials: credentials.NewSharedCredentials(credPath, credProfile),
-				MaxRetries:  aws.Int(5),
-			}))
-		} else if credPath != "" {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:      aws.String(conn.ep.SQS.Region),
-				Credentials: credentials.NewSharedCredentials(credPath, "default"),
-				MaxRetries:  aws.Int(5),
-			}))
-		} else {
-			sess = session.Must(session.NewSession(&aws.Config{
-				Region:     aws.String(conn.ep.SQS.Region),
-				MaxRetries: aws.Int(5),
-			}))
+		if credPath != "" {
+			credProfile := conn.ep.SQS.CredProfile
+			if credProfile == "" {
+				credProfile = "default"
+			}
+			creds = credentials.NewSharedCredentials(credPath, credProfile)
 		}
-		// Create a SQS service client.
+		var region string
+		if conn.ep.SQS.Region != "" {
+			region = conn.ep.SQS.Region
+		} else {
+			region = sqsRegionFromPlainURL(conn.ep.SQS.PlainURL)
+		}
+		sess := session.Must(session.NewSession(&aws.Config{
+			Region:      &region,
+			Credentials: creds,
+			MaxRetries:  aws.Int(5),
+		}))
 		svc := sqs.New(sess)
-
-		svc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName: aws.String(conn.ep.SQS.QueueName),
-			Attributes: map[string]*string{
-				"DelaySeconds":           aws.String("60"),
-				"MessageRetentionPeriod": aws.String("86400"),
-			},
-		})
+		if conn.ep.SQS.CreateQueue {
+			svc.CreateQueue(&sqs.CreateQueueInput{
+				QueueName: aws.String(conn.ep.SQS.QueueName),
+				Attributes: map[string]*string{
+					"DelaySeconds":           aws.String("60"),
+					"MessageRetentionPeriod": aws.String("86400"),
+				},
+			})
+		}
 		conn.session = sess
 		conn.svc = svc
 	}
@@ -120,4 +124,21 @@ func newSQSConn(ep Endpoint) *SQSConn {
 		ep: ep,
 		t:  time.Now(),
 	}
+}
+
+func probeSQS(s string) bool {
+	// https://sqs.eu-central-1.amazonaws.com/123456789/myqueue
+	return strings.HasPrefix(s, "https://sqs.") &&
+		strings.Contains(s, ".amazonaws.com/")
+}
+
+func sqsRegionFromPlainURL(s string) string {
+	parts := strings.Split(s, "https://sqs.")
+	if len(parts) > 1 {
+		parts = strings.Split(parts[1], ".amazonaws.com/")
+		if len(parts) > 1 {
+			return parts[0]
+		}
+	}
+	return ""
 }
