@@ -280,6 +280,7 @@ func (c *Server) liveSubscription(
 				write(b)
 			}
 		}
+		c.statsTotalMsgsSent.add(1)
 	}
 
 	m := [2]map[string]bool{

@@ -80,6 +80,7 @@ type Server struct {
 	followc            aint // counter increases when follow property changes
 	statsTotalConns    aint // counter for total connections
 	statsTotalCommands aint // counter for total commands
+	statsTotalMsgsSent aint // counter for total sent webhook messages
 	statsExpired       aint // item expiration counter
 	lastShrinkDuration aint
 	stopServer         abool

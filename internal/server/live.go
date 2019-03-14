@@ -193,7 +193,9 @@ func (server *Server) goLive(
 					return nil // nil return is fine here
 				}
 			}
+			server.statsTotalMsgsSent.add(len(msgs))
 			lb.cond.L.Lock()
+
 		}
 		lb.cond.Wait()
 		lb.cond.L.Unlock()

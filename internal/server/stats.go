@@ -267,6 +267,8 @@ func (c *Server) extStats(m map[string]interface{}) {
 	m["tile38_total_connections_received"] = c.statsTotalConns.get()
 	// Number of commands processed by the server
 	m["tile38_total_commands_processed"] = c.statsTotalCommands.get()
+	// Number of webhook messages sent by server
+	m["tile38_total_messages_sent"] = c.statsTotalMsgsSent.get()
 	// Number of key expiration events
 	m["tile38_expired_keys"] = c.statsExpired.get()
 	// Number of connected slaves
@@ -350,6 +352,7 @@ func (c *Server) writeInfoPersistence(w *bytes.Buffer) {
 func (c *Server) writeInfoStats(w *bytes.Buffer) {
 	fmt.Fprintf(w, "total_connections_received:%d\r\n", c.statsTotalConns.get())  // Total number of connections accepted by the server
 	fmt.Fprintf(w, "total_commands_processed:%d\r\n", c.statsTotalCommands.get()) // Total number of commands processed by the server
+	fmt.Fprintf(w, "total_messages_sent:%d\r\n", c.statsTotalMsgsSent.get())      // Total number of commands processed by the server
 	fmt.Fprintf(w, "expired_keys:%d\r\n", c.statsExpired.get())                   // Total number of key expiration events
 }
 

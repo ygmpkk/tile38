@@ -139,6 +139,7 @@ func (c *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		Metas:     metas,
 		channel:   chanCmd,
 		cond:      sync.NewCond(&sync.Mutex{}),
+		counter:   &c.statsTotalMsgsSent,
 	}
 	if expiresSet {
 		hook.expires =
@@ -460,6 +461,7 @@ type Hook struct {
 	query      string
 	epm        *endpoint.Manager
 	expires    time.Time
+	counter    *aint // counter that grows when a message was sent
 }
 
 // Expires returns when the hook expires. Required by the expire.Item interface.
@@ -648,6 +650,7 @@ func (h *Hook) proc() (ok bool) {
 			}
 			log.Debugf("Endpoint send ok: %v: %v: %v", idx, endpoint, err)
 			sent = true
+			h.counter.add(1)
 			break
 		}
 		if !sent {
