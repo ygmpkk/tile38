@@ -462,6 +462,7 @@ type Hook struct {
 	epm        *endpoint.Manager
 	expires    time.Time
 	counter    *aint // counter that grows when a message was sent
+	sig        int
 }
 
 // Expires returns when the hook expires. Required by the expire.Item interface.
@@ -561,6 +562,7 @@ func (h *Hook) Signal() {
 		return
 	}
 	h.cond.L.Lock()
+	h.sig++
 	h.cond.Broadcast()
 	h.cond.L.Unlock()
 }
@@ -568,23 +570,32 @@ func (h *Hook) Signal() {
 // the manager is a forever loop that calls proc whenever there's a signal.
 // it ends when the "closed" flag is set.
 func (h *Hook) manager() {
+	// lock the hook to waiting on signals
+	h.cond.L.Lock()
+	defer h.cond.L.Unlock()
+	var sig int
 	for {
-		h.cond.L.Lock()
-		for {
-			if h.closed {
-				h.cond.L.Unlock()
-				return
-			}
-			if h.proc() {
-				break
-			}
-			h.cond.L.Unlock()
-			// proc failed. wait half a second and try again
-			time.Sleep(time.Second / 2)
-			h.cond.L.Lock()
+		if h.closed {
+			// the hook has closed, end manager
+			return
 		}
+		sig = h.sig
+		// unlock/logk the hook and send outgoing messages
+		if !func() bool {
+			h.cond.L.Unlock()
+			defer h.cond.L.Lock()
+			return h.proc()
+		}() {
+			// a send failed, try again in a moment
+			time.Sleep(time.Second / 2)
+			continue
+		}
+		if sig != h.sig {
+			// there was another incoming signal
+			continue
+		}
+		// wait on signal
 		h.cond.Wait()
-		h.cond.L.Unlock()
 	}
 }
 
