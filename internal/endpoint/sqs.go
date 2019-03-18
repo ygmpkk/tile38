@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/streadway/amqp"
+	"github.com/tidwall/tile38/internal/log"
 )
 
 var errCreateQueue = errors.New("Error while creating queue")
@@ -86,9 +87,10 @@ func (conn *SQSConn) Send(msg string) error {
 			region = sqsRegionFromPlainURL(conn.ep.SQS.PlainURL)
 		}
 		sess := session.Must(session.NewSession(&aws.Config{
-			Region:      &region,
-			Credentials: creds,
-			MaxRetries:  aws.Int(5),
+			Region:                        &region,
+			Credentials:                   creds,
+			CredentialsChainVerboseErrors: aws.Bool(log.Level >= 3),
+			MaxRetries:                    aws.Int(5),
 		}))
 		svc := sqs.New(sess)
 		if conn.ep.SQS.CreateQueue {
