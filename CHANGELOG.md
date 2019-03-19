@@ -2,12 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.16.3] - 2019-03-12
+### Fixes
+- #437: Fixed clients blocking while webook sending. (@tesujiro)
+
+### Added
+- #430: Support more SQS credential providers. (@tobilg)
+- #435: Added pprof flags for optional memory and cpu diagnostics.
+- e47540b: Added auth flag to tile38-benchmark.
+- 5335aec: Allow for standard SQS URLs. (@tobilg)
+
 ## [1.16.2] - 2019-03-12
 ### Fixes
-- #432: Ignore SIGHUP signals (@abhit011)
-- #433: Fixed nearby inaccuracy with geofence (@stcktrce)
-- #429: Memory optimization, recycle AOF buffer
-- 95a5556: Added periodic yielding to iterators (@rshura)
+- #432: Ignore SIGHUP signals. (@abhit011)
+- #433: Fixed nearby inaccuracy with geofence. (@stcktrce)
+- #429: Memory optimization, recycle AOF buffer.
+- 95a5556: Added periodic yielding to iterators. (@rshura)
 
 ## [1.16.1] - 2019-03-01
 ### Fixes
@@ -15,8 +25,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.16.0] - 2019-02-25
 ### Fixes
-- #415: Fix overlapping geofences sending notifcation to wrong endpoint. (@belek, @s32x)
-- #412: Allow SERVER command for Lua scripts (@1995parham)
+- #415: Fixed overlapping geofences sending notifcation to wrong endpoint. (@belek, @s32x)
+- #412: Allow SERVER command for Lua scripts. (@1995parham)
 - #410: Allow slashes in MQTT Topics (@pstuifzand)
 - #409: Fixed bug in polygon clipping. (@rshura)
 - 30f903b: Require properties member for geojson features. (@rshura)
