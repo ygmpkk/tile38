@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.16.3] - 2019-03-12
+## [1.16.4] - 2019-03-19
+### Fixes
+- e1a7145: Hotfix. Do not ignore SIGHUP. Use the `--nohup` flag or `nohup` command.
+
+
+## [1.16.3] - 2019-03-19
 ### Fixes
 - #437: Fixed clients blocking while webook sending. (@tesujiro)
 
