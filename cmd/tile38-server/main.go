@@ -37,6 +37,7 @@ var (
 	cpuprofile  string
 	memprofile  string
 	pprofport   int
+	nohup       bool
 )
 
 // TODO: Set to false in 2.*
@@ -101,6 +102,7 @@ Advanced Options:
   --protected-mode yes/no : protected mode (default: yes)
   --threads num           : number of network threads (default: num cores)
   --evio yes/no           : use the evio package (default: no)
+  --nohup                 : do not exist on SIGHUP
 
 Developer Options:
   --dev                             : enable developer mode
@@ -178,6 +180,9 @@ Developer Options:
 			os.Exit(1)
 		case "--dev", "-dev":
 			devMode = true
+			continue
+		case "--nohup", "-nohup":
+			nohup = true
 			continue
 		case "--appendonly", "-appendonly":
 			i++
@@ -366,7 +371,7 @@ Developer Options:
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		for s := range c {
-			if s == syscall.SIGHUP {
+			if s == syscall.SIGHUP && nohup {
 				continue
 			}
 			log.Warnf("signal: %v", s)
@@ -375,6 +380,8 @@ Developer Options:
 			switch {
 			default:
 				os.Exit(-1)
+			case s == syscall.SIGHUP:
+				os.Exit(1)
 			case s == syscall.SIGINT:
 				os.Exit(2)
 			case s == syscall.SIGQUIT:
