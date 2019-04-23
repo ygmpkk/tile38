@@ -170,7 +170,7 @@ func fenceMatch(
 	}
 	sw.mu.Lock()
 	var distance float64
-	if fence.distance {
+	if fence.distance && fence.obj != nil {
 		distance = details.obj.Distance(fence.obj)
 	}
 	sw.fmap = details.fmap
