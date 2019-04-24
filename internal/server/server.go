@@ -1025,7 +1025,13 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	}
 	res, d, err := func() (res resp.Value, d commandDetails, err error) {
 		if !write {
-			msg.Deadline = deadline.New(start.Add(client.timeout))
+			if client.timeout == 0 {
+				// the command itself might have a timeout,
+				// which will be used to update this trivial deadline.
+				msg.Deadline = deadline.Empty()
+			} else {
+				msg.Deadline = deadline.New(start.Add(client.timeout))
+			}
 			defer func() {
 				if msg.Deadline.Hit() {
 					v := recover()

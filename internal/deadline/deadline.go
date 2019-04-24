@@ -13,6 +13,10 @@ func New(deadline time.Time) *Deadline {
 	return &Deadline{unixNano: deadline.UnixNano()}
 }
 
+func Empty() *Deadline {
+	return &Deadline{}
+}
+
 // Update the deadline from a given time object
 func (deadline *Deadline) Update(newDeadline time.Time) {
 	deadline.unixNano = newDeadline.UnixNano()

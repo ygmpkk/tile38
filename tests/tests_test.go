@@ -47,6 +47,7 @@ func TestAll(t *testing.T) {
 	runSubTest(t, "scripts", mc, subTestScripts)
 	runSubTest(t, "info", mc, subTestInfo)
 	runSubTest(t, "client", mc, subTestClient)
+	runSubTest(t, "timeouts", mc, subTestTimeout)
 }
 
 func runSubTest(t *testing.T, name string, mc *mockServer, test func(t *testing.T, mc *mockServer)) {
