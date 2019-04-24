@@ -526,6 +526,12 @@ var commandsJSON = `{
         "optional": true
       },
       {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
+        "optional": true
+      },
+      {
         "command": "MATCH",
         "name": "pattern",
         "type": "pattern",
@@ -614,6 +620,12 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -723,6 +735,12 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -889,6 +907,12 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -1110,6 +1134,12 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -1461,6 +1491,17 @@ var commandsJSON = `{
             "name": "resp"
           }
         ]
+      }
+    ],
+    "group": "connection"
+  },
+  "TIMEOUT": {
+    "summary": "Gets or sets the query timeout for the current connection.",
+    "arguments": [
+      {
+        "name": "seconds",
+        "optional": true,
+        "type": "double"
       }
     ],
     "group": "connection"
