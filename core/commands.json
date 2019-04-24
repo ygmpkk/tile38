@@ -1329,6 +1329,17 @@
     ],
     "group": "connection"
   },
+  "TIMEOUT": {
+    "summary": "Gets or sets the query timeout for the current connection.",
+    "arguments": [
+      {
+        "name": "seconds",
+        "optional": true,
+        "type": "double"
+      }
+    ],
+    "group": "connection"
+  },
   "SETHOOK": {
     "summary": "Creates a webhook which points to geofenced search",
     "arguments": [
