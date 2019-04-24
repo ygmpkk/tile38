@@ -1024,7 +1024,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		// No locking for pubsub
 	}
 	res, d, err := func() (res resp.Value, d commandDetails, err error) {
-		if client.timeout != 0 && !write {
+		if !write {
 			msg.Deadline = deadline.New(start.Add(client.timeout))
 			defer func() {
 				if msg.Deadline.Hit() {

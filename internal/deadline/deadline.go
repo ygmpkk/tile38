@@ -13,6 +13,11 @@ func New(deadline time.Time) *Deadline {
 	return &Deadline{unixNano: deadline.UnixNano()}
 }
 
+// Update the deadline from a given time object
+func (deadline *Deadline) Update(newDeadline time.Time) {
+	deadline.unixNano = newDeadline.UnixNano()
+}
+
 // Check the deadline and panic when reached
 //go:noinline
 func (deadline *Deadline) Check() {
