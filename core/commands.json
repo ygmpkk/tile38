@@ -360,6 +360,12 @@
         "optional": true
       },
       {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
+        "optional": true
+      },
+      {
         "command": "MATCH",
         "name": "pattern",
         "type": "pattern",
@@ -448,6 +454,12 @@
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -557,6 +569,12 @@
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -723,6 +741,12 @@
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
@@ -944,6 +968,12 @@
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
+        "optional": true
+      },
+      {
+        "command": "TIMEOUT",
+        "name": "seconds",
+        "type": "double",
         "optional": true
       },
       {
