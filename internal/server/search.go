@@ -14,6 +14,7 @@ import (
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/bing"
+	"github.com/tidwall/tile38/internal/deadline"
 	"github.com/tidwall/tile38/internal/glob"
 )
 
@@ -385,7 +386,7 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 				skipTesting:     true,
 			})
 		}
-		server.nearestNeighbors(&s, sw, s.obj.(*geojson.Circle), iter)
+		server.nearestNeighbors(&s, sw, msg.Deadline, s.obj.(*geojson.Circle), iter)
 	}
 	sw.writeFoot()
 	if msg.OutputType == JSON {
@@ -403,13 +404,14 @@ type iterItem struct {
 }
 
 func (server *Server) nearestNeighbors(
-	s *liveFenceSwitches, sw *scanWriter, target *geojson.Circle,
+	s *liveFenceSwitches, sw *scanWriter, dl *deadline.Deadline,
+	target *geojson.Circle,
 	iter func(id string, o geojson.Object, fields []float64, dist float64,
 	) bool) {
 	maxDist := target.Haversine()
 	limit := int(sw.limit)
 	var items []iterItem
-	sw.col.Nearby(target, sw, func(id string, o geojson.Object, fields []float64) bool {
+	sw.col.Nearby(target, sw, dl, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
 			return true
 		}
@@ -480,7 +482,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 	sw.writeHead()
 	if sw.col != nil {
 		if cmd == "within" {
-			sw.col.Within(s.obj, s.sparse, sw, func(
+			sw.col.Within(s.obj, s.sparse, sw, msg.Deadline, func(
 				id string, o geojson.Object, fields []float64,
 			) bool {
 				if server.hasExpired(s.key, id) {
@@ -494,7 +496,7 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 				})
 			})
 		} else if cmd == "intersects" {
-			sw.col.Intersects(s.obj, s.sparse, sw, func(
+			sw.col.Intersects(s.obj, s.sparse, sw, msg.Deadline, func(
 				id string,
 				o geojson.Object,
 				fields []float64,
@@ -578,7 +580,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 		} else {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				sw.col.SearchValues(s.desc, sw,
+				sw.col.SearchValues(s.desc, sw, msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -593,6 +595,7 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 				// globSingle is only for ID matches, not values.
 				sw.globSingle = false
 				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], s.desc, sw,
+					msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,

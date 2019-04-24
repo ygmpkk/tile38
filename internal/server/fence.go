@@ -300,10 +300,10 @@ func extendRoamMessage(
 			}
 			g := glob.Parse(pattern, false)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
-				col.Scan(false, nil, iterator)
+				col.Scan(false, nil, nil, iterator)
 			} else {
 				col.ScanRange(g.Limits[0], g.Limits[1],
-					false, nil, iterator)
+					false, nil, nil, iterator)
 			}
 		}
 		nmsg = append(nmsg, ']')
@@ -370,7 +370,7 @@ func fenceMatchRoam(
 		Min: geometry.Point{X: minLon, Y: minLat},
 		Max: geometry.Point{X: maxLon, Y: maxLat},
 	}
-	col.Intersects(geojson.NewRect(rect), 0, nil, func(
+	col.Intersects(geojson.NewRect(rect), 0, nil, nil, func(
 		id string, obj2 geojson.Object, fields []float64,
 	) bool {
 		if c.hasExpired(fence.roam.key, id) {

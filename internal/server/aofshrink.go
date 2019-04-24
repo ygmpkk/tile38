@@ -96,7 +96,7 @@ func (server *Server) aofshrink() {
 					var exm = server.expires[keys[0]] // the expiration map
 					var now = time.Now()              // used for expiration
 					var count = 0                     // the object count
-					col.ScanGreaterOrEqual(nextid, false, nil,
+					col.ScanGreaterOrEqual(nextid, false, nil, nil,
 						func(id string, obj geojson.Object, fields []float64) bool {
 							if count == maxids {
 								// we reached the max number of ids for one batch
