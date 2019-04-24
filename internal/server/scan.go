@@ -55,6 +55,9 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 		wr.WriteString(`{"ok":true`)
 	}
 	sw.writeHead()
+	if s.timeout != 0 {
+		msg.Deadline.Update(start.Add(s.timeout))
+	}
 	if sw.col != nil {
 		if sw.output == outputCount && len(sw.wheres) == 0 &&
 			len(sw.whereins) == 0 && sw.globEverything == true {
@@ -67,6 +70,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 			g := glob.Parse(sw.globPattern, s.desc)
 			if g.Limits[0] == "" && g.Limits[1] == "" {
 				sw.col.Scan(s.desc, sw,
+					msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,
@@ -77,6 +81,7 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 				)
 			} else {
 				sw.col.ScanRange(g.Limits[0], g.Limits[1], s.desc, sw,
+					msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
 							id:     id,

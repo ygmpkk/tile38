@@ -8,11 +8,12 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
+	"github.com/tidwall/tile38/internal/deadline"
 	"github.com/tidwall/tinybtree"
 )
 
-// yieldStep forces the iterator to yield goroutine every N steps.
-const yieldStep = 0xFF
+// yieldStep forces the iterator to yield goroutine every 255 steps.
+const yieldStep = 255
 
 // Cursor allows for quickly paging through Scan, Within, Intersects, and Nearby
 type Cursor interface {
@@ -320,7 +321,10 @@ func (c *Collection) FieldArr() []string {
 }
 
 // Scan iterates though the collection ids.
-func (c *Collection) Scan(desc bool, cursor Cursor,
+func (c *Collection) Scan(
+	desc bool,
+	cursor Cursor,
+	deadline *deadline.Deadline,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
@@ -335,12 +339,7 @@ func (c *Collection) Scan(desc bool, cursor Cursor,
 		if count <= offset {
 			return true
 		}
-		if count&yieldStep == yieldStep {
-			runtime.Gosched()
-		}
-		if cursor != nil {
-			cursor.Step(1)
-		}
+		nextStep(count, cursor, deadline)
 		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -354,7 +353,11 @@ func (c *Collection) Scan(desc bool, cursor Cursor,
 }
 
 // ScanRange iterates though the collection starting with specified id.
-func (c *Collection) ScanRange(start, end string, desc bool, cursor Cursor,
+func (c *Collection) ScanRange(
+	start, end string,
+	desc bool,
+	cursor Cursor,
+	deadline *deadline.Deadline,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
@@ -369,12 +372,7 @@ func (c *Collection) ScanRange(start, end string, desc bool, cursor Cursor,
 		if count <= offset {
 			return true
 		}
-		if count&yieldStep == yieldStep {
-			runtime.Gosched()
-		}
-		if cursor != nil {
-			cursor.Step(1)
-		}
+		nextStep(count, cursor, deadline)
 		if !desc {
 			if key >= end {
 				return false
@@ -398,7 +396,10 @@ func (c *Collection) ScanRange(start, end string, desc bool, cursor Cursor,
 }
 
 // SearchValues iterates though the collection values.
-func (c *Collection) SearchValues(desc bool, cursor Cursor,
+func (c *Collection) SearchValues(
+	desc bool,
+	cursor Cursor,
+	deadline *deadline.Deadline,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
@@ -413,12 +414,7 @@ func (c *Collection) SearchValues(desc bool, cursor Cursor,
 		if count <= offset {
 			return true
 		}
-		if count&yieldStep == yieldStep {
-			runtime.Gosched()
-		}
-		if cursor != nil {
-			cursor.Step(1)
-		}
+		nextStep(count, cursor, deadline)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -434,6 +430,7 @@ func (c *Collection) SearchValues(desc bool, cursor Cursor,
 // SearchValuesRange iterates though the collection values.
 func (c *Collection) SearchValuesRange(start, end string, desc bool,
 	cursor Cursor,
+	deadline *deadline.Deadline,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
@@ -448,12 +445,7 @@ func (c *Collection) SearchValuesRange(start, end string, desc bool,
 		if count <= offset {
 			return true
 		}
-		if count&yieldStep == yieldStep {
-			runtime.Gosched()
-		}
-		if cursor != nil {
-			cursor.Step(1)
-		}
+		nextStep(count, cursor, deadline)
 		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -471,6 +463,7 @@ func (c *Collection) SearchValuesRange(start, end string, desc bool,
 // ScanGreaterOrEqual iterates though the collection starting with specified id.
 func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 	cursor Cursor,
+	deadline *deadline.Deadline,
 	iterator func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var keepon = true
@@ -485,12 +478,7 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		if count <= offset {
 			return true
 		}
-		if count&yieldStep == yieldStep {
-			runtime.Gosched()
-		}
-		if cursor != nil {
-			cursor.Step(1)
-		}
+		nextStep(count, cursor, deadline)
 		iitm := value.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.getFieldValues(iitm.id))
 		return keepon
@@ -594,6 +582,7 @@ func (c *Collection) Within(
 	obj geojson.Object,
 	sparse uint8,
 	cursor Cursor,
+	deadline *deadline.Deadline,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var count uint64
@@ -611,12 +600,7 @@ func (c *Collection) Within(
 				if count <= offset {
 					return false, true
 				}
-				if count&yieldStep == yieldStep {
-					runtime.Gosched()
-				}
-				if cursor != nil {
-					cursor.Step(1)
-				}
+				nextStep(count, cursor, deadline)
 				if match = o.Within(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -630,12 +614,7 @@ func (c *Collection) Within(
 			if count <= offset {
 				return true
 			}
-			if count&yieldStep == yieldStep {
-				runtime.Gosched()
-			}
-			if cursor != nil {
-				cursor.Step(1)
-			}
+			nextStep(count, cursor, deadline)
 			if o.Within(obj) {
 				return iter(id, o, fields)
 			}
@@ -650,6 +629,7 @@ func (c *Collection) Intersects(
 	obj geojson.Object,
 	sparse uint8,
 	cursor Cursor,
+	deadline *deadline.Deadline,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	var count uint64
@@ -667,12 +647,7 @@ func (c *Collection) Intersects(
 				if count <= offset {
 					return false, true
 				}
-				if count&yieldStep == yieldStep {
-					runtime.Gosched()
-				}
-				if cursor != nil {
-					cursor.Step(1)
-				}
+				nextStep(count, cursor, deadline)
 				if match = o.Intersects(obj); match {
 					ok = iter(id, o, fields)
 				}
@@ -686,12 +661,7 @@ func (c *Collection) Intersects(
 			if count <= offset {
 				return true
 			}
-			if count&yieldStep == yieldStep {
-				runtime.Gosched()
-			}
-			if cursor != nil {
-				cursor.Step(1)
-			}
+			nextStep(count, cursor, deadline)
 			if o.Intersects(obj) {
 				return iter(id, o, fields)
 			}
@@ -704,6 +674,7 @@ func (c *Collection) Intersects(
 func (c *Collection) Nearby(
 	target geojson.Object,
 	cursor Cursor,
+	deadline *deadline.Deadline,
 	iter func(id string, obj geojson.Object, fields []float64) bool,
 ) bool {
 	// First look to see if there's at least one candidate in the circle's
@@ -746,16 +717,21 @@ func (c *Collection) Nearby(
 			if count <= offset {
 				return true
 			}
-			if count&yieldStep == yieldStep {
-				runtime.Gosched()
-			}
-			if cursor != nil {
-				cursor.Step(1)
-			}
+			nextStep(count, cursor, deadline)
 			item := itemv.(*itemT)
 			alive = iter(item.id, item.obj, c.getFieldValues(item.id))
 			return alive
 		},
 	)
 	return alive
+}
+
+func nextStep(step uint64, cursor Cursor, deadline *deadline.Deadline) {
+	if step&yieldStep == yieldStep {
+		runtime.Gosched()
+		deadline.Check()
+	}
+	if cursor != nil {
+		cursor.Step(1)
+	}
 }

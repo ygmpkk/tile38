@@ -34,6 +34,7 @@ type Client struct {
 	opened time.Time          // when the client was created/opened, unix nano
 	last   time.Time          // last client request/response, unix nano
 
+	timeout time.Duration // command timeout
 }
 
 // Write ...

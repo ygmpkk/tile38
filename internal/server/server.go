@@ -31,6 +31,7 @@ import (
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
+	"github.com/tidwall/tile38/internal/deadline"
 	"github.com/tidwall/tile38/internal/endpoint"
 	"github.com/tidwall/tile38/internal/expire"
 	"github.com/tidwall/tile38/internal/log"
@@ -996,7 +997,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		// does not write to aof, but requires a write lock.
 		server.mu.Lock()
 		defer server.mu.Unlock()
-	case "output":
+	case "output", "timeout":
 		// this is local connection operation. Locks not needed.
 	case "echo":
 	case "massinsert":
@@ -1022,8 +1023,30 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	case "subscribe", "psubscribe", "publish":
 		// No locking for pubsub
 	}
-
-	res, d, err := server.command(msg, client)
+	res, d, err := func() (res resp.Value, d commandDetails, err error) {
+		if !write {
+			if client.timeout == 0 {
+				// the command itself might have a timeout,
+				// which will be used to update this trivial deadline.
+				msg.Deadline = deadline.Empty()
+			} else {
+				msg.Deadline = deadline.New(start.Add(client.timeout))
+			}
+			defer func() {
+				if msg.Deadline.Hit() {
+					v := recover()
+					if v != nil {
+						if s, ok := v.(string); !ok || s != "deadline" {
+							panic(v)
+						}
+					}
+					res = NOMessage
+					err = writeErr("timeout")
+				}
+			}()
+		}
+		return server.command(msg, client)
+	}()
 	if res.Type() == resp.Error {
 		return writeErr(res.String())
 	}
@@ -1180,6 +1203,8 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, err = server.cmdKeys(msg)
 	case "output":
 		res, err = server.cmdOutput(msg)
+	case "timeout":
+		res, err = server.cmdTimeout(msg, client)
 	case "aof":
 		res, err = server.cmdAOF(msg)
 	case "aofmd5":
@@ -1323,6 +1348,7 @@ type Message struct {
 	ConnType   Type
 	OutputType Type
 	Auth       string
+	Deadline   *deadline.Deadline
 }
 
 // Command returns the first argument as a lowercase string
