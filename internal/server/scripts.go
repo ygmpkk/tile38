@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -391,6 +392,13 @@ func (c *Server) cmdEvalUnified(scriptIsSha bool, msg *Message) (res resp.Value,
 	if err != nil {
 		return
 	}
+	deadline, empty := msg.Deadline.GetDeadlineTime()
+	if !empty {
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+		luaState.SetContext(ctx)
+		defer luaState.RemoveContext()
+	}
 	defer c.luapool.Put(luaState)
 
 	keysTbl := luaState.CreateTable(int(numkeys), 0)
@@ -454,6 +462,9 @@ func (c *Server) cmdEvalUnified(scriptIsSha bool, msg *Message) (res resp.Value,
 			"EVAL_CMD": lua.LNil,
 		})
 	if err := luaState.PCall(0, 1, nil); err != nil {
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+			msg.Deadline.Check()
+		}
 		log.Debugf("%v", err.Error())
 		return NOMessage, makeSafeErr(err)
 	}
