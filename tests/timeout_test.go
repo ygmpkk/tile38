@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,12 +11,12 @@ import (
 )
 
 func subTestTimeout(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "session set/unset", timeout_session_set_unset_test)
-	runStep(t, mc, "session spatial", timeout_session_spatial_test)
-	runStep(t, mc, "session search", timeout_session_search_test)
-	runStep(t, mc, "session scripts", timeout_session_scripts_test)
-	runStep(t, mc, "command spatial", timeout_command_spatial_test)
-	runStep(t, mc, "command search", timeout_command_search_test)
+	runStep(t, mc, "spatial", timeout_spatial_test)
+	runStep(t, mc, "search", timeout_search_test)
+	runStep(t, mc, "scripts", timeout_scripts_test)
+	runStep(t, mc, "no writes", timeout_no_writes_test)
+	runStep(t, mc, "within scripts", timeout_within_scripts_test)
+	runStep(t, mc, "no writes within scripts", timeout_no_writes_within_scripts_test)
 }
 
 func setup(mc *mockServer, count int, points bool) (err error) {
@@ -53,17 +54,7 @@ func setup(mc *mockServer, count int, points bool) (err error) {
 	return
 }
 
-func timeout_session_set_unset_test(mc *mockServer) (err error) {
-	return mc.DoBatch([][]interface{}{
-		{"TIMEOUT"}, {"0"},
-		{"TIMEOUT", "0.25"}, {"OK"},
-		{"TIMEOUT"}, {"0.25"},
-		{"TIMEOUT", "0"}, {"OK"},
-		{"TIMEOUT"}, {"0"},
-	})
-}
-
-func timeout_session_spatial_test(mc *mockServer) (err error) {
+func timeout_spatial_test(mc *mockServer) (err error) {
 	err = setup(mc, 10000, true)
 
 	return mc.DoBatch([][]interface{}{
@@ -71,50 +62,22 @@ func timeout_session_spatial_test(mc *mockServer) (err error) {
 		{"INTERSECTS", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"10000"},
 		{"WITHIN", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"10000"},
 
-		{"TIMEOUT", "0.000001"}, {"OK"},
-
-		{"SCAN", "mykey", "WHERE", "foo", -1, 2, "COUNT"}, {"ERR timeout"},
-		{"INTERSECTS", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
-		{"WITHIN", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
+		{"TIMEOUT", "0.000001", "SCAN", "mykey", "WHERE", "foo", -1, 2, "COUNT"}, {"ERR timeout"},
+		{"TIMEOUT", "0.000001", "INTERSECTS", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
+		{"TIMEOUT", "0.000001", "WITHIN", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
 	})
 }
 
-func timeout_command_spatial_test(mc *mockServer) (err error) {
-	err = setup(mc, 10000, true)
-
-	return mc.DoBatch([][]interface{}{
-		{"TIMEOUT", "1"}, {"OK"},
-		{"SCAN", "mykey", "WHERE", "foo", -1, 2, "COUNT"}, {"10000"},
-		{"INTERSECTS", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"10000"},
-		{"WITHIN", "mykey", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"10000"},
-
-		{"SCAN", "mykey", "TIMEOUT", "0.000001", "WHERE", "foo", -1, 2, "COUNT"}, {"ERR timeout"},
-		{"INTERSECTS", "mykey", "TIMEOUT", "0.000001", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
-		{"WITHIN", "mykey", "TIMEOUT", "0.000001", "WHERE", "foo", -1, 2, "COUNT", "BOUNDS", -90, -180, 90, 180}, {"ERR timeout"},
-	})
-}
-
-func timeout_session_search_test(mc *mockServer) (err error) {
+func timeout_search_test(mc *mockServer) (err error) {
 	err = setup(mc, 10000, false)
 
 	return mc.DoBatch([][]interface{}{
 		{"SEARCH", "mykey", "MATCH", "val:*", "COUNT"}, {"10000"},
-		{"TIMEOUT", "0.000001"}, {"OK"},
-		{"SEARCH", "mykey", "MATCH", "val:*", "COUNT"}, {"ERR timeout"},
+		{"TIMEOUT", "0.000001", "SEARCH", "mykey", "MATCH", "val:*", "COUNT"}, {"ERR timeout"},
 	})
 }
 
-func timeout_command_search_test(mc *mockServer) (err error) {
-	err = setup(mc, 10000, false)
-
-	return mc.DoBatch([][]interface{}{
-		{"TIMEOUT", "1"}, {"OK"},
-		{"SEARCH", "mykey", "MATCH", "val:*", "COUNT"}, {"10000"},
-		{"SEARCH", "mykey", "TIMEOUT", "0.000001", "MATCH", "val:*", "COUNT"}, {"ERR timeout"},
-	})
-}
-
-func timeout_session_scripts_test(mc *mockServer) (err error) {
+func timeout_scripts_test(mc *mockServer) (err error) {
 	script := `
 		local clock = os.clock
 		local function sleep(n)
@@ -132,16 +95,70 @@ func timeout_session_scripts_test(mc *mockServer) (err error) {
 		{"EVALROSHA", sha, 0}, {nil},
 		{"EVALNASHA", sha, 0}, {nil},
 
-		{"TIMEOUT", "0.1"}, {"OK"},
+		{"TIMEOUT", "0.1", "EVALSHA", sha, 0}, {"ERR timeout"},
+		{"TIMEOUT", "0.1", "EVALROSHA", sha, 0}, {"ERR timeout"},
+		{"TIMEOUT", "0.1", "EVALNASHA", sha, 0}, {"ERR timeout"},
 
-		{"EVALSHA", sha, 0}, {"ERR timeout"},
-		{"EVALROSHA", sha, 0}, {"ERR timeout"},
-		{"EVALNASHA", sha, 0}, {"ERR timeout"},
+		{"TIMEOUT", "0.9", "EVALSHA", sha, 0}, {nil},
+		{"TIMEOUT", "0.9", "EVALROSHA", sha, 0}, {nil},
+		{"TIMEOUT", "0.9", "EVALNASHA", sha, 0}, {nil},
+	})
+}
 
-		{"TIMEOUT", "0.9"}, {"OK"},
+func timeout_no_writes_test(mc *mockServer) (err error) {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "myid", "STRING", "foo"}, {"OK"},
+		{"TIMEOUT", 1, "SET", "mykey", "myid", "STRING", "foo"}, {"ERR timeout not supported for 'set'"},
+	})
+}
 
-		{"EVALSHA", sha, 0}, {nil},
-		{"EVALROSHA", sha, 0}, {nil},
-		{"EVALNASHA", sha, 0}, {nil},
+func scriptTimeoutErr(v interface{}) (resp, expect interface{}) {
+	s := fmt.Sprintf("%v", v)
+	if strings.Contains(s, "ERR timeout") {
+		return v, v
+	}
+	return v, "A lua stack containing 'ERR timeout'"
+}
+
+func timeout_within_scripts_test(mc *mockServer) (err error) {
+	err = setup(mc, 10000, true)
+
+	script1 := "return tile38.call('timeout', 10, 'SCAN', 'mykey', 'WHERE', 'foo', -1, 2, 'COUNT')"
+	script2 := "return tile38.call('timeout', 0.000001, 'SCAN', 'mykey', 'WHERE', 'foo', -1, 2, 'COUNT')"
+	sha1 := "27a364b4e46ef493f6b70371086c286e2d5b5f49"
+	sha2 := "2da9c05b54abfe870bdc8383a143f9d3aa656192"
+
+	return mc.DoBatch([][]interface{}{
+		{"SCRIPT LOAD", script1}, {sha1},
+		{"SCRIPT LOAD", script2}, {sha2},
+
+		{"EVALSHA", sha1, 0}, {"10000"},
+		{"EVALROSHA", sha1, 0}, {"10000"},
+		{"EVALNASHA", sha1, 0}, {"10000"},
+		{"EVALSHA", sha2, 0}, {scriptTimeoutErr},
+		{"EVALROSHA", sha2, 0}, {scriptTimeoutErr},
+		{"EVALNASHA", sha2, 0}, {scriptTimeoutErr},
+	})
+}
+
+func scriptTimeoutNotSupportedErr(v interface{}) (resp, expect interface{}) {
+	s := fmt.Sprintf("%v", v)
+	if strings.Contains(s, "ERR timeout not supported for") {
+		return v, v
+	}
+	return v, "A lua stack containing 'ERR timeout not supported for'"
+}
+
+func timeout_no_writes_within_scripts_test(mc *mockServer) (err error) {
+	script1 := "return tile38.call('SET', 'mykey', 'myval', 'STRING', 'foo')"
+	script2 := "return tile38.call('timeout', 10, 'SET', 'mykey', 'myval', 'STRING', 'foo')"
+	sha1 := "393d0adff113fdda45e3b5aff93c188c30099f48"
+	sha2 := "5287c158d15eb53d800b7389d82df0d73b004bf1"
+
+	return mc.DoBatch([][]interface{}{
+		{"SCRIPT LOAD", script1}, {sha1},
+		{"SCRIPT LOAD", script2}, {sha2},
+		{"EVALSHA", sha1, 0, "foo"}, {"OK"},
+		{"EVALSHA", sha2, 0, "foo"}, {scriptTimeoutNotSupportedErr},
 	})
 }

@@ -370,9 +370,6 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 		wr.WriteString(`{"ok":true`)
 	}
 	sw.writeHead()
-	if s.timeout != 0 {
-		msg.Deadline.Update(start.Add(s.timeout))
-	}
 	if sw.col != nil {
 		iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
 			meters := 0.0
@@ -483,9 +480,6 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 		wr.WriteString(`{"ok":true`)
 	}
 	sw.writeHead()
-	if s.timeout != 0 {
-		msg.Deadline.Update(start.Add(s.timeout))
-	}
 	if sw.col != nil {
 		if cmd == "within" {
 			sw.col.Within(s.obj, s.sparse, sw, msg.Deadline, func(
@@ -576,9 +570,6 @@ func (server *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 		wr.WriteString(`{"ok":true`)
 	}
 	sw.writeHead()
-	if s.timeout != 0 {
-		msg.Deadline.Update(start.Add(s.timeout))
-	}
 	if sw.col != nil {
 		if sw.output == outputCount && len(sw.wheres) == 0 && sw.globEverything == true {
 			count := sw.col.Count() - int(s.cursor)

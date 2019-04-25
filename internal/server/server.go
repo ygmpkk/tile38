@@ -39,6 +39,9 @@ import (
 )
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
+func errTimeoutOnCmd(cmd string) error {
+	return fmt.Errorf("timeout not supported for '%s'", cmd)
+}
 
 const (
 	goingLive     = "going live"
@@ -839,6 +842,26 @@ func isReservedFieldName(field string) bool {
 	return false
 }
 
+func rewriteTimeoutMsg(msg *Message) (err error) {
+	vs := msg.Args[1:]
+	var valStr string
+	var ok bool
+	if vs, valStr, ok = tokenval(vs); !ok || valStr == "" || len(vs) == 0 {
+		err = errInvalidNumberOfArguments
+		return
+	}
+	timeoutSec, _err := strconv.ParseFloat(valStr, 64)
+	if _err != nil || timeoutSec < 0 {
+		err = errInvalidArgument(valStr)
+		return
+	}
+	msg.Args = vs[:]
+	msg._command = ""
+	msg.Deadline = deadline.New(
+		time.Now().Add(time.Duration(timeoutSec * float64(time.Second))))
+	return
+}
+
 func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	start := time.Now()
 	serializeOutput := func(res resp.Value) (string, error) {
@@ -923,6 +946,12 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		return nil
 	}
 
+	if msg.Command() == "timeout" {
+		if err := rewriteTimeoutMsg(msg); err != nil {
+			return writeErr(err.Error())
+		}
+	}
+
 	var write bool
 
 	if !client.authd || msg.Command() == "auth" {
@@ -997,7 +1026,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		// does not write to aof, but requires a write lock.
 		server.mu.Lock()
 		defer server.mu.Unlock()
-	case "output", "timeout":
+	case "output":
 		// this is local connection operation. Locks not needed.
 	case "echo":
 	case "massinsert":
@@ -1024,13 +1053,11 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		// No locking for pubsub
 	}
 	res, d, err := func() (res resp.Value, d commandDetails, err error) {
-		if !write {
-			if client.timeout == 0 {
-				// the command itself might have a timeout,
-				// which will be used to update this trivial deadline.
-				msg.Deadline = deadline.Empty()
-			} else {
-				msg.Deadline = deadline.New(start.Add(client.timeout))
+		if msg.Deadline != nil {
+			if write {
+				res = NOMessage
+				err  = errTimeoutOnCmd(msg.Command())
+				return
 			}
 			defer func() {
 				if msg.Deadline.Hit() {
@@ -1203,8 +1230,6 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, err = server.cmdKeys(msg)
 	case "output":
 		res, err = server.cmdOutput(msg)
-	case "timeout":
-		res, err = server.cmdTimeout(msg, client)
 	case "aof":
 		res, err = server.cmdAOF(msg)
 	case "aofmd5":

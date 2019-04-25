@@ -55,9 +55,6 @@ func (c *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 		wr.WriteString(`{"ok":true`)
 	}
 	sw.writeHead()
-	if s.timeout != 0 {
-		msg.Deadline.Update(start.Add(s.timeout))
-	}
 	if sw.col != nil {
 		if sw.output == outputCount && len(sw.wheres) == 0 &&
 			len(sw.whereins) == 0 && sw.globEverything == true {
