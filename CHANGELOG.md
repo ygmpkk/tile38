@@ -2,10 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.0] - 2019-04-26
+### Added
+- #446: Added timeouts to allow prepending commands with a TIMEOUT option. (@rshura)
+
+### Fixes
+- #440: Fixed crash with fence ROAM (@githubfr)
+
+### Changes
+- 3ae5927: Removed experimental evio option
+
+
 ## [1.16.4] - 2019-03-19
 ### Fixes
 - e1a7145: Hotfix. Do not ignore SIGHUP. Use the `--nohup` flag or `nohup` command.
-
 
 ## [1.16.3] - 2019-03-19
 ### Fixes
