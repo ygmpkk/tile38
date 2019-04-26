@@ -24,7 +24,6 @@ import (
 
 	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/buntdb"
-	"github.com/tidwall/evio"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/redcon"
@@ -39,6 +38,7 @@ import (
 )
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
+
 func errTimeoutOnCmd(cmd string) error {
 	return fmt.Errorf("timeout not supported for '%s'", cmd)
 }
@@ -284,9 +284,6 @@ func Serve(host string, port int, dir string, http bool) error {
 	}()
 
 	// Start the network server
-	if core.Evio {
-		return server.evioServe()
-	}
 	return server.netServe()
 }
 
@@ -302,203 +299,6 @@ func (server *Server) isProtected() bool {
 	}
 	is := server.config.protectedMode() != "no" && server.config.requirePass() == ""
 	return is
-}
-
-func (server *Server) evioServe() error {
-	var events evio.Events
-	if core.NumThreads == 0 {
-		events.NumLoops = -1
-	} else {
-		events.NumLoops = core.NumThreads
-	}
-	events.LoadBalance = evio.LeastConnections
-	events.Serving = func(eserver evio.Server) (action evio.Action) {
-		if eserver.NumLoops == 1 {
-			log.Infof("Running single-threaded")
-		} else {
-			log.Infof("Running on %d threads", eserver.NumLoops)
-		}
-		for _, addr := range eserver.Addrs {
-			log.Infof("Ready to accept connections at %s",
-				addr)
-		}
-		return
-	}
-	var clientID int64
-	events.Opened = func(econn evio.Conn) (out []byte, opts evio.Options, action evio.Action) {
-		// create the client
-		client := new(Client)
-		client.id = int(atomic.AddInt64(&clientID, 1))
-		client.opened = time.Now()
-		client.remoteAddr = econn.RemoteAddr().String()
-
-		// keep track of the client
-		econn.SetContext(client)
-
-		// add client to server map
-		server.connsmu.Lock()
-		server.conns[client.id] = client
-		server.connsmu.Unlock()
-		server.statsTotalConns.add(1)
-
-		// set the client keep-alive, if needed
-		if server.config.keepAlive() > 0 {
-			opts.TCPKeepAlive = time.Duration(server.config.keepAlive()) * time.Second
-		}
-		log.Debugf("Opened connection: %s", client.remoteAddr)
-
-		// check if the connection is protected
-		if !strings.HasPrefix(client.remoteAddr, "127.0.0.1:") &&
-			!strings.HasPrefix(client.remoteAddr, "[::1]:") {
-			if server.isProtected() {
-				// This is a protected server. Only loopback is allowed.
-				out = append(out, deniedMessage...)
-				action = evio.Close
-				return
-			}
-		}
-		return
-	}
-
-	events.Closed = func(econn evio.Conn, err error) (action evio.Action) {
-		// load the client
-		client := econn.Context().(*Client)
-
-		// delete from server map
-		server.connsmu.Lock()
-		delete(server.conns, client.id)
-		server.connsmu.Unlock()
-
-		log.Debugf("Closed connection: %s", client.remoteAddr)
-		return
-	}
-
-	events.Data = func(econn evio.Conn, in []byte) (out []byte, action evio.Action) {
-		// load the client
-		client := econn.Context().(*Client)
-
-		// read the payload packet from the client input stream.
-		packet := client.in.Begin(in)
-
-		// load the pipeline reader
-		pr := &client.pr
-		rdbuf := bytes.NewBuffer(packet)
-		pr.rd = rdbuf
-		pr.wr = client
-
-		msgs, err := pr.ReadMessages()
-		if err != nil {
-			log.Error(err)
-			action = evio.Close
-			return
-		}
-		for _, msg := range msgs {
-			// Just closing connection if we have deprecated HTTP or WS connection,
-			// And --http-transport = false
-			if !server.http && (msg.ConnType == WebSocket ||
-				msg.ConnType == HTTP) {
-				action = evio.Close
-				break
-			}
-			if msg != nil && msg.Command() != "" {
-				if client.outputType != Null {
-					msg.OutputType = client.outputType
-				}
-				if msg.Command() == "quit" {
-					if msg.OutputType == RESP {
-						io.WriteString(client, "+OK\r\n")
-					}
-					action = evio.Close
-					break
-				}
-
-				// increment last used
-				client.mu.Lock()
-				client.last = time.Now()
-				client.mu.Unlock()
-
-				// update total command count
-				server.statsTotalCommands.add(1)
-
-				// handle the command
-				err := server.handleInputCommand(client, msg)
-				if err != nil {
-					if err.Error() == goingLive {
-						client.goLiveErr = err
-						client.goLiveMsg = msg
-						action = evio.Detach
-						return
-					}
-					log.Error(err)
-					action = evio.Close
-					return
-				}
-
-				client.outputType = msg.OutputType
-			} else {
-				client.Write([]byte("HTTP/1.1 500 Bad Request\r\nConnection: close\r\n\r\n"))
-				action = evio.Close
-				break
-			}
-			if msg.ConnType == HTTP || msg.ConnType == WebSocket {
-				action = evio.Close
-				break
-			}
-		}
-
-		packet = packet[len(packet)-rdbuf.Len():]
-		client.in.End(packet)
-
-		out = client.out
-		client.out = nil
-		return
-	}
-
-	events.Detached = func(econn evio.Conn, rwc io.ReadWriteCloser) (action evio.Action) {
-		client := econn.Context().(*Client)
-		client.conn = rwc
-		if len(client.out) > 0 {
-			rwc.Write(client.out)
-			client.out = nil
-		}
-		client.in = evio.InputStream{}
-		client.pr.rd = rwc
-		client.pr.wr = rwc
-
-		log.Debugf("Detached connection: %s", client.remoteAddr)
-		go func() {
-			defer func() {
-				// close connection
-				rwc.Close()
-				server.connsmu.Lock()
-				delete(server.conns, client.id)
-				server.connsmu.Unlock()
-				log.Debugf("Closed connection: %s", client.remoteAddr)
-			}()
-			err := server.goLive(
-				client.goLiveErr,
-				&liveConn{econn.RemoteAddr(), rwc},
-				&client.pr,
-				client.goLiveMsg,
-				client.goLiveMsg.ConnType == WebSocket,
-			)
-			if err != nil {
-				log.Error(err)
-			}
-		}()
-		return
-	}
-
-	events.PreWrite = func() {
-		if atomic.LoadInt32(&server.aofdirty) != 0 {
-			server.mu.Lock()
-			defer server.mu.Unlock()
-			server.flushAOF(false)
-			atomic.StoreInt32(&server.aofdirty, 1)
-		}
-	}
-
-	return evio.Serve(events, fmt.Sprintf("%s:%d", server.host, server.port))
 }
 
 func (server *Server) netServe() error {
@@ -623,7 +423,7 @@ func (server *Server) netServe() error {
 									client.conn.Write(client.out)
 									client.out = nil
 								}
-								client.in = evio.InputStream{}
+								client.in = InputStream{}
 								client.pr.rd = rwc
 								client.pr.wr = rwc
 								log.Debugf("Detached connection: %s", client.remoteAddr)
@@ -1056,7 +856,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		if msg.Deadline != nil {
 			if write {
 				res = NOMessage
-				err  = errTimeoutOnCmd(msg.Command())
+				err = errTimeoutOnCmd(msg.Command())
 				return
 			}
 			defer func() {
@@ -1638,4 +1438,30 @@ reading:
 		break
 	}
 	return &Message{Args: args, ConnType: Native, OutputType: JSON}, nil
+}
+
+// InputStream is a helper type for managing input streams from inside
+// the Data event.
+type InputStream struct{ b []byte }
+
+// Begin accepts a new packet and returns a working sequence of
+// unprocessed bytes.
+func (is *InputStream) Begin(packet []byte) (data []byte) {
+	data = packet
+	if len(is.b) > 0 {
+		is.b = append(is.b, data...)
+		data = is.b
+	}
+	return data
+}
+
+// End shifts the stream to match the unprocessed data.
+func (is *InputStream) End(data []byte) {
+	if len(data) > 0 {
+		if len(data) != len(is.b) {
+			is.b = append(is.b[:0], data...)
+		}
+	} else if len(is.b) > 0 {
+		is.b = is.b[:0]
+	}
 }

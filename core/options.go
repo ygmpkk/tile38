@@ -20,6 +20,3 @@ var QueueFileName = ""
 
 // NumThreads is the number of network threads to use.
 var NumThreads int
-
-// Evio set the networking to use the evio package.
-var Evio = false

@@ -10,20 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tidwall/evio"
 	"github.com/tidwall/resp"
 )
 
 // Client is an remote connection into to Tile38
 type Client struct {
-	id         int              // unique id
-	replPort   int              // the known replication port for follower connections
-	authd      bool             // client has been authenticated
-	outputType Type             // Null, JSON, or RESP
-	remoteAddr string           // original remote address
-	in         evio.InputStream // input stream
-	pr         PipelineReader   // command reader
-	out        []byte           // output write buffer
+	id         int            // unique id
+	replPort   int            // the known replication port for follower connections
+	authd      bool           // client has been authenticated
+	outputType Type           // Null, JSON, or RESP
+	remoteAddr string         // original remote address
+	in         InputStream    // input stream
+	pr         PipelineReader // command reader
+	out        []byte         // output write buffer
 
 	goLiveErr error    // error type used for going line
 	goLiveMsg *Message // last message for go live

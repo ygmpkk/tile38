@@ -22,8 +22,7 @@
 
 required = [
   "github.com/tidwall/lotsa", 
-  "github.com/mmcloughlin/geohash", 
-  "github.com/tidwall/evio"
+  "github.com/mmcloughlin/geohash"
 ]
 
 [[constraint]]

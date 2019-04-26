@@ -101,7 +101,6 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --threads num           : number of network threads (default: num cores)
-  --evio yes/no           : use the evio package (default: no)
   --nohup                 : do not exist on SIGHUP
 
 Developer Options:
@@ -152,6 +151,8 @@ Developer Options:
 		}
 		return
 	}
+
+	var showEvioDisabled bool
 
 	// parse non standard args.
 	nargs := []string{os.Args[0]}
@@ -243,11 +244,8 @@ Developer Options:
 			i++
 			if i < len(os.Args) {
 				switch strings.ToLower(os.Args[i]) {
-				case "no":
-					core.Evio = false
-					continue
-				case "yes":
-					core.Evio = true
+				case "no", "yes":
+					showEvioDisabled = true
 					continue
 				}
 			}
@@ -407,6 +405,10 @@ Developer Options:
 `+"\n", core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, port, os.Getpid())
 	if pidferr != nil {
 		log.Warnf("pidfile: %v", pidferr)
+	}
+	if showEvioDisabled {
+		// we don't currently support evio in Tile38
+		log.Warnf("evio is not currently supported")
 	}
 	if err := server.Serve(host, port, dir, httpTransport); err != nil {
 		log.Fatal(err)

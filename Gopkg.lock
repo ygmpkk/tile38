@@ -129,14 +129,6 @@
   revision = "c2b33e84"
 
 [[projects]]
-  digest = "1:be1d3b7623f11b628068933282015f3dbcd522fa8e6b16d2931edffd42ef2c0b"
-  name = "github.com/kavu/go_reuseport"
-  packages = ["."]
-  pruneopts = ""
-  revision = "ffa96de2479e10ecd06aca8069bf9c55a86701b5"
-  version = "v1.4.0"
-
-[[projects]]
   branch = "master"
   digest = "1:75dddee0eb82002b5aff6937fdf6d544b85322d2414524a521768fe4b4e5ed3d"
   name = "github.com/mmcloughlin/geohash"
@@ -227,17 +219,6 @@
   pruneopts = ""
   revision = "6249481c29c2cd96f53b691b74ac1893f72774c2"
   version = "v1.1.0"
-
-[[projects]]
-  digest = "1:91acf4d86b348c1f1832336836035373b047ffcb16a0fde066bd531bbe3452b2"
-  name = "github.com/tidwall/evio"
-  packages = [
-    ".",
-    "internal",
-  ]
-  pruneopts = ""
-  revision = "b353be3a765785dafabbb63a7b25aadec3533946"
-  version = "v1.0.2"
 
 [[projects]]
   digest = "1:cdab3bce90a53a124ac3982719abde77d779e961d9c180e55c23fb74fc62563a"
@@ -482,7 +463,6 @@
     "github.com/tidwall/boxtree/d2",
     "github.com/tidwall/btree",
     "github.com/tidwall/buntdb",
-    "github.com/tidwall/evio",
     "github.com/tidwall/geojson",
     "github.com/tidwall/geojson/geo",
     "github.com/tidwall/geojson/geometry",
