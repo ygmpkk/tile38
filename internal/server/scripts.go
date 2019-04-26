@@ -32,6 +32,7 @@ var errNotLeader = errors.New("not the leader")
 var errReadOnly = errors.New("read only")
 var errCatchingUp = errors.New("catching up to leader")
 var errNoLuasAvailable = errors.New("no interpreters available")
+var errTimeout = errors.New("timeout")
 
 // Go-routine-safe pool of read-to-go lua states
 type lStatePool struct {
@@ -392,12 +393,14 @@ func (c *Server) cmdEvalUnified(scriptIsSha bool, msg *Message) (res resp.Value,
 	if err != nil {
 		return
 	}
-	deadline, empty := msg.Deadline.GetDeadlineTime()
-	if !empty {
-		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	luaDeadline := lua.LNil
+	if msg.Deadline != nil {
+		dlTime := msg.Deadline.GetDeadlineTime()
+		ctx, cancel := context.WithDeadline(context.Background(), dlTime)
 		defer cancel()
 		luaState.SetContext(ctx)
 		defer luaState.RemoveContext()
+		luaDeadline = lua.LNumber(float64(dlTime.UnixNano()) / 1e9)
 	}
 	defer c.luapool.Put(luaState)
 
@@ -430,6 +433,7 @@ func (c *Server) cmdEvalUnified(scriptIsSha bool, msg *Message) (res resp.Value,
 		luaState, map[string]lua.LValue{
 			"KEYS":     keysTbl,
 			"ARGV":     argsTbl,
+			"DEADLINE": luaDeadline,
 			"EVAL_CMD": lua.LString(msg.Command()),
 		})
 
@@ -459,6 +463,7 @@ func (c *Server) cmdEvalUnified(scriptIsSha bool, msg *Message) (res resp.Value,
 		luaState, map[string]lua.LValue{
 			"KEYS":     lua.LNil,
 			"ARGV":     lua.LNil,
+			"DEADLINE": lua.LNil,
 			"EVAL_CMD": lua.LNil,
 		})
 	if err := luaState.PCall(0, 1, nil); err != nil {
@@ -643,6 +648,13 @@ func (c *Server) luaTile38Call(evalcmd string, cmd string, args ...string) (resp
 	msg := &Message{}
 	msg.OutputType = RESP
 	msg.Args = append([]string{cmd}, args...)
+
+	if msg.Command() == "timeout" {
+		if err := rewriteTimeoutMsg(msg); err != nil {
+			return resp.NullValue(), err
+		}
+	}
+
 	switch msg.Command() {
 	case "ping", "echo", "auth", "massinsert", "shutdown", "gc",
 		"sethook", "pdelhook", "delhook",
@@ -690,7 +702,28 @@ func (c *Server) luaTile38AtomicRW(msg *Message) (resp.Value, error) {
 		}
 	}
 
-	res, d, err := c.commandInScript(msg)
+	res, d, err := func() (res resp.Value, d commandDetails, err error) {
+		if msg.Deadline != nil {
+			if write {
+				res = NOMessage
+				err  = errTimeoutOnCmd(msg.Command())
+				return
+			}
+			defer func() {
+				if msg.Deadline.Hit() {
+					v := recover()
+					if v != nil {
+						if s, ok := v.(string); !ok || s != "deadline" {
+							panic(v)
+						}
+					}
+					res = NOMessage
+					err = errTimeout
+				}
+			}()
+		}
+		return c.commandInScript(msg)
+	}()
 	if err != nil {
 		return resp.NullValue(), err
 	}
@@ -722,7 +755,23 @@ func (c *Server) luaTile38AtomicRO(msg *Message) (resp.Value, error) {
 		}
 	}
 
-	res, _, err := c.commandInScript(msg)
+	res, _, err := func() (res resp.Value, d commandDetails, err error) {
+		if msg.Deadline != nil {
+			defer func() {
+				if msg.Deadline.Hit() {
+					v := recover()
+					if v != nil {
+						if s, ok := v.(string); !ok || s != "deadline" {
+							panic(v)
+						}
+					}
+					res = NOMessage
+					err = errTimeout
+				}
+			}()
+		}
+		return c.commandInScript(msg)
+	}()
 	if err != nil {
 		return resp.NullValue(), err
 	}
@@ -759,7 +808,28 @@ func (c *Server) luaTile38NonAtomic(msg *Message) (resp.Value, error) {
 		}
 	}
 
-	res, d, err := c.commandInScript(msg)
+	res, d, err := func() (res resp.Value, d commandDetails, err error) {
+		if msg.Deadline != nil {
+			if write {
+				res = NOMessage
+				err  = errTimeoutOnCmd(msg.Command())
+				return
+			}
+			defer func() {
+				if msg.Deadline.Hit() {
+					v := recover()
+					if v != nil {
+						if s, ok := v.(string); !ok || s != "deadline" {
+							panic(v)
+						}
+					}
+					res = NOMessage
+					err = errTimeout
+				}
+			}()
+		}
+		return c.commandInScript(msg)
+	}()
 	if err != nil {
 		return resp.NullValue(), err
 	}

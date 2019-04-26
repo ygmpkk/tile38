@@ -526,12 +526,6 @@ var commandsJSON = `{
         "optional": true
       },
       {
-        "command": "TIMEOUT",
-        "name": "seconds",
-        "type": "double",
-        "optional": true
-      },
-      {
         "command": "MATCH",
         "name": "pattern",
         "type": "pattern",
@@ -620,12 +614,6 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "TIMEOUT",
-        "name": "seconds",
-        "type": "double",
         "optional": true
       },
       {
@@ -735,12 +723,6 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "TIMEOUT",
-        "name": "seconds",
-        "type": "double",
         "optional": true
       },
       {
@@ -907,12 +889,6 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "TIMEOUT",
-        "name": "seconds",
-        "type": "double",
         "optional": true
       },
       {
@@ -1134,12 +1110,6 @@ var commandsJSON = `{
         "command": "LIMIT",
         "name": "count",
         "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "TIMEOUT",
-        "name": "seconds",
-        "type": "double",
         "optional": true
       },
       {
@@ -1496,12 +1466,22 @@ var commandsJSON = `{
     "group": "connection"
   },
   "TIMEOUT": {
-    "summary": "Gets or sets the query timeout for the current connection.",
+    "summary": "Runs the following command with the timeout",
     "arguments": [
       {
         "name": "seconds",
         "optional": true,
         "type": "double"
+      },
+      {
+        "name": "COMMAND",
+        "type": "string"
+      },
+      {
+        "command": "arg",
+        "type": "string",
+        "multiple": true,
+        "optional": true
       }
     ],
     "group": "connection"

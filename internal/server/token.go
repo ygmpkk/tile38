@@ -6,7 +6,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/yuin/gopher-lua"
 )
@@ -248,7 +247,6 @@ type searchScanBaseTokens struct {
 	sparse     uint8
 	desc       bool
 	clip       bool
-	timeout    time.Duration
 }
 
 func (c *Server) parseSearchScanBaseTokens(
@@ -580,20 +578,6 @@ func (c *Server) parseSearchScanBaseTokens(
 					return
 				}
 				t.clip = true
-				continue
-			case "timeout":
-				vs = nvs
-				var valStr string
-				if vs, valStr, ok = tokenval(vs); !ok || valStr == "" {
-					err = errInvalidNumberOfArguments
-					return
-				}
-				timeout, _err := strconv.ParseFloat(valStr, 64)
-				if _err != nil || timeout < 0 {
-					err = errInvalidArgument(valStr)
-					return
-				}
-				t.timeout = time.Duration(timeout * float64(time.Second))
 				continue
 			}
 		}

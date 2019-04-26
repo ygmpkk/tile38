@@ -13,16 +13,6 @@ func New(deadline time.Time) *Deadline {
 	return &Deadline{unixNano: deadline.UnixNano()}
 }
 
-// Empty deadline does nothing, just a place holder for future updates
-func Empty() *Deadline {
-	return &Deadline{}
-}
-
-// Update the deadline from a given time object
-func (deadline *Deadline) Update(newDeadline time.Time) {
-	deadline.unixNano = newDeadline.UnixNano()
-}
-
 // Check the deadline and panic when reached
 //go:noinline
 func (deadline *Deadline) Check() {
@@ -41,6 +31,6 @@ func (deadline *Deadline) Hit() bool {
 }
 
 // GetDeadlineTime returns the time object for the deadline, and an "empty" boolean
-func (deadline *Deadline) GetDeadlineTime() (time.Time, bool) {
-	return time.Unix(0, deadline.unixNano), deadline.unixNano == 0
+func (deadline *Deadline) GetDeadlineTime() (time.Time) {
+	return time.Unix(0, deadline.unixNano)
 }
