@@ -1470,7 +1470,6 @@ var commandsJSON = `{
     "arguments": [
       {
         "name": "seconds",
-        "optional": true,
         "type": "double"
       },
       {
