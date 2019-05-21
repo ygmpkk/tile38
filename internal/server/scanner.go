@@ -355,13 +355,10 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 		sw.mu.Lock()
 		defer sw.mu.Unlock()
 	}
-	var fieldVals []float64
 	var ok bool
 	keepGoing := true
-	if opts.skipTesting {
-		fieldVals = sw.fvals
-	} else {
-		ok, keepGoing, fieldVals = sw.testObject(opts.id, opts.o, opts.fields, opts.ignoreGlobMatch)
+	if !opts.skipTesting {
+		ok, keepGoing, _ = sw.testObject(opts.id, opts.o, opts.fields, opts.ignoreGlobMatch)
 		if !ok {
 			return keepGoing
 		}
@@ -403,11 +400,15 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 
 			} else if len(sw.farr) > 0 {
 				jsfields = `,"fields":[`
-				for i, field := range fieldVals {
+				for i := range sw.farr {
 					if i > 0 {
-						jsfields += ","
+						jsfields += `,`
 					}
-					jsfields += strconv.FormatFloat(field, 'f', -1, 64)
+					if len(opts.fields) > i {
+						jsfields += strconv.FormatFloat(opts.fields[i], 'f', -1, 64)
+					} else {
+						jsfields += "0"
+					}
 				}
 				jsfields += `]`
 			}
