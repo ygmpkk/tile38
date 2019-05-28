@@ -18,6 +18,7 @@ func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "SCAN_CURSOR", keys_SCAN_CURSOR_test)
 	runStep(t, mc, "SEARCH_CURSOR", keys_SEARCH_CURSOR_test)
 	runStep(t, mc, "MATCH", keys_MATCH_test)
+	runStep(t, mc, "FIELDS", keys_FIELDS_search_test)
 }
 
 func keys_KNN_test(mc *mockServer) error {
@@ -352,6 +353,44 @@ func keys_MATCH_test(mc *mockServer) error {
 		{"INTERSECTS", "fleet", "MATCH", "*2", "IDS", "BOUNDS", 33, -113, 34, -112}, {
 			match("[0 [luck2 truck2]]"),
 		},
+	})
+}
+
+func keys_FIELDS_search_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "1", "FIELD", "field1", 10, "FIELD", "field2", 11 /* field3 undefined */, "OBJECT", `{"type":"Point","coordinates":[-112.2791,33.5220]}`}, {"OK"},
+		{"SET", "mykey", "2", "FIELD", "field1", 20, "FIELD", "field2", 10 /* field3 undefined */, "OBJECT", `{"type":"Point","coordinates":[-112.2793,33.5222]}`}, {"OK"},
+		{"SET", "mykey", "3", "FIELD", "field1", 30, "FIELD", "field2", 13 /* field3 undefined */, "OBJECT", `{"type":"Point","coordinates":[-112.2795,33.5224]}`}, {"OK"},
+		{"SET", "mykey", "4", "FIELD", "field1", 40, "FIELD", "field2", 14 /* field3 undefined */, "OBJECT", `{"type":"Point","coordinates":[-112.2797,33.5226]}`}, {"OK"},
+		{"SET", "mykey", "5" /* field1 undefined */, "FIELD", "field2", 15, "FIELD", "field3", 28, "OBJECT", `{"type":"Point","coordinates":[-112.2799,33.5228]}`}, {"OK"},
+		{"SET", "mykey", "6" /* field1 & field2 undefined               */, "FIELD", "field3", 29, "OBJECT", `{"type":"Point","coordinates":[-112.2801,33.5230]}`}, {"OK"},
+		{"SET", "mykey", "7" /* field1, field2, & field3 undefined                             */, "OBJECT", `{"type":"Point","coordinates":[-112.2803,33.5232]}`}, {"OK"},
+		{"OUTPUT", "json"}, {`{"ok":true}`},
+		{"NEARBY", "mykey", "WHERE", "field2", 11, "+inf", "POINT", 33.462, -112.268, 60000}, {
+			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
+				`{"id":"1","object":{"type":"Point","coordinates":[-112.2791,33.522]},"fields":[10,11,0]},` +
+				`{"id":"3","object":{"type":"Point","coordinates":[-112.2795,33.5224]},"fields":[30,13,0]},` +
+				`{"id":"4","object":{"type":"Point","coordinates":[-112.2797,33.5226]},"fields":[40,14,0]},` +
+				`{"id":"5","object":{"type":"Point","coordinates":[-112.2799,33.5228]},"fields":[0,15,28]}` +
+				`],"count":4,"cursor":0}`},
+		{"NEARBY", "mykey", "WHERE", "field2", 0, 2, "POINT", 33.462, -112.268, 60000}, {
+			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
+				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[0,0,29]},` +
+				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0,0,0]}` +
+				`],"count":2,"cursor":0}`},
+
+		{"WITHIN", "mykey", "WHERE", "field2", 11, "+inf", "CIRCLE", 33.462, -112.268, 60000}, {
+			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
+				`{"id":"1","object":{"type":"Point","coordinates":[-112.2791,33.522]},"fields":[10,11,0]},` +
+				`{"id":"3","object":{"type":"Point","coordinates":[-112.2795,33.5224]},"fields":[30,13,0]},` +
+				`{"id":"4","object":{"type":"Point","coordinates":[-112.2797,33.5226]},"fields":[40,14,0]},` +
+				`{"id":"5","object":{"type":"Point","coordinates":[-112.2799,33.5228]},"fields":[0,15,28]}` +
+				`],"count":4,"cursor":0}`},
+		{"WITHIN", "mykey", "WHERE", "field2", 0, 2, "CIRCLE", 33.462, -112.268, 60000}, {
+			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
+				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[0,0,29]},` +
+				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0,0,0]}` +
+				`],"count":2,"cursor":0}`},
 	})
 }
 
