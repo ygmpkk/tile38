@@ -15,7 +15,15 @@ func subTestClient(t *testing.T, mc *mockServer) {
 }
 
 func client_valid_json_test(mc *mockServer) error {
-	if _, err := mc.Do("OUTPUT", "JSON"); err != nil {
+	if err := mc.DoBatch([][]interface{}{
+		// tests removal of "elapsed" member.
+		{"OUTPUT", "json"}, {`{"ok":true}`},
+		{"OUTPUT", "resp"}, {`OK`},
+	}); err != nil {
+		return err
+	}
+	// run direct commands
+	if _, err := mc.Do("OUTPUT", "json"); err != nil {
 		return err
 	}
 	res, err := mc.Do("CLIENT", "list")
