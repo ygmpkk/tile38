@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.1] - 2019-05-04
+
+### Fixes
+- #448: Fixed missing commands for unsubscribing from active channel (@githubfr)
+- #454: Fixed colored output for fatalf (@olevole)
+- #453: Fixed nearby json field results showing wrong data (@melbania)
+
 ## [1.17.0] - 2019-04-26
 ### Added
 - #446: Added timeouts to allow prepending commands with a TIMEOUT option. (@rshura)
@@ -11,7 +18,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changes
 - 3ae5927: Removed experimental evio option
-
 
 ## [1.16.4] - 2019-03-19
 ### Fixes
