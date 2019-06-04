@@ -145,7 +145,7 @@ func Print(format string, args ...interface{}) {
 
 // Fatalf ...
 func Fatalf(format string, args ...interface{}) {
-	log(1, "FATA", "x1b[31m", true, format, args...)
+	log(1, "FATA", "\x1b[31m", true, format, args...)
 	os.Exit(1)
 }
 
