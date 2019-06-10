@@ -688,3 +688,146 @@ func (c *Server) parseSearchScanBaseTokens(
 	tout = t
 	return
 }
+
+type parentStack []*areaExpression
+
+func (ps *parentStack) isEmpty() bool {
+	return len(*ps) == 0
+}
+
+func (ps *parentStack) push(e *areaExpression) {
+	*ps = append(*ps, e)
+}
+
+func (ps *parentStack) pop() (e *areaExpression, empty bool) {
+	n := len(*ps)
+	if n == 0 {
+		return nil, true
+	}
+	x := (*ps)[n-1]
+	*ps = (*ps)[:n-1]
+	return x, false
+}
+
+func (s *Server) parseAreaExpression(vsin []string, doClip bool) (vsout []string, ae *areaExpression, err error) {
+	ps := &parentStack{}
+	vsout = vsin[:]
+	var negate bool
+loop:
+	for {
+		nvs, wtok, ok := tokenval(vsout)
+		if !ok || len(wtok) == 0 {
+			break
+		}
+		switch strings.ToLower(wtok) {
+		case "(":
+			newExpr := &areaExpression{negate: negate, op: NOOP}
+			negate = false
+			if ae != nil {
+				ps.push(ae)
+				ae.children = append(ae.children, newExpr)
+			}
+			ae = newExpr
+			vsout = nvs
+		case ")":
+			if negate {
+				err = errInvalidArgument("NOT")
+				return
+			}
+			if parent, empty := ps.pop(); empty {
+				err = errInvalidArgument(")")
+				return
+			} else {
+				ae = parent
+			}
+			vsout = nvs
+		case "not":
+			negate = true
+			vsout = nvs
+		case "and":
+			if negate {
+				err = errInvalidArgument("NOT")
+				return
+			}
+			if ae == nil {
+				err = errInvalidArgument("AND")
+				return
+			} else if ae.obj == nil {
+				switch ae.op {
+				case OR:
+					numChildren := len(ae.children)
+					if numChildren < 2 {
+						err = errInvalidNumberOfArguments
+						return
+					} else {
+						ae.children = append(
+							ae.children[:numChildren-1],
+							&areaExpression{
+								op:       AND,
+								children: []*areaExpression{ae.children[numChildren-1]}})
+					}
+				case NOOP:
+					ae.op = AND
+				}
+			} else {
+				ae = &areaExpression{op: AND, children: []*areaExpression{ae}}
+			}
+			vsout = nvs
+		case "or":
+			if negate {
+				err = errInvalidArgument("NOT")
+				return
+			}
+			if ae == nil {
+				err = errInvalidArgument("OR")
+				return
+			} else if ae.obj == nil {
+				switch ae.op {
+				case AND:
+					if len(ae.children) < 2 {
+						err = errInvalidNumberOfArguments
+						return
+					} else {
+						parent, empty := ps.pop()
+						if empty {
+							parent = ae
+						}
+						parent.children = append(
+							parent.children,
+							&areaExpression{op: OR})
+						ps.push(parent)
+					}
+				case NOOP:
+					ae.op = OR
+				}
+			} else {
+				ae = &areaExpression{op: OR, children: []*areaExpression{ae}}
+			}
+			vsout = nvs
+		case "point", "circle", "object", "bounds", "hash", "quadkey", "tile", "get":
+			if parsedVs, parsedObj, areaErr := s.parseArea(vsout, doClip); areaErr != nil {
+				err = areaErr
+				return
+			} else {
+				newExpr := &areaExpression{negate: negate, obj: parsedObj, op: NOOP}
+				negate = false
+				if ae == nil {
+					ae = newExpr
+				} else {
+					ae.children = append(ae.children, newExpr)
+				}
+				vsout = parsedVs
+			}
+		default:
+			if negate {
+				err = errInvalidArgument("NOT")
+				return
+			}
+			break loop
+		}
+	}
+	if prevExpr, empty := ps.pop(); !empty {
+		ae = prevExpr
+	}
+	return
+}
