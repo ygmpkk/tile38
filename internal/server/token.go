@@ -720,7 +720,7 @@ loop:
 			break
 		}
 		switch strings.ToLower(wtok) {
-		case "(":
+		case tokenLParen:
 			newExpr := &areaExpression{negate: negate, op: NOOP}
 			negate = false
 			if ae != nil {
@@ -729,28 +729,28 @@ loop:
 			}
 			ae = newExpr
 			vsout = nvs
-		case ")":
+		case tokenRParen:
 			if negate {
-				err = errInvalidArgument("NOT")
+				err = errInvalidArgument(tokenNOT)
 				return
 			}
 			if parent, empty := ps.pop(); empty {
-				err = errInvalidArgument(")")
+				err = errInvalidArgument(tokenRParen)
 				return
 			} else {
 				ae = parent
 			}
 			vsout = nvs
-		case "not":
+		case tokenNOT:
 			negate = true
 			vsout = nvs
-		case "and":
+		case tokenAND:
 			if negate {
-				err = errInvalidArgument("NOT")
+				err = errInvalidArgument(tokenNOT)
 				return
 			}
 			if ae == nil {
-				err = errInvalidArgument("AND")
+				err = errInvalidArgument(tokenAND)
 				return
 			} else if ae.obj == nil {
 				switch ae.op {
@@ -773,13 +773,13 @@ loop:
 				ae = &areaExpression{op: AND, children: []*areaExpression{ae}}
 			}
 			vsout = nvs
-		case "or":
+		case tokenOR:
 			if negate {
-				err = errInvalidArgument("NOT")
+				err = errInvalidArgument(tokenNOT)
 				return
 			}
 			if ae == nil {
-				err = errInvalidArgument("OR")
+				err = errInvalidArgument(tokenOR)
 				return
 			} else if ae.obj == nil {
 				switch ae.op {
@@ -820,7 +820,7 @@ loop:
 			}
 		default:
 			if negate {
-				err = errInvalidArgument("NOT")
+				err = errInvalidArgument(tokenNOT)
 				return
 			}
 			break loop

@@ -12,6 +12,11 @@ const (
 	NOOP BinaryOp = iota
 	AND
 	OR
+	tokenAND    = "and"
+	tokenOR     = "or"
+	tokenNOT    = "not"
+	tokenLParen = "("
+	tokenRParen = ")"
 )
 
 // areaExpression is either an object or operator+children
@@ -24,169 +29,214 @@ type areaExpression struct {
 
 type children []*areaExpression
 
-func (e *areaExpression) String() string {
+func (e *areaExpression) String() (res string) {
 	if e.obj != nil {
-		return e.obj.String()
+		res = e.obj.String()
+	} else {
+		var chStrings []string
+		for _, c := range e.children {
+			chStrings = append(chStrings, c.String())
+		}
+		switch e.op {
+		case NOOP:
+			res = "empty operator"
+		case AND:
+			res = "(" + strings.Join(chStrings, " "+tokenAND+" ") + ")"
+		case OR:
+			res = "(" + strings.Join(chStrings, " "+tokenOR+" ") + ")"
+		default:
+			res = "unknown operator"
+		}
 	}
-	var chStrings []string
-	for _, c := range e.children {
-		chStrings = append(chStrings, c.String())
+	if e.negate {
+		res = tokenNOT + " " + res
 	}
-	switch e.op {
-	case NOOP:
-		return "empty operator"
-	case AND:
-		return "(" + strings.Join(chStrings, " AND ") + ")"
-	case OR:
-		return "(" + strings.Join(chStrings, " OR ") + ")"
-	}
-	return "unknown operator"
+	return
 }
 
 // Return boolean value modulo negate field of the expression.
-func (e *areaExpression) booleanize(val bool) bool {
+func (e *areaExpression) maybeNegate(val bool) bool {
 	if e.negate {
 		return !val
 	}
 	return val
 }
 
-func (e *areaExpression) Intersects(o geojson.Object) bool {
+// Methods for testing an areaExpression against the spatial object
+func (e *areaExpression) rawIntersects(o geojson.Object) bool {
 	if e.obj != nil {
-		return e.booleanize(e.obj.Intersects(o))
+		return e.obj.Intersects(o)
 	}
 	switch e.op {
 	case AND:
 		for _, c := range e.children {
 			if !c.Intersects(o) {
-				return e.booleanize(false)
+				return false
 			}
 		}
-		return e.booleanize(true)
+		return true
 	case OR:
 		for _, c := range e.children {
 			if c.Intersects(o) {
-				return e.booleanize(true)
+				return true
 			}
 		}
-		return e.booleanize(false)
+		return false
 	}
-	return e.booleanize(false)
+	return false
 }
 
-// object within an expression means anything of this expression contains object
-func (e *areaExpression) Contains(o geojson.Object) bool {
+func (e *areaExpression) rawContains(o geojson.Object) bool {
 	if e.obj != nil {
-		return e.booleanize(e.obj.Contains(o))
+		return e.obj.Contains(o)
 	}
 	switch e.op {
 	case AND:
 		for _, c:= range e.children {
 			if !c.Contains(o) {
-				return e.booleanize(false)
+				return false
 			}
 		}
-		return e.booleanize(true)
+		return true
 	case OR:
 		for _, c:= range e.children {
 			if c.Contains(o) {
-				return e.booleanize(true)
+				return true
 			}
 		}
-		return e.booleanize(false)
+		return false
 	}
-	return e.booleanize(false)
+	return false
 }
 
-func (e *areaExpression) Within(o geojson.Object) bool {
+func (e *areaExpression) rawWithin(o geojson.Object) bool {
 	if e.obj != nil {
-		return e.booleanize(e.obj.Within(o))
+		return e.obj.Within(o)
 	}
 	switch e.op {
 	case AND:
 		for _, c:= range e.children {
 			if !c.Within(o) {
-				return e.booleanize(false)
+				return false
 			}
 		}
-		return e.booleanize(true)
+		return true
 	case OR:
 		for _, c:= range e.children {
 			if c.Within(o) {
-				return e.booleanize(true)
+				return true
 			}
 		}
-		return e.booleanize(false)
+		return false
 	}
-	return e.booleanize(false)
+	return false
+}
+
+func (e *areaExpression) Intersects(o geojson.Object) bool {
+	return e.maybeNegate(e.rawIntersects(o))
+}
+
+func (e *areaExpression) Contains(o geojson.Object) bool {
+	return e.maybeNegate(e.rawContains(o))
+}
+
+func (e *areaExpression) Within(o geojson.Object) bool {
+	return e.maybeNegate(e.rawWithin(o))
+}
+
+// Methods for testing an areaExpression against another areaExpression
+func (e *areaExpression) rawIntersectsExpr(oe *areaExpression) bool {
+	if oe.negate {
+		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
+		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
+		return e2.rawIntersectsExpr(oe2)
+	}
+	if oe.obj != nil {
+		return e.Intersects(oe.obj)
+	}
+	switch oe.op {
+	case AND:
+		for _, c := range oe.children {
+			if !e.rawIntersectsExpr(c) {
+				return false
+			}
+		}
+		return true
+	case OR:
+		for _, c := range oe.children {
+			if e.rawIntersectsExpr(c) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func (e *areaExpression) rawWithinExpr(oe *areaExpression) bool {
+	if oe.negate {
+		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
+		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
+		return e2.rawWithinExpr(oe2)
+	}
+	if oe.obj != nil {
+		return e.Within(oe.obj)
+	}
+	switch oe.op {
+	case AND:
+		for _, c:= range oe.children {
+			if !e.rawWithinExpr(c) {
+				return false
+			}
+		}
+		return true
+	case OR:
+		for _, c:= range oe.children {
+			if e.rawWithinExpr(c) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func (e *areaExpression) rawContainsExpr(oe *areaExpression) bool {
+	if oe.negate {
+		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
+		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
+		return e2.rawContainsExpr(oe2)
+	}
+	if oe.obj != nil {
+		return e.Contains(oe.obj)
+	}
+	switch oe.op {
+	case AND:
+		for _, c:= range oe.children {
+			if !e.rawContainsExpr(c) {
+				return false
+			}
+		}
+		return true
+	case OR:
+		for _, c:= range oe.children {
+			if e.rawContainsExpr(c) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
 }
 
 func (e *areaExpression) IntersectsExpr(oe *areaExpression) bool {
-	if oe.obj != nil {
-		return oe.booleanize(e.Intersects(oe.obj))
-	}
-	switch oe.op {
-	case AND:
-		for _, c := range oe.children {
-			if !e.IntersectsExpr(c) {
-				return e.booleanize(false)
-			}
-		}
-		return e.booleanize(true)
-	case OR:
-		for _, c := range oe.children {
-			if e.IntersectsExpr(c) {
-				return e.booleanize(true)
-			}
-		}
-		return e.booleanize(false)
-	}
-	return e.booleanize(false)
-
+	return e.maybeNegate(e.rawIntersectsExpr(oe))
 }
 
 func (e *areaExpression) WithinExpr(oe *areaExpression) bool {
-	if oe.obj != nil {
-		return oe.booleanize(e.Within(oe.obj))
-	}
-	switch oe.op {
-	case AND:
-		for _, c:= range oe.children {
-			if !e.WithinExpr(c) {
-				return e.booleanize(false)
-			}
-		}
-		return e.booleanize(true)
-	case OR:
-		for _, c:= range oe.children {
-			if e.WithinExpr(c) {
-				return e.booleanize(true)
-			}
-		}
-		return e.booleanize(false)
-	}
-	return e.booleanize(false)
+	return e.maybeNegate(e.rawWithinExpr(oe))
 }
 
 func (e *areaExpression) ContainsExpr(oe *areaExpression) bool {
-	if oe.obj != nil {
-		return oe.booleanize(e.Contains(oe.obj))
-	}
-	switch oe.op {
-	case AND:
-		for _, c:= range oe.children {
-			if !e.ContainsExpr(c) {
-				return e.booleanize(false)
-			}
-		}
-		return e.booleanize(true)
-	case OR:
-		for _, c:= range oe.children {
-			if e.ContainsExpr(c) {
-				return e.booleanize(true)
-			}
-		}
-		return e.booleanize(false)
-	}
-	return e.booleanize(false)
+	return e.maybeNegate(e.rawContainsExpr(oe))
 }

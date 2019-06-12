@@ -162,5 +162,4 @@ func testcmd_expression_test(mc *mockServer) error {
 			"(", "OBJECT", poly, "AND", "NOT", "GET", "mykey", "line3", ")"}, {"1"},
 		{"TEST", "OBJECT", poly9, "WITHIN", "NOT", "GET", "mykey", "line3"}, {"1"},
 	})
-
 }
