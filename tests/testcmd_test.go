@@ -8,6 +8,7 @@ func subTestTestCmd(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "WITHIN", testcmd_WITHIN_test)
 	runStep(t, mc, "INTERSECTS", testcmd_INTERSECTS_test)
 	runStep(t, mc, "INTERSECTS_CLIP", testcmd_INTERSECTS_CLIP_test)
+	runStep(t, mc, "ExpressionErrors", testcmd_expressionErrors_test)
 	runStep(t, mc, "Expressions", testcmd_expression_test)
 }
 
@@ -114,6 +115,40 @@ func testcmd_INTERSECTS_CLIP_test(mc *mockServer) error {
 		{"TEST", "OBJECT", poly8, "INTERSECTS", "CLIP", "BOUNDS", 37.733, -122.4408378, 37.7341129, -122.44}, {"[1 " + poly8 + "]"},
 		{"TEST", "OBJECT", multipoly5, "INTERSECTS", "CLIP", "BOUNDS", 37.73227823422744, -122.44120001792908, 37.73319038868677, -122.43955314159392}, {"[1 " + `{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-122.4408378,37.73319038868677],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.73319038868677],[-122.4408378,37.73319038868677]]]},"properties":{}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-122.44091033935547,37.73227823422744],[-122.43994474411011,37.73227823422744],[-122.43994474411011,37.73254976045042],[-122.44091033935547,37.73254976045042],[-122.44091033935547,37.73227823422744]]]},"properties":{}}]}` + "]"},
 		{"TEST", "OBJECT", poly101, "INTERSECTS", "CLIP", "BOUNDS", 37.73315644825698, -122.44054287672043, 37.73349585185455, -122.44008690118788}, {"0"},
+	})
+}
+
+func testcmd_expressionErrors_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "foo", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
+		{"SET", "mykey", "bar", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
+		{"SET", "mykey", "baz", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
+
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "(", "GET", "mykey", "bar"}, {
+			"ERR wrong number of arguments for 'test' command"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", ")"}, {
+			"ERR invalid argument ')'"},
+
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "OR", "GET", "mykey", "bar"}, {
+			"ERR invalid argument 'or'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "AND", "GET", "mykey", "bar"}, {
+			"ERR invalid argument 'and'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "OR", "AND",  "GET", "mykey", "baz"}, {
+			"ERR invalid argument 'and'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "AND", "OR",  "GET", "mykey", "baz"}, {
+			"ERR invalid argument 'or'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "OR", "OR",  "GET", "mykey", "baz"}, {
+			"ERR invalid argument 'or'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "AND", "AND",  "GET", "mykey", "baz"}, {
+			"ERR invalid argument 'and'"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "OR"}, {
+			"ERR wrong number of arguments for 'test' command"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "AND"}, {
+			"ERR wrong number of arguments for 'test' command"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "NOT"}, {
+			"ERR wrong number of arguments for 'test' command"},
+		{"TEST", "GET", "mykey", "foo", "INTERSECTS", "GET", "mykey", "bar", "NOT", "AND",  "GET", "mykey", "baz"}, {
+			"ERR invalid argument 'and'"},
 	})
 }
 

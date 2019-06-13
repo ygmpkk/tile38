@@ -712,7 +712,7 @@ func (ps *parentStack) pop() (e *areaExpression, empty bool) {
 func (s *Server) parseAreaExpression(vsin []string, doClip bool) (vsout []string, ae *areaExpression, err error) {
 	ps := &parentStack{}
 	vsout = vsin[:]
-	var negate bool
+	var negate, needObj bool
 loop:
 	for {
 		nvs, wtok, ok := tokenval(vsout)
@@ -723,6 +723,7 @@ loop:
 		case tokenLParen:
 			newExpr := &areaExpression{negate: negate, op: NOOP}
 			negate = false
+			needObj = false
 			if ae != nil {
 				ae.children = append(ae.children, newExpr)
 			}
@@ -730,8 +731,8 @@ loop:
 			ps.push(ae)
 			vsout = nvs
 		case tokenRParen:
-			if negate {
-				err = errInvalidArgument(tokenNOT)
+			if needObj {
+				err = errInvalidArgument(tokenRParen)
 				return
 			}
 			if parent, empty := ps.pop(); empty {
@@ -743,12 +744,14 @@ loop:
 			vsout = nvs
 		case tokenNOT:
 			negate = true
+			needObj = true
 			vsout = nvs
 		case tokenAND:
-			if negate {
-				err = errInvalidArgument(tokenNOT)
+			if needObj {
+				err = errInvalidArgument(tokenAND)
 				return
 			}
+			needObj = true
 			if ae == nil {
 				err = errInvalidArgument(tokenAND)
 				return
@@ -774,10 +777,11 @@ loop:
 			}
 			vsout = nvs
 		case tokenOR:
-			if negate {
-				err = errInvalidArgument(tokenNOT)
+			if needObj {
+				err = errInvalidArgument(tokenOR)
 				return
 			}
+			needObj = true
 			if ae == nil {
 				err = errInvalidArgument(tokenOR)
 				return
@@ -804,6 +808,7 @@ loop:
 			} else {
 				newExpr := &areaExpression{negate: negate, obj: parsedObj, op: NOOP}
 				negate = false
+				needObj = false
 				if ae == nil {
 					ae = newExpr
 				} else {
@@ -812,12 +817,15 @@ loop:
 				vsout = parsedVs
 			}
 		default:
-			if negate {
-				err = errInvalidArgument(tokenNOT)
+			if needObj {
+				err = errInvalidArgument(wtok)
 				return
 			}
 			break loop
 		}
+	}
+	if !ps.isEmpty() || needObj || ae == nil || (ae.obj == nil && len(ae.children) == 0) {
+		err = errInvalidNumberOfArguments
 	}
 	return
 }
