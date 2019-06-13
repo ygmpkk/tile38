@@ -724,10 +724,10 @@ loop:
 			newExpr := &areaExpression{negate: negate, op: NOOP}
 			negate = false
 			if ae != nil {
-				ps.push(ae)
 				ae.children = append(ae.children, newExpr)
 			}
 			ae = newExpr
+			ps.push(ae)
 			vsout = nvs
 		case tokenRParen:
 			if negate {
@@ -788,14 +788,7 @@ loop:
 						err = errInvalidNumberOfArguments
 						return
 					} else {
-						parent, empty := ps.pop()
-						if empty {
-							parent = ae
-						}
-						parent.children = append(
-							parent.children,
-							&areaExpression{op: OR})
-						ps.push(parent)
+						ae = &areaExpression{op: OR, children: []*areaExpression{ae}}
 					}
 				case NOOP:
 					ae.op = OR
@@ -825,9 +818,6 @@ loop:
 			}
 			break loop
 		}
-	}
-	if prevExpr, empty := ps.pop(); !empty {
-		ae = prevExpr
 	}
 	return
 }
