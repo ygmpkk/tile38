@@ -149,10 +149,10 @@ func (e *areaExpression) rawIntersectsExpr(oe *areaExpression) bool {
 	if oe.negate {
 		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
 		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
-		return e2.rawIntersectsExpr(oe2)
+		return e2.IntersectsExpr(oe2)
 	}
 	if oe.obj != nil {
-		return e.Intersects(oe.obj)
+		return e.rawIntersects(oe.obj)
 	}
 	switch oe.op {
 	case AND:
@@ -177,10 +177,10 @@ func (e *areaExpression) rawWithinExpr(oe *areaExpression) bool {
 	if oe.negate {
 		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
 		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
-		return e2.rawWithinExpr(oe2)
+		return e2.WithinExpr(oe2)
 	}
 	if oe.obj != nil {
-		return e.Within(oe.obj)
+		return e.rawWithin(oe.obj)
 	}
 	switch oe.op {
 	case AND:
@@ -205,10 +205,10 @@ func (e *areaExpression) rawContainsExpr(oe *areaExpression) bool {
 	if oe.negate {
 		e2 := &areaExpression{negate:!e.negate, obj:e.obj, op: e.op, children:e.children}
 		oe2 := &areaExpression{negate:false, obj:oe.obj, op:oe.op, children:oe.children}
-		return e2.rawContainsExpr(oe2)
+		return e2.ContainsExpr(oe2)
 	}
 	if oe.obj != nil {
-		return e.Contains(oe.obj)
+		return e.rawContains(oe.obj)
 	}
 	switch oe.op {
 	case AND:
