@@ -817,10 +817,6 @@ loop:
 				vsout = parsedVs
 			}
 		default:
-			if needObj {
-				err = errInvalidArgument(wtok)
-				return
-			}
 			break loop
 		}
 	}
