@@ -19,7 +19,7 @@ const (
 	tokenRParen = ")"
 )
 
-// areaExpression is either an object or operator+children
+// areaExpression is (maybe negated) either an spatial object or operator + children (other expressions).
 type areaExpression struct {
 	negate   bool
 	obj      geojson.Object
@@ -63,7 +63,7 @@ func (e *areaExpression) maybeNegate(val bool) bool {
 	return val
 }
 
-// Methods for testing an areaExpression against the spatial object
+// Methods for testing an areaExpression against the spatial object.
 func (e *areaExpression) testObject(
 	o geojson.Object,
 	objObjTest func(o1, o2 geojson.Object) bool,
@@ -115,31 +115,31 @@ func (e *areaExpression) Within(o geojson.Object) bool {
 	return e.maybeNegate(e.rawWithin(o))
 }
 
-// Methods for testing an areaExpression against another areaExpression
+// Methods for testing an areaExpression against another areaExpression.
 func (e *areaExpression) testExpression(
-	oe *areaExpression,
+	other *areaExpression,
 	exprObjTest func(ae *areaExpression, ob geojson.Object) bool,
 	rawExprExprTest func(ae1, ae2 *areaExpression) bool,
 	exprExprTest func(ae1, ae2 *areaExpression) bool,
 ) bool {
-	if oe.negate {
-		e2 := &areaExpression{negate: !e.negate, obj: e.obj, op: e.op, children: e.children}
-		oe2 := &areaExpression{negate: false, obj: oe.obj, op: oe.op, children: oe.children}
-		return exprExprTest(e2, oe2)
+	if other.negate {
+		oppositeExp := &areaExpression{negate: !e.negate, obj: e.obj, op: e.op, children: e.children}
+		nonNegateOther := &areaExpression{obj: other.obj, op: other.op, children: other.children}
+		return exprExprTest(oppositeExp, nonNegateOther)
 	}
-	if oe.obj != nil {
-		return exprObjTest(e, oe.obj)
+	if other.obj != nil {
+		return exprObjTest(e, other.obj)
 	}
-	switch oe.op {
+	switch other.op {
 	case AND:
-		for _, c := range oe.children {
+		for _, c := range other.children {
 			if !rawExprExprTest(e, c) {
 				return false
 			}
 		}
 		return true
 	case OR:
-		for _, c := range oe.children {
+		for _, c := range other.children {
 			if rawExprExprTest(e, c) {
 				return true
 			}
@@ -149,38 +149,38 @@ func (e *areaExpression) testExpression(
 	return false
 }
 
-func (e *areaExpression) rawIntersectsExpr(oe *areaExpression) bool {
+func (e *areaExpression) rawIntersectsExpr(other *areaExpression) bool {
 	return e.testExpression(
-		oe,
+		other,
 		(*areaExpression).rawIntersects,
 		(*areaExpression).rawIntersectsExpr,
 		(*areaExpression).IntersectsExpr)
 }
 
-func (e *areaExpression) rawWithinExpr(oe *areaExpression) bool {
+func (e *areaExpression) rawWithinExpr(other *areaExpression) bool {
 	return e.testExpression(
-		oe,
+		other,
 		(*areaExpression).rawWithin,
 		(*areaExpression).rawWithinExpr,
 		(*areaExpression).WithinExpr)
 }
 
-func (e *areaExpression) rawContainsExpr(oe *areaExpression) bool {
+func (e *areaExpression) rawContainsExpr(other *areaExpression) bool {
 	return e.testExpression(
-		oe,
+		other,
 		(*areaExpression).rawContains,
 		(*areaExpression).rawContainsExpr,
 		(*areaExpression).ContainsExpr)
 }
 
-func (e *areaExpression) IntersectsExpr(oe *areaExpression) bool {
-	return e.maybeNegate(e.rawIntersectsExpr(oe))
+func (e *areaExpression) IntersectsExpr(other *areaExpression) bool {
+	return e.maybeNegate(e.rawIntersectsExpr(other))
 }
 
-func (e *areaExpression) WithinExpr(oe *areaExpression) bool {
-	return e.maybeNegate(e.rawWithinExpr(oe))
+func (e *areaExpression) WithinExpr(other *areaExpression) bool {
+	return e.maybeNegate(e.rawWithinExpr(other))
 }
 
-func (e *areaExpression) ContainsExpr(oe *areaExpression) bool {
-	return e.maybeNegate(e.rawContainsExpr(oe))
+func (e *areaExpression) ContainsExpr(other *areaExpression) bool {
+	return e.maybeNegate(e.rawContainsExpr(other))
 }
