@@ -172,6 +172,10 @@ func testcmd_expression_test(mc *mockServer) error {
 		{"SET", "mykey", "line3", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
 		{"SET", "mykey", "poly8", "OBJECT", poly8}, {"OK"},
 
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "NOT", "OBJECT", poly}, {"0"},
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "NOT", "NOT", "OBJECT", poly}, {"1"},
+		{"TEST", "OBJECT", poly9, "INTERSECTS", "NOT", "NOT", "NOT", "OBJECT", poly}, {"0"},
+
 		{"TEST", "OBJECT", poly9, "INTERSECTS", "OBJECT", poly8, "OR", "OBJECT", poly}, {"1"},
 		{"TEST", "OBJECT", poly9, "INTERSECTS", "OBJECT", poly8, "AND", "OBJECT", poly}, {"1"},
 		{"TEST", "OBJECT", poly9, "INTERSECTS", "GET", "mykey", "poly8", "OR", "OBJECT", poly}, {"1"},

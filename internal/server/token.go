@@ -743,7 +743,7 @@ loop:
 			}
 			vsout = nvs
 		case tokenNOT:
-			negate = true
+			negate = !negate
 			needObj = true
 			vsout = nvs
 		case tokenAND:
