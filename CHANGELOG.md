@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.2] - 2019-06-28
+
+### Fixes
+- #422: Fixes NEARBY command distance normalization issue (@TrivikrAm-Pamarthi, @melbania)
+
 ## [1.17.1] - 2019-05-04
 
 ### Fixes
