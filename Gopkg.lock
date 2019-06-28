@@ -221,7 +221,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:16a87d3d8d3808f3206c4992d1fb50440bb7d5508fbe5bfab7d899b516c7f3b8"
   name = "github.com/tidwall/geojson"
   packages = [
@@ -231,6 +230,7 @@
   ]
   pruneopts = ""
   revision = "ff8d554639ee72ffa650eca1e02f03ab51193c7f"
+  version = "v1.1.6"
 
 [[projects]]
   digest = "1:3ddca2bd5496c6922a2a9e636530e178a43c2a534ea6634211acdc7d10222794"
