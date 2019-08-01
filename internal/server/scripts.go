@@ -85,6 +85,7 @@ func (pl *lStatePool) Prune() {
 		newSaved := make([]*lua.LState, n-dropNum)
 		copy(newSaved, pl.saved[dropNum:])
 		pl.saved = newSaved
+		pl.total -= dropNum
 	}
 	pl.m.Unlock()
 }
