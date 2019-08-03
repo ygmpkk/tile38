@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.3] - 2019-06-28
+
+### Fixes
+- #483: Fixed lua pool pruning (@rshura)
+- f7888c1: Fixed malformed json for chans command
+
 ## [1.17.2] - 2019-06-28
 
 ### Fixes
