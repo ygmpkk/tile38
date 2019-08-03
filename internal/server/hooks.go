@@ -393,8 +393,9 @@ func (c *Server) cmdHooks(msg *Message, channel bool) (
 					}
 					buf.WriteString(jsonString(endpoint))
 				}
+				buf.WriteString(`]`)
 			}
-			buf.WriteString(`],"command":[`)
+			buf.WriteString(`,"command":[`)
 			for i, v := range hook.Message.Args {
 				if i > 0 {
 					buf.WriteString(`,`)

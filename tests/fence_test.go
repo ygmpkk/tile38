@@ -27,6 +27,9 @@ func subTestFence(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "roaming live", fence_roaming_live_test)
 	runStep(t, mc, "roaming channel", fence_roaming_channel_test)
 	runStep(t, mc, "roaming webhook", fence_roaming_webhook_test)
+
+	// channel meta
+	runStep(t, mc, "channel meta", fence_channel_meta_test)
 }
 
 type fenceReader struct {
@@ -311,4 +314,22 @@ func do(c redis.Conn, cmd string) (interface{}, error) {
 
 	// Perform the request and return the response
 	return c.Do(params[0], args...)
+}
+
+func fence_channel_meta_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SETCHAN", "carbon", "NEARBY", "x", "MATCH", "carbon*", "FENCE", "NODWELL", "points", "ROAM", "x", "*", "200000"}, {"1"},
+		{"OUTPUT", "json"}, {`{"ok":true}`},
+		// check for valid json on the chans command
+		{"CHANS", "*"}, {
+			func(v interface{}) (resp, expect interface{}) {
+				// v is the value as strings or slices of strings
+				// test will pass as long as `resp` and `expect` are the same.
+				if !json.Valid([]byte(v.(string))) {
+					return v, "Valid JSON"
+				}
+				return true, true
+			},
+		},
+	})
 }
