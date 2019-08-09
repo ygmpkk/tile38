@@ -365,6 +365,7 @@ func (c *Server) writeInfoReplication(w *bytes.Buffer) {
 	} else {
 		fmt.Fprintf(w, "role:master\r\n")
 		var i int
+		c.connsmu.RLock()
 		for _, cc := range c.conns {
 			if cc.replPort != 0 {
 				fmt.Fprintf(w, "slave%v:ip=%s,port=%v,state=online\r\n", i,
@@ -372,6 +373,7 @@ func (c *Server) writeInfoReplication(w *bytes.Buffer) {
 				i++
 			}
 		}
+		c.connsmu.RUnlock()
 	}
 	fmt.Fprintf(w, "connected_slaves:%d\r\n", len(c.aofconnM)) // Number of connected slaves
 }
