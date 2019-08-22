@@ -409,7 +409,6 @@ func (server *Server) nearestNeighbors(
 	iter func(id string, o geojson.Object, fields []float64, dist float64,
 	) bool) {
 	maxDist := target.Haversine()
-	limit := int(sw.limit)
 	var items []iterItem
 	sw.col.Nearby(target, sw, dl, func(id string, o geojson.Object, fields []float64) bool {
 		if server.hasExpired(s.key, id) {
@@ -427,7 +426,7 @@ func (server *Server) nearestNeighbors(
 		if !keepGoing {
 			return false
 		}
-		return len(items) < limit
+		return uint64(len(items)) < sw.limit
 	})
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].dist < items[j].dist
