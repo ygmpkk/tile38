@@ -2,10 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.5] - 2019-08-22
+
+### Fixes
+- #489: Fixed nearby count always one (@jkarjala)
+
 ## [1.17.4] - 2019-08-09
 
 ### Fixes
-- #486: Fixed data condition on connections map  (@saltatory)
+- #486: Fixed data condition on connections map (@saltatory)
 
 ## [1.17.3] - 2019-08-03
 
