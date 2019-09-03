@@ -9,12 +9,37 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
 )
+
+var memStats runtime.MemStats
+var memStatsMu sync.Mutex
+var memStatsBG bool
+
+// ReadMemStats returns the latest memstats. It provides an instant response.
+func readMemStats() runtime.MemStats {
+	memStatsMu.Lock()
+	if !memStatsBG {
+		runtime.ReadMemStats(&memStats)
+		go func() {
+			for {
+				memStatsMu.Lock()
+				runtime.ReadMemStats(&memStats)
+				memStatsMu.Unlock()
+				time.Sleep(time.Second / 5)
+			}
+		}()
+		memStatsBG = true
+	}
+	ms := memStats
+	memStatsMu.Unlock()
+	return ms
+}
 
 func (c *Server) cmdStats(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
@@ -133,8 +158,7 @@ func (c *Server) basicStats(m map[string]interface{}) {
 	m["num_points"] = points
 	m["num_objects"] = objects
 	m["num_strings"] = strings
-	var mem runtime.MemStats
-	runtime.ReadMemStats(&mem)
+	mem := readMemStats()
 	avgsz := 0
 	if points != 0 {
 		avgsz = int(mem.HeapAlloc) / points
@@ -154,9 +178,8 @@ func (c *Server) basicStats(m map[string]interface{}) {
 
 // extStats populates the passed map with extended system/go/tile38 statistics
 func (c *Server) extStats(m map[string]interface{}) {
-	var mem runtime.MemStats
 	n, _ := runtime.ThreadCreateProfile(nil)
-	runtime.ReadMemStats(&mem)
+	mem := readMemStats()
 
 	// Go/Memory Stats
 
@@ -326,8 +349,7 @@ func (c *Server) writeInfoClients(w *bytes.Buffer) {
 	c.connsmu.RUnlock()
 }
 func (c *Server) writeInfoMemory(w *bytes.Buffer) {
-	var mem runtime.MemStats
-	runtime.ReadMemStats(&mem)
+	mem := readMemStats()
 	fmt.Fprintf(w, "used_memory:%d\r\n", mem.Alloc) // total number of bytes allocated by Redis using its allocator (either standard libc, jemalloc, or an alternative allocator such as tcmalloc
 }
 func boolInt(t bool) int {

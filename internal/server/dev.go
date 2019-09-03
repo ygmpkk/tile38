@@ -74,18 +74,31 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 	if err != nil {
 		return NOMessage, errInvalidArgument(snumPoints)
 	}
-	docmd := func(args []string) error {
+
+	type docmdDetails struct {
+		writeAOFDetails writeAOFDetails
+		cmdElapsed      time.Duration
+		aofElapsed      time.Duration
+	}
+
+	docmd := func(args []string) (docmdDetails docmdDetails, err error) {
+		c.mu.Lock()
+		defer c.mu.Unlock()
 		var nmsg Message
 		nmsg = *msg
 		nmsg._command = ""
 		nmsg.Args = args
 		var d commandDetails
+		start := time.Now()
 		_, d, err = c.command(&nmsg, nil)
+		docmdDetails.cmdElapsed = time.Since(start)
 		if err != nil {
-			return err
+			return docmdDetails, err
 		}
-
-		return c.writeAOF(nmsg.Args, &d)
+		start = time.Now()
+		docmdDetails.writeAOFDetails, err = c.writeAOFDetails(nmsg.Args, &d)
+		docmdDetails.aofElapsed = time.Since(start)
+		return docmdDetails, err
 
 	}
 	rand.Seed(time.Now().UnixNano())
@@ -128,13 +141,31 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 						strconv.FormatFloat(lon, 'f', -1, 64),
 					)
 				}
-				if err := docmd(values); err != nil {
+				start := time.Now()
+				docmdDetails, err := docmd(values)
+				if err != nil {
 					log.Fatal(err)
 					return
 				}
+				elapsed := time.Since(start)
+				if elapsed > time.Millisecond*5 {
+					log.Infof("%d"+
+						", %6.1f cmd, %6.1f aof"+
+						", %6.1f buf, %6.1f not, %6.1f fence"+
+						", %6.1f tot",
+						len(values),
+						docmdDetails.cmdElapsed.Seconds()*1000,
+						docmdDetails.aofElapsed.Seconds()*1000,
+						docmdDetails.writeAOFDetails.appendBufferElapsed.Seconds()*1000,
+						docmdDetails.writeAOFDetails.notifyLiveElapsed.Seconds()*1000,
+						docmdDetails.writeAOFDetails.geofencesElapsed.Seconds()*1000,
+						elapsed.Seconds()*1000,
+					)
+				}
 				atomic.AddUint64(&k, 1)
 				if j%1000 == 1000-1 {
-					log.Infof("massinsert: %s %d/%d", key, atomic.LoadUint64(&k), cols*objs)
+					log.Debugf("mass: %s %d/%d",
+						key, atomic.LoadUint64(&k), cols*objs)
 				}
 			}
 		}(key)

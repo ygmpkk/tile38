@@ -600,10 +600,7 @@ func (server *Server) backgroundSyncAOF() {
 		func() {
 			server.mu.Lock()
 			defer server.mu.Unlock()
-			if len(server.aofbuf) > 0 {
-				server.flushAOF(true)
-			}
-			server.aofbuf = nil
+			server.flushAOF(true)
 		}()
 	}
 }
@@ -831,8 +828,6 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 	case "echo":
 	case "massinsert":
 		// dev operation
-		server.mu.Lock()
-		defer server.mu.Unlock()
 	case "sleep":
 		// dev operation
 		server.mu.RLock()
