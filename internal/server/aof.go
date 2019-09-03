@@ -136,22 +136,10 @@ func (server *Server) flushAOF(sync bool) {
 	}
 }
 
-type writeAOFDetails struct {
-	appendBufferElapsed time.Duration
-	notifyLiveElapsed   time.Duration
-	geofencesElapsed    time.Duration
-}
-
 func (server *Server) writeAOF(args []string, d *commandDetails) error {
-	_, err := server.writeAOFDetails(args, d)
-	return err
-}
-
-func (server *Server) writeAOFDetails(args []string, d *commandDetails) (details writeAOFDetails, err error) {
-
 	if d != nil && !d.updated {
 		// just ignore writes if the command did not update
-		return details, nil
+		return nil
 	}
 
 	if server.shrinking {
@@ -161,7 +149,6 @@ func (server *Server) writeAOFDetails(args []string, d *commandDetails) (details
 	}
 
 	if server.aof != nil {
-		start := time.Now()
 		atomic.StoreInt32(&server.aofdirty, 1) // prewrite optimization flag
 		n := len(server.aofbuf)
 		server.aofbuf = redcon.AppendArray(server.aofbuf, len(args))
@@ -169,21 +156,14 @@ func (server *Server) writeAOFDetails(args []string, d *commandDetails) (details
 			server.aofbuf = redcon.AppendBulkString(server.aofbuf, arg)
 		}
 		server.aofsz += len(server.aofbuf) - n
-		details.appendBufferElapsed = time.Since(start)
 	}
 
 	// notify aof live connections that we have new data
-	start := time.Now()
 	server.fcond.L.Lock()
 	server.fcond.Broadcast()
 	server.fcond.L.Unlock()
-	details.notifyLiveElapsed = time.Since(start)
 
 	// process geofences
-	start = time.Now()
-	defer func() {
-		details.geofencesElapsed = time.Since(start)
-	}()
 	if d != nil {
 		// webhook geofences
 		if server.config.followHost() == "" {
@@ -192,13 +172,13 @@ func (server *Server) writeAOFDetails(args []string, d *commandDetails) (details
 				// queue children
 				for _, d := range d.children {
 					if err := server.queueHooks(d); err != nil {
-						return details, err
+						return err
 					}
 				}
 			} else {
 				// queue parent
 				if err := server.queueHooks(d); err != nil {
-					return details, err
+					return err
 				}
 			}
 		}
@@ -219,7 +199,7 @@ func (server *Server) writeAOFDetails(args []string, d *commandDetails) (details
 		}
 		server.lcond.L.Unlock()
 	}
-	return details, nil
+	return nil
 }
 
 func (server *Server) getQueueCandidates(d *commandDetails) []*Hook {
