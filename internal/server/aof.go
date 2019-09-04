@@ -115,6 +115,8 @@ func commandErrIsFatal(err error) bool {
 	return true
 }
 
+// flushAOF flushes all aof buffer data to disk. Set sync to true to sync the
+// fsync the file.
 func (server *Server) flushAOF(sync bool) {
 	if len(server.aofbuf) > 0 {
 		_, err := server.aof.Write(server.aofbuf)
@@ -126,12 +128,15 @@ func (server *Server) flushAOF(sync bool) {
 				panic(err)
 			}
 		}
-		server.aofbuf = server.aofbuf[:0]
+		if cap(server.aofbuf) > 1024*1024*32 {
+			server.aofbuf = make([]byte, 0, 1024*1024*32)
+		} else {
+			server.aofbuf = server.aofbuf[:0]
+		}
 	}
 }
 
 func (server *Server) writeAOF(args []string, d *commandDetails) error {
-
 	if d != nil && !d.updated {
 		// just ignore writes if the command did not update
 		return nil

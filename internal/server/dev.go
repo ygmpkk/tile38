@@ -74,17 +74,18 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 	if err != nil {
 		return NOMessage, errInvalidArgument(snumPoints)
 	}
+
 	docmd := func(args []string) error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
 		var nmsg Message
 		nmsg = *msg
 		nmsg._command = ""
 		nmsg.Args = args
-		var d commandDetails
-		_, d, err = c.command(&nmsg, nil)
+		_, d, err := c.command(&nmsg, nil)
 		if err != nil {
 			return err
 		}
-
 		return c.writeAOF(nmsg.Args, &d)
 
 	}
@@ -128,13 +129,15 @@ func (c *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 						strconv.FormatFloat(lon, 'f', -1, 64),
 					)
 				}
-				if err := docmd(values); err != nil {
+				err := docmd(values)
+				if err != nil {
 					log.Fatal(err)
 					return
 				}
 				atomic.AddUint64(&k, 1)
 				if j%1000 == 1000-1 {
-					log.Infof("massinsert: %s %d/%d", key, atomic.LoadUint64(&k), cols*objs)
+					log.Debugf("massinsert: %s %d/%d",
+						key, atomic.LoadUint64(&k), cols*objs)
 				}
 			}
 		}(key)
