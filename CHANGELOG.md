@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.17.6] - 2019-08-22
+
+### Fixes
+- 3d96b17: Fixed periodic stop-the-world pauses for systems with large heaps.
+
 ## [1.17.5] - 2019-08-22
 
 ### Fixes
