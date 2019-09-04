@@ -27,9 +27,11 @@ func readMemStats() runtime.MemStats {
 	if !memStatsBG {
 		runtime.ReadMemStats(&memStats)
 		go func() {
+			var ms runtime.MemStats
 			for {
+				runtime.ReadMemStats(&ms)
 				memStatsMu.Lock()
-				runtime.ReadMemStats(&memStats)
+				memStats = ms
 				memStatsMu.Unlock()
 				time.Sleep(time.Second / 5)
 			}
