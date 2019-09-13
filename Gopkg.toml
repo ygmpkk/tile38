@@ -30,12 +30,8 @@ required = [
   name = "github.com/tidwall/tinybtree"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/tidwall/boxtree"
-
-[[constraint]]
   name = "github.com/tidwall/geojson"
-  version = "1.1.6"
+  version = "1.1.7"
 
 [[constraint]]
   name = "github.com/Shopify/sarama"

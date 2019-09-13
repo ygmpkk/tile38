@@ -1,14 +1,74 @@
-package d2
+package rbang
 
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tidwall/geoindex"
+	"github.com/tidwall/lotsa"
 )
+
+func TestBenchInsert2D(t *testing.T) {
+	testBenchInsert(t, 100000, 2)
+}
+
+func testBenchInsert(t *testing.T, N, D int) {
+	rand.Seed(time.Now().UnixNano())
+	points := make([]float64, N*D)
+	for i := 0; i < N; i++ {
+		for j := 0; j < D; j++ {
+			points[i*D+j] = rand.Float64()*100 - 50
+		}
+	}
+	var tr RTree
+	lotsa.Output = os.Stdout
+	fmt.Printf("Insert(%dD): ", D)
+	lotsa.Ops(N, 1, func(i, _ int) {
+		point := [2]float64{points[i*D+0], points[i*D+1]}
+		tr.Insert(point, point, i)
+	})
+	fmt.Printf("Search(%dD): ", D)
+	var count int
+	lotsa.Ops(N, 1, func(i, _ int) {
+		point := [2]float64{points[i*D+0], points[i*D+1]}
+		tr.Search(point, point,
+			func(min, max [2]float64, value interface{}) bool {
+				count++
+				return true
+			},
+		)
+	})
+	if count != N {
+		t.Fatalf("expected %d, got %d", N, count)
+	}
+	fmt.Printf("Delete(%dD): ", D)
+	lotsa.Ops(N, 1, func(i, _ int) {
+		point := [2]float64{points[i*D+0], points[i*D+1]}
+		tr.Delete(point, point, i)
+	})
+	if tr.Len() != 0 {
+		t.Fatalf("expected %d, got %d", N, tr.Len())
+	}
+}
+
+type tItem2 struct {
+	point [2]float64
+}
+
+func (item *tItem2) Point() (x, y float64) {
+	return item.point[0], item.point[1]
+}
+func (item *tItem2) Rect() (minX, minY, maxX, maxY float64) {
+	return item.point[0], item.point[1], item.point[0], item.point[1]
+}
+
+const dims = 2
 
 type tBox struct {
 	min [dims]float64
@@ -20,7 +80,7 @@ var points []tBox
 
 func init() {
 	seed := time.Now().UnixNano()
-	// seed = 1532132365683340889
+	seed = 1532132365683340889
 	println("seed:", seed)
 	rand.Seed(seed)
 }
@@ -78,14 +138,14 @@ func sortBoxes(boxes []tBox) {
 	})
 }
 
-func sortBoxesNearby(boxes []tBox, min, max []float64) {
+func sortBoxesNearby(boxes []tBox, min, max [2]float64) {
 	sort.Slice(boxes, func(i, j int) bool {
-		return testBoxDist(boxes[i].min[:], boxes[i].max[:], min, max) <
-			testBoxDist(boxes[j].min[:], boxes[j].max[:], min, max)
+		return testBoxDist(boxes[i].min, boxes[i].max, min, max) <
+			testBoxDist(boxes[j].min, boxes[j].max, min, max)
 	})
 }
 
-func testBoxDist(amin, amax, bmin, bmax []float64) float64 {
+func testBoxDist(amin, amax, bmin, bmax [2]float64) float64 {
 	var dist float64
 	for i := 0; i < len(amin); i++ {
 		var min, max float64
@@ -110,7 +170,7 @@ func testBoxDist(amin, amax, bmin, bmax []float64) float64 {
 func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	N := len(boxes)
 
-	var tr BoxTree
+	var tr RTree
 
 	// N := 10000
 	// boxes := randPoints(N)
@@ -119,10 +179,10 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	// insert
 	/////////////////////////////////////////
 	for i := 0; i < N; i++ {
-		tr.Insert(boxes[i].min[:], boxes[i].max[:], boxes[i])
+		tr.Insert(boxes[i].min, boxes[i].max, boxes[i])
 	}
-	if tr.Count() != N {
-		t.Fatalf("expected %d, got %d", N, tr.Count())
+	if tr.Len() != N {
+		t.Fatalf("expected %d, got %d", N, tr.Len())
 	}
 	// area := tr.TotalOverlapArea()
 	// fmt.Printf("overlap:    %.0f, %.1f/item\n", area, area/float64(N))
@@ -133,7 +193,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	// scan all items and count one-by-one
 	/////////////////////////////////////////
 	var count int
-	tr.Scan(func(min, max []float64, value interface{}) bool {
+	tr.Scan(func(min, max [2]float64, value interface{}) bool {
 		count++
 		return true
 	})
@@ -145,7 +205,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	// check every point for correctness
 	/////////////////////////////////////////
 	var tboxes1 []tBox
-	tr.Scan(func(min, max []float64, value interface{}) bool {
+	tr.Scan(func(min, max [2]float64, value interface{}) bool {
 		tboxes1 = append(tboxes1, value.(tBox))
 		return true
 	})
@@ -164,8 +224,8 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	/////////////////////////////////////////
 	for i := 0; i < N; i++ {
 		var found bool
-		tr.Search(boxes[i].min[:], boxes[i].max[:],
-			func(min, max []float64, value interface{}) bool {
+		tr.Search(boxes[i].min, boxes[i].max,
+			func(min, max [2]float64, value interface{}) bool {
 				if value == boxes[i] {
 					found = true
 					return false
@@ -177,11 +237,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 		}
 	}
 
-	centerMin, centerMax := []float64{-18, -9}, []float64{18, 9}
-	for j := 2; j < dims; j++ {
-		centerMin = append(centerMin, -10)
-		centerMax = append(centerMax, 10)
-	}
+	centerMin, centerMax := [2]float64{-18, -9}, [2]float64{18, 9}
 
 	/////////////////////////////////////////
 	// search for 10% of the items
@@ -189,7 +245,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	for i := 0; i < N/5; i++ {
 		var count int
 		tr.Search(centerMin, centerMax,
-			func(min, max []float64, value interface{}) bool {
+			func(min, max [2]float64, value interface{}) bool {
 				count++
 				return true
 			},
@@ -201,14 +257,14 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	/////////////////////////////////////////
 	for i := 0; i < N/2; i++ {
 		j := i * 2
-		tr.Delete(boxes[j].min[:], boxes[j].max[:], boxes[j])
+		tr.Delete(boxes[j].min, boxes[j].max, boxes[j])
 	}
 
 	/////////////////////////////////////////
 	// count all items. should be half of N
 	/////////////////////////////////////////
 	count = 0
-	tr.Scan(func(min, max []float64, value interface{}) bool {
+	tr.Scan(func(min, max [2]float64, value interface{}) bool {
 		count++
 		return true
 	})
@@ -229,7 +285,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	})
 	for i := 0; i < N/2; i++ {
 		j := ij[i]
-		tr.Insert(boxes[j].min[:], boxes[j].max[:], boxes[j])
+		tr.Insert(boxes[j].min, boxes[j].max, boxes[j])
 	}
 
 	//////////////////////////////////////////////////////
@@ -248,11 +304,11 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 
 	}
 	for i := 0; i < N; i++ {
-		tr.Insert(nboxes[i].min[:], nboxes[i].max[:], nboxes[i])
-		tr.Delete(boxes[i].min[:], boxes[i].max[:], boxes[i])
+		tr.Insert(nboxes[i].min, nboxes[i].max, nboxes[i])
+		tr.Delete(boxes[i].min, boxes[i].max, boxes[i])
 	}
-	if tr.Count() != N {
-		t.Fatalf("expected %d, got %d", N, tr.Count())
+	if tr.Len() != N {
+		t.Fatalf("expected %d, got %d", N, tr.Len())
 	}
 	// area = tr.TotalOverlapArea()
 	// fmt.Fprintf(wr, "overlap:    %.0f, %.1f/item\n", area, area/float64(N))
@@ -261,7 +317,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	// check every point for correctness
 	/////////////////////////////////////////
 	tboxes1 = nil
-	tr.Scan(func(min, max []float64, value interface{}) bool {
+	tr.Scan(func(min, max [2]float64, value interface{}) bool {
 		tboxes1 = append(tboxes1, value.(tBox))
 		return true
 	})
@@ -281,7 +337,7 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	for i := 0; i < N/5; i++ {
 		var count int
 		tr.Search(centerMin, centerMax,
-			func(min, max []float64, value interface{}) bool {
+			func(min, max [2]float64, value interface{}) bool {
 				count++
 				return true
 			},
@@ -289,21 +345,24 @@ func testBoxesVarious(t *testing.T, boxes []tBox, label string) {
 	}
 
 	var boxes3 []tBox
-	tr.Nearby(centerMin, centerMax,
-		func(min, max []float64, value interface{}) bool {
+	geoindex.Wrap(&tr).Nearby(
+		geoindex.SimpleBoxAlgo(centerMin, centerMax),
+		func(min, max [2]float64, value interface{}, dist float64) bool {
 			boxes3 = append(boxes3, value.(tBox))
 			return true
 		},
 	)
+
 	if len(boxes3) != len(nboxes) {
 		t.Fatalf("expected %d, got %d", len(nboxes), len(boxes3))
 	}
-	if len(boxes3) != tr.Count() {
-		t.Fatalf("expected %d, got %d", tr.Count(), len(boxes3))
+	if len(boxes3) != tr.Len() {
+		t.Fatalf("expected %d, got %d", tr.Len(), len(boxes3))
 	}
+
 	var ldist float64
 	for i, box := range boxes3 {
-		dist := testBoxDist(box.min[:], box.max[:], centerMin, centerMax)
+		dist := testBoxDist(box.min, box.max, centerMin, centerMax)
 		if i > 0 && dist < ldist {
 			t.Fatalf("out of order")
 		}
@@ -319,7 +378,7 @@ func TestRandomPoints(t *testing.T) {
 	testBoxesVarious(t, randPoints(10000), "points")
 }
 
-func (r *box) boxstr() string {
+func (r *rect) boxstr() string {
 	var b []byte
 	b = append(b, '[', '[')
 	for i := 0; i < len(r.min); i++ {
@@ -339,7 +398,7 @@ func (r *box) boxstr() string {
 	return string(b)
 }
 
-func (r *box) print(height, indent int) {
+func (r *rect) print(height, indent int) {
 	fmt.Printf("%s%s", strings.Repeat("  ", indent), r.boxstr())
 	if height == 0 {
 		fmt.Printf("\t'%v'\n", r.data)
@@ -352,7 +411,7 @@ func (r *box) print(height, indent int) {
 
 }
 
-func (tr BoxTree) print() {
+func (tr RTree) print() {
 	if tr.root.data == nil {
 		println("EMPTY TREE")
 		return
@@ -362,18 +421,18 @@ func (tr BoxTree) print() {
 
 func TestZeroPoints(t *testing.T) {
 	N := 10000
-	var tr BoxTree
-	pt := make([]float64, dims)
+	var tr RTree
+	var pt [2]float64
 	for i := 0; i < N; i++ {
-		tr.Insert(pt, nil, i)
+		tr.Insert(pt, pt, i)
 	}
 }
 
 func BenchmarkRandomInsert(b *testing.B) {
-	var tr BoxTree
+	var tr RTree
 	boxes := randBoxes(b.N)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tr.Insert(boxes[i].min[:], boxes[i].max[:], i)
+		tr.Insert(boxes[i].min, boxes[i].max, i)
 	}
 }

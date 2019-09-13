@@ -22,10 +22,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
+	"github.com/tidwall/rbang"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/core"
@@ -116,7 +116,7 @@ type Server struct {
 	shrinking  bool             // aof shrinking flag
 	shrinklog  [][]string       // aof shrinking log
 	hooks      map[string]*Hook // hook name
-	hookTree   d2.BoxTree       // hook spatial tree containing all
+	hookTree   rbang.RTree      // hook spatial tree containing all
 	hooksOut   map[string]*Hook // hooks with "outside" detection
 	aofconnM   map[net.Conn]bool
 	luascripts *lScriptMap

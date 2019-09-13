@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/mmcloughlin/geohash"
-	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
+	"github.com/tidwall/rbang"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/glob"
@@ -527,7 +527,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 	server.expires = make(map[string]map[string]time.Time)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
-	server.hookTree = d2.BoxTree{}
+	server.hookTree = rbang.RTree{}
 	d.command = "flushdb"
 	d.updated = true
 	d.timestamp = time.Now()

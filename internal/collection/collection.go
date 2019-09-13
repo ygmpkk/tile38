@@ -3,11 +3,12 @@ package collection
 import (
 	"runtime"
 
-	"github.com/tidwall/boxtree/d2"
 	"github.com/tidwall/btree"
+	"github.com/tidwall/geoindex"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
+	"github.com/tidwall/rbang"
 	"github.com/tidwall/tile38/internal/deadline"
 	"github.com/tidwall/tinybtree"
 )
@@ -42,7 +43,7 @@ func (item *itemT) Less(other btree.Item, ctx interface{}) bool {
 // Collection represents a collection of geojson objects.
 type Collection struct {
 	items       tinybtree.BTree // items sorted by keys
-	index       d2.BoxTree      // items geospatially indexed
+	index       *geoindex.Index // items geospatially indexed
 	values      *btree.BTree    // items sorted by value+key
 	fieldMap    map[string]int
 	fieldValues map[string][]float64
@@ -57,7 +58,8 @@ var counter uint64
 // New creates an empty collection
 func New() *Collection {
 	col := &Collection{
-		values:   btree.New(16, nil),
+		index:    geoindex.Wrap(&rbang.RTree{}),
+		values:   btree.New(32, nil),
 		fieldMap: make(map[string]int),
 	}
 	return col
@@ -130,8 +132,8 @@ func (c *Collection) indexDelete(item *itemT) {
 	if !item.obj.Empty() {
 		rect := item.obj.Rect()
 		c.index.Delete(
-			[]float64{rect.Min.X, rect.Min.Y},
-			[]float64{rect.Max.X, rect.Max.Y},
+			[2]float64{rect.Min.X, rect.Min.Y},
+			[2]float64{rect.Max.X, rect.Max.Y},
 			item)
 	}
 }
@@ -140,8 +142,8 @@ func (c *Collection) indexInsert(item *itemT) {
 	if !item.obj.Empty() {
 		rect := item.obj.Rect()
 		c.index.Insert(
-			[]float64{rect.Min.X, rect.Min.Y},
-			[]float64{rect.Max.X, rect.Max.Y},
+			[2]float64{rect.Min.X, rect.Min.Y},
+			[2]float64{rect.Max.X, rect.Max.Y},
 			item)
 	}
 }
@@ -497,9 +499,9 @@ func (c *Collection) geoSearch(
 ) bool {
 	alive := true
 	c.index.Search(
-		[]float64{rect.Min.X, rect.Min.Y},
-		[]float64{rect.Max.X, rect.Max.Y},
-		func(_, _ []float64, itemv interface{}) bool {
+		[2]float64{rect.Min.X, rect.Min.Y},
+		[2]float64{rect.Max.X, rect.Max.Y},
+		func(_, _ [2]float64, itemv interface{}) bool {
 			item := itemv.(*itemT)
 			alive = iter(item.id, item.obj, c.getFieldValues(item.id))
 			return alive
@@ -687,9 +689,9 @@ func (c *Collection) Nearby(
 				geo.RectFromCenter(center.Y, center.X, meters)
 			var exists bool
 			c.index.Search(
-				[]float64{minLon, minLat},
-				[]float64{maxLon, maxLat},
-				func(_, _ []float64, itemv interface{}) bool {
+				[2]float64{minLon, minLat},
+				[2]float64{maxLon, maxLat},
+				func(_, _ [2]float64, itemv interface{}) bool {
 					exists = true
 					return false
 				},
@@ -710,9 +712,11 @@ func (c *Collection) Nearby(
 		cursor.Step(offset)
 	}
 	c.index.Nearby(
-		[]float64{center.X, center.Y},
-		[]float64{center.X, center.Y},
-		func(_, _ []float64, itemv interface{}) bool {
+		geoindex.SimpleBoxAlgo(
+			[2]float64{center.X, center.Y},
+			[2]float64{center.X, center.Y},
+		),
+		func(_, _ [2]float64, itemv interface{}, _ float64) bool {
 			count++
 			if count <= offset {
 				return true

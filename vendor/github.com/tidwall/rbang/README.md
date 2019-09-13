@@ -1,50 +1,44 @@
-# `BoxTree`
+# `R!tree`
 
-[![GoDoc](https://godoc.org/github.com/tidwall/boxtree?status.svg)](https://godoc.org/github.com/tidwall/boxtree)
-
-**EXPERIMENTAL**
+[![GoDoc](https://godoc.org/github.com/tidwall/rbang?status.svg)](https://godoc.org/github.com/tidwall/rbang)
 
 This package provides an in-memory R-Tree implementation for Go. It's designed
-for [Tile38](https://github.com/tidwall/tile38).
+for [Tile38](https://github.com/tidwall/tile38) and is optimized for fast rect 
+inserts and replacements.
 
-<img src="/res/cities.png" width="512" height="256" border="0" alt="Cities">
-
-## Features
-
-- Support for 2 and 3 dimensions
-- Optimized for fast box inserts and replacements.
+<img src="cities.png" width="512" height="256" border="0" alt="Cities">
 
 ## Usage
 
 ### Installing
 
-To start using BoxTree, install Go and run `go get`:
+To start using R!Tree, install Go and run `go get`:
 
 ```sh
-$ go get -u github.com/tidwall/boxtree
+$ go get -u github.com/tidwall/rbang
 ```
 
 ### Basic operations
 
 ```go
-// create a 2D BoxTree
-tr := boxtree.New(2)
+// create a 2D RTree
+var tr rbang.RTree
 
 // insert a point
-tr.Insert([]float64{-112.0078, 33.4373}, nil, "PHX")
+tr.Insert([2]float64{-112.0078, 33.4373}, [2]float64{-112.0078, 33.4373}, "PHX")
 
 // insert a box
-tr.Insert([]float64{10, 10}, []float64{20, 20}, "rect")
+tr.Insert([2]float64{10, 10}, [2]float64{20, 20}, "rect")
 
 // search 
-tr.Search([]float64{-112.1, 33.4}, []float64{-112.0, 33.5}, 
- 	func(min, max []float64, value interface{}) bool {
+tr.Search([2]float64{-112.1, 33.4}, [2]float64{-112.0, 33.5}, 
+ 	func(min, max [2]float64, value interface{}) bool {
 		println(value.(string)) // prints "PHX"
 	},
 )
 
 // delete 
-tr.Delete([]float64{-112.0078, 33.4373}, []float64{-112.0078, 33.4373}, "PHX")
+tr.Delete([2]float64{-112.0078, 33.4373}, [2]float64{-112.0078, 33.4373}, "PHX")
 ```
 
 ## Algorithms
@@ -90,5 +84,5 @@ I hope to provide more details in the future.
 
 ## License
 
-`BoxTree` source code is available under the MIT License.
+`rbang` source code is available under the MIT License.
 

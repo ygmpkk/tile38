@@ -198,14 +198,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6e319cc90f8432f0ac3f78e6bb7be410e6939b6405e1ba84ae4e920de15476f3"
-  name = "github.com/tidwall/boxtree"
-  packages = ["d2"]
-  pruneopts = ""
-  revision = "a570caa42c5e4c65f50e6f7ca0e7fa1c5084981c"
-
-[[projects]]
-  branch = "master"
   digest = "1:b28f2f9253cbb1bf2bcb3c0ab7421d2f88a245386199a6668b0a66eb09ce3e1f"
   name = "github.com/tidwall/btree"
   packages = ["."]
@@ -221,7 +213,18 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:16a87d3d8d3808f3206c4992d1fb50440bb7d5508fbe5bfab7d899b516c7f3b8"
+  digest = "1:4305de55e110aa13ec68a246b12e512041fe92440e78066fcea93ecf2a68320b"
+  name = "github.com/tidwall/geoindex"
+  packages = [
+    ".",
+    "child",
+  ]
+  pruneopts = ""
+  revision = "e56705dcd2788d8eb431e8cb15295bfd0a298976"
+  version = "v1.0.1"
+
+[[projects]]
+  digest = "1:ddb305f09be3613fd1bf9fd8d6d0713f2fd28b5af596437b3d7de2366bbee870"
   name = "github.com/tidwall/geojson"
   packages = [
     ".",
@@ -229,8 +232,8 @@
     "geometry",
   ]
   pruneopts = ""
-  revision = "ff8d554639ee72ffa650eca1e02f03ab51193c7f"
-  version = "v1.1.6"
+  revision = "09ce8fa8548966071daf8df6bfc692cf756ff8cc"
+  version = "v1.1.7"
 
 [[projects]]
   digest = "1:30e9a79822702670b96d3461aca7da11b8cc6e7954eb4e859e886559ed4802a4"
@@ -271,6 +274,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "65a9db5fad5105a89e17f38adcc9878685be6d78"
+
+[[projects]]
+  digest = "1:3deeba766e407673583fcef7135199c081c4a236071511b6c4cac412335bcecc"
+  name = "github.com/tidwall/rbang"
+  packages = ["."]
+  pruneopts = ""
+  revision = "55391bcd9942773f84554000f0c9600345e3ef92"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -460,9 +471,9 @@
     "github.com/nats-io/go-nats",
     "github.com/peterh/liner",
     "github.com/streadway/amqp",
-    "github.com/tidwall/boxtree/d2",
     "github.com/tidwall/btree",
     "github.com/tidwall/buntdb",
+    "github.com/tidwall/geoindex",
     "github.com/tidwall/geojson",
     "github.com/tidwall/geojson/geo",
     "github.com/tidwall/geojson/geometry",
@@ -470,6 +481,7 @@
     "github.com/tidwall/lotsa",
     "github.com/tidwall/match",
     "github.com/tidwall/pretty",
+    "github.com/tidwall/rbang",
     "github.com/tidwall/redbench",
     "github.com/tidwall/redcon",
     "github.com/tidwall/resp",

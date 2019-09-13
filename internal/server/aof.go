@@ -219,9 +219,9 @@ func (server *Server) getQueueCandidates(d *commandDetails) []*Hook {
 		}
 		rect := obj.Rect()
 		server.hookTree.Search(
-			[]float64{rect.Min.X, rect.Min.Y},
-			[]float64{rect.Max.X, rect.Max.Y},
-			func(_, _ []float64, value interface{}) bool {
+			[2]float64{rect.Min.X, rect.Min.Y},
+			[2]float64{rect.Max.X, rect.Max.Y},
+			func(_, _ [2]float64, value interface{}) bool {
 				hook := value.(*Hook)
 				if hook.Key != d.key {
 					return true
