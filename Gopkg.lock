@@ -213,15 +213,15 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:4305de55e110aa13ec68a246b12e512041fe92440e78066fcea93ecf2a68320b"
+  digest = "1:eab1a01c55a3428f83e16e92f902ffbeae143e19e080a6a1117532f7908f7579"
   name = "github.com/tidwall/geoindex"
   packages = [
     ".",
     "child",
   ]
   pruneopts = ""
-  revision = "e56705dcd2788d8eb431e8cb15295bfd0a298976"
-  version = "v1.0.1"
+  revision = "6fc1984907cad925af47d09fdc0cadc70f875cfe"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:ddb305f09be3613fd1bf9fd8d6d0713f2fd28b5af596437b3d7de2366bbee870"
