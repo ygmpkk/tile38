@@ -83,7 +83,9 @@ func (conn *MQTTConn) Send(msg string) error {
 			}
 			ops = ops.SetTLSConfig(&config)
 		}
-		ops = ops.SetClientID("tile38").AddBroker(uri)
+		nano := time.Now().UnixNano()
+		clientID := fmt.Sprintf("tile38_%x", nano) //the id of connected clients should be unique
+		ops = ops.SetClientID(clientID).AddBroker(uri)
 		c := paho.NewClient(ops)
 
 		if token := c.Connect(); token.Wait() && token.Error() != nil {
