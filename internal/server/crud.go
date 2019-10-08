@@ -760,7 +760,7 @@ func (server *Server) parseSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (server *Server) cmdSet(msg *Message, resetExpires bool) (res resp.Value, d commandDetails, err error) {
 	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
 		err = errOOM
 		return
@@ -790,7 +790,9 @@ func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, er
 			goto notok
 		}
 	}
-	server.clearIDExpires(d.key, d.id)
+	if resetExpires {
+		server.clearIDExpires(d.key, d.id)
+	}
 	d.oldObj, d.oldFields, d.fields = col.Set(d.id, d.obj, fields, values)
 	d.command = "set"
 	d.updated = true // perhaps we should do a diff on the previous object?

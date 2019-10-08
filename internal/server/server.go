@@ -932,7 +932,7 @@ func (server *Server) command(msg *Message, client *Client) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = server.cmdSet(msg)
+		res, d, err = server.cmdSet(msg, true)
 	case "fset":
 		res, d, err = server.cmdFset(msg)
 	case "del":

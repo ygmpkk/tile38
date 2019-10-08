@@ -222,7 +222,7 @@ func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 		nmsg := *msg
 		nmsg.Args = []string{"SET", key, id, "OBJECT", json}
 		// SET key id OBJECT json
-		return c.cmdSet(&nmsg)
+		return c.cmdSet(&nmsg, false)
 	}
 	if createcol {
 		c.setCol(key, col)
@@ -291,7 +291,7 @@ func (c *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err er
 		nmsg := *msg
 		nmsg.Args = []string{"SET", key, id, "OBJECT", json}
 		// SET key id OBJECT json
-		return c.cmdSet(&nmsg)
+		return c.cmdSet(&nmsg, false)
 	}
 
 	d.key = key

@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/log"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 	luajson "layeh.com/gopher-json"
 )
 
@@ -161,7 +161,7 @@ func (pl *lStatePool) New() *lua.LState {
 		"error_reply":  errorReply,
 		"status_reply": statusReply,
 		"sha1hex":      sha1hex,
-		"distance_to":	distanceTo,
+		"distance_to":  distanceTo,
 	}
 	L.SetGlobal("tile38", L.SetFuncs(L.NewTable(), exports))
 
@@ -592,7 +592,7 @@ func (c *Server) commandInScript(msg *Message) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = c.cmdSet(msg)
+		res, d, err = c.cmdSet(msg, true)
 	case "fset":
 		res, d, err = c.cmdFset(msg)
 	case "del":
@@ -707,7 +707,7 @@ func (c *Server) luaTile38AtomicRW(msg *Message) (resp.Value, error) {
 		if msg.Deadline != nil {
 			if write {
 				res = NOMessage
-				err  = errTimeoutOnCmd(msg.Command())
+				err = errTimeoutOnCmd(msg.Command())
 				return
 			}
 			defer func() {
@@ -813,7 +813,7 @@ func (c *Server) luaTile38NonAtomic(msg *Message) (resp.Value, error) {
 		if msg.Deadline != nil {
 			if write {
 				res = NOMessage
-				err  = errTimeoutOnCmd(msg.Command())
+				err = errTimeoutOnCmd(msg.Command())
 				return
 			}
 			defer func() {
