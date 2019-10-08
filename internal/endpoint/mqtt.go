@@ -3,7 +3,7 @@ package endpoint
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/rand"
+	"math/rand"
 	"fmt"
 	"io/ioutil"
 	"sync"
