@@ -3,12 +3,14 @@ package endpoint
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"math/rand"
 	"fmt"
 	"io/ioutil"
 	"sync"
 	"time"
 
 	paho "github.com/eclipse/paho.mqtt.golang"
+	"github.com/tidwall/tile38/internal/log"
 )
 
 const (
@@ -83,7 +85,16 @@ func (conn *MQTTConn) Send(msg string) error {
 			}
 			ops = ops.SetTLSConfig(&config)
 		}
-		ops = ops.SetClientID("tile38").AddBroker(uri)
+		//generate UUID for the client-id. 
+		b := make([]byte, 16)
+		_, err := rand.Read(b)
+		if err != nil {
+			log.Debugf("Failed to generate guid for the mqtt client. The endpoint will not work")
+			return err;
+		}
+		uuid := fmt.Sprintf("tile38-%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+
+		ops = ops.SetClientID(uuid).AddBroker(uri)
 		c := paho.NewClient(ops)
 
 		if token := c.Connect(); token.Wait() && token.Error() != nil {
