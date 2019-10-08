@@ -3,9 +3,9 @@ package endpoint
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"math/rand"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	mqttExpiresAfter = time.Second * 30
+	mqttExpiresAfter   = time.Second * 30
+	mqttPublishTimeout = time.Second * 5
 )
 
 // MQTTConn is an endpoint connection
@@ -85,12 +86,12 @@ func (conn *MQTTConn) Send(msg string) error {
 			}
 			ops = ops.SetTLSConfig(&config)
 		}
-		//generate UUID for the client-id. 
+		//generate UUID for the client-id.
 		b := make([]byte, 16)
 		_, err := rand.Read(b)
 		if err != nil {
 			log.Debugf("Failed to generate guid for the mqtt client. The endpoint will not work")
-			return err;
+			return err
 		}
 		uuid := fmt.Sprintf("tile38-%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 
@@ -106,9 +107,8 @@ func (conn *MQTTConn) Send(msg string) error {
 
 	t := conn.conn.Publish(conn.ep.MQTT.QueueName, conn.ep.MQTT.Qos,
 		conn.ep.MQTT.Retained, msg)
-	t.Wait()
 
-	if t.Error() != nil {
+	if !t.WaitTimeout(mqttPublishTimeout) || t.Error() != nil {
 		conn.close()
 		return t.Error()
 	}
