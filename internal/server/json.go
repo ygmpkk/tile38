@@ -40,6 +40,55 @@ func jsonString(s string) string {
 	b[len(b)-1] = '"'
 	return string(b)
 }
+
+func isJsonNumber(s string) bool {
+	// Returns true if the given string can be encoded as a JSON number value.
+	// See:
+	// https://json.org
+	// http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+	l := len(s)
+	if l == 0 {
+		return false
+	}
+	i := 0
+	if s[i] == '-' {
+		i++
+	}
+	switch {
+	case i == l:
+		return false
+	case s[i] == '0': // 0 must not be followed by any digits.
+		i++
+		break
+	case s[i] >= '1' && s[0] <= '9':
+		for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ { // scan over digits
+		}
+	default:
+		return false
+	}
+	if i == l {
+		return true
+	}
+	if  l-i > 1 && s[i] == '.' {
+		for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ {
+		}
+	}
+	if l-i > 1 && (s[i] == 'e' || s[i] == 'E') {
+		i++
+		if s[i] == '-' || s[i] == '+' {
+			i++
+		}
+		switch {
+		case i == l:
+			return false
+		case s[i] >= '0' && s[0] <= '9':
+			for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ {
+			}
+		}
+	}
+	return i == l
+}
+
 func appendJSONSimpleBounds(dst []byte, o geojson.Object) []byte {
 	bbox := o.Rect()
 	dst = append(dst, `{"sw":{"lat":`...)
@@ -183,13 +232,7 @@ func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 	if !str && !raw {
 		switch val {
 		default:
-			if len(val) > 0 {
-				if (val[0] >= '0' && val[0] <= '9') || val[0] == '-' {
-					if _, err := strconv.ParseFloat(val, 64); err == nil {
-						raw = true
-					}
-				}
-			}
+			raw = isJsonNumber(val)
 		case "true", "false", "null":
 			raw = true
 		}
