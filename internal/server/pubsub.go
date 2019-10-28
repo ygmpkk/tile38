@@ -194,7 +194,7 @@ func (c *Server) liveSubscription(
 	write := func(data []byte) {
 		writeLock.Lock()
 		defer writeLock.Unlock()
-		writeLiveMessage(conn, data, false, connType, websocket)
+		writeLiveMessage(conn, data, outputType == JSON, connType, websocket)
 	}
 	writeOK := func() {
 		switch outputType {
