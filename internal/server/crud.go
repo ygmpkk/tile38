@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/rbang"
 	"github.com/tidwall/resp"
+	"github.com/tidwall/rhh"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/glob"
 	"github.com/tidwall/tinybtree"
@@ -521,10 +522,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		return
 	}
 	server.cols = tinybtree.BTree{}
-	server.exlistmu.Lock()
-	server.exlist = nil
-	server.exlistmu.Unlock()
-	server.expires = make(map[string]map[string]time.Time)
+	server.expires = rhh.New(0)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
 	server.hookTree = rbang.RTree{}
