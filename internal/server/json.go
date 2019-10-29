@@ -41,52 +41,80 @@ func jsonString(s string) string {
 	return string(b)
 }
 
-func isJsonNumber(s string) bool {
+func isJsonNumber(data string) bool {
 	// Returns true if the given string can be encoded as a JSON number value.
 	// See:
 	// https://json.org
 	// http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
-	l := len(s)
-	if l == 0 {
+	if data == "" {
 		return false
 	}
 	i := 0
-	if s[i] == '-' {
+	// sign
+	if data[i] == '-' {
 		i++
 	}
-	switch {
-	case i == l:
+	if i == len(data) {
 		return false
-	case s[i] == '0': // 0 must not be followed by any digits.
+	}
+	// int
+	if data[i] == '0' {
 		i++
-		break
-	case s[i] >= '1' && s[0] <= '9':
-		for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ { // scan over digits
+	} else {
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
+			}
+			break
 		}
-	default:
-		return false
 	}
-	if i == l {
+	// frac
+	if i == len(data) {
 		return true
 	}
-	if  l-i > 1 && s[i] == '.' {
-		for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ {
+	if data[i] == '.' {
+		i++
+		if i == len(data) {
+			return false
+		}
+		if data[i] < '0' || data[i] > '9' {
+			return false
+		}
+		i++
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
+			}
+			break
 		}
 	}
-	if l-i > 1 && (s[i] == 'e' || s[i] == 'E') {
+	// exp
+	if i == len(data) {
+		return true
+	}
+	if data[i] == 'e' || data[i] == 'E' {
 		i++
-		if s[i] == '-' || s[i] == '+' {
+		if i == len(data) {
+			return false
+		}
+		if data[i] == '+' || data[i] == '-' {
 			i++
 		}
-		switch {
-		case i == l:
+		if i == len(data) {
 			return false
-		case s[i] >= '0' && s[0] <= '9':
-			for i++; i < l && s[i] >= '0' && s[i] <= '9'; i++ {
+		}
+		if data[i] < '0' || data[i] > '9' {
+			return false
+		}
+		i++
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
 			}
+			break
 		}
 	}
-	return i == l
+	return i == len(data)
 }
 
 func appendJSONSimpleBounds(dst []byte, o geojson.Object) []byte {
