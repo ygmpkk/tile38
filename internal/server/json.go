@@ -40,6 +40,83 @@ func jsonString(s string) string {
 	b[len(b)-1] = '"'
 	return string(b)
 }
+
+func isJsonNumber(data string) bool {
+	// Returns true if the given string can be encoded as a JSON number value.
+	// See:
+	// https://json.org
+	// http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+	if data == "" {
+		return false
+	}
+	i := 0
+	// sign
+	if data[i] == '-' {
+		i++
+	}
+	if i == len(data) {
+		return false
+	}
+	// int
+	if data[i] == '0' {
+		i++
+	} else {
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
+			}
+			break
+		}
+	}
+	// frac
+	if i == len(data) {
+		return true
+	}
+	if data[i] == '.' {
+		i++
+		if i == len(data) {
+			return false
+		}
+		if data[i] < '0' || data[i] > '9' {
+			return false
+		}
+		i++
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
+			}
+			break
+		}
+	}
+	// exp
+	if i == len(data) {
+		return true
+	}
+	if data[i] == 'e' || data[i] == 'E' {
+		i++
+		if i == len(data) {
+			return false
+		}
+		if data[i] == '+' || data[i] == '-' {
+			i++
+		}
+		if i == len(data) {
+			return false
+		}
+		if data[i] < '0' || data[i] > '9' {
+			return false
+		}
+		i++
+		for ; i < len(data); i++ {
+			if data[i] >= '0' && data[i] <= '9' {
+				continue
+			}
+			break
+		}
+	}
+	return i == len(data)
+}
+
 func appendJSONSimpleBounds(dst []byte, o geojson.Object) []byte {
 	bbox := o.Rect()
 	dst = append(dst, `{"sw":{"lat":`...)
@@ -183,13 +260,7 @@ func (c *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 	if !str && !raw {
 		switch val {
 		default:
-			if len(val) > 0 {
-				if (val[0] >= '0' && val[0] <= '9') || val[0] == '-' {
-					if _, err := strconv.ParseFloat(val, 64); err == nil {
-						raw = true
-					}
-				}
-			}
+			raw = isJsonNumber(val)
 		case "true", "false", "null":
 			raw = true
 		}
