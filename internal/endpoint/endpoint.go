@@ -99,11 +99,15 @@ type Endpoint struct {
 		CreateQueue bool
 	}
 	NATS struct {
-		Host  string
-		Port  int
-		User  string
-		Pass  string
-		Topic string
+		Host    string
+		Port    int
+		User    string
+		Pass    string
+		Topic   string
+		Token   string
+		TLS     bool
+		TLSCert string
+		TLSKey  string
 	}
 	Local struct {
 		Channel string
@@ -656,6 +660,14 @@ func parseEndpoint(s string) (Endpoint, error) {
 					endpoint.NATS.User = val[0]
 				case "pass":
 					endpoint.NATS.Pass = val[0]
+				case "token":
+					endpoint.NATS.Token = val[0]
+				case "tls":
+					endpoint.NATS.TLS = queryBool(val[0])
+				case "tlscert":
+					endpoint.NATS.TLSCert = val[0]
+				case "tlskey":
+					endpoint.NATS.TLSKey = val[0]
 				}
 			}
 		}
