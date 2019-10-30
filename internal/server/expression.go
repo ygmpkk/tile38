@@ -6,8 +6,10 @@ import (
 	"github.com/tidwall/geojson"
 )
 
+// BinaryOp represents various operators for expressions
 type BinaryOp byte
 
+// expression operator enum
 const (
 	NOOP BinaryOp = iota
 	AND
@@ -19,7 +21,8 @@ const (
 	tokenRParen = ")"
 )
 
-// areaExpression is (maybe negated) either an spatial object or operator + children (other expressions).
+// areaExpression is (maybe negated) either an spatial object or operator +
+// children (other expressions).
 type areaExpression struct {
 	negate   bool
 	obj      geojson.Object

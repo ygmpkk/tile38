@@ -21,7 +21,7 @@ func BenchmarkJSONMarshal(t *testing.B) {
 
 func TestIsJsonNumber(t *testing.T) {
 	test := func(expected bool, val string) {
-		actual := isJsonNumber(val)
+		actual := isJSONNumber(val)
 		if expected != actual {
 			t.Fatalf("Expected %t == isJsonNumber(\"%s\") but was %t", expected, val, actual)
 		}

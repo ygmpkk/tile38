@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 const defaultSearchOutput = outputObjects
@@ -249,7 +249,7 @@ type searchScanBaseTokens struct {
 	clip       bool
 }
 
-func (c *Server) parseSearchScanBaseTokens(
+func (s *Server) parseSearchScanBaseTokens(
 	cmd string, t searchScanBaseTokens, vs []string,
 ) (
 	vsout []string, tout searchScanBaseTokens, err error,
@@ -380,7 +380,7 @@ func (c *Server) parseSearchScanBaseTokens(
 				}
 
 				var luaState *lua.LState
-				luaState, err = c.luapool.Get()
+				luaState, err = s.luapool.Get()
 				if err != nil {
 					return
 				}
@@ -406,7 +406,7 @@ func (c *Server) parseSearchScanBaseTokens(
 						"ARGV": argsTbl,
 					})
 
-				compiled, ok := c.luascripts.Get(shaSum)
+				compiled, ok := s.luascripts.Get(shaSum)
 				var fn *lua.LFunction
 				if ok {
 					fn = &lua.LFunction{
@@ -426,9 +426,9 @@ func (c *Server) parseSearchScanBaseTokens(
 						err = makeSafeErr(err)
 						return
 					}
-					c.luascripts.Put(shaSum, fn.Proto)
+					s.luascripts.Put(shaSum, fn.Proto)
 				}
-				t.whereevals = append(t.whereevals, whereevalT{c, luaState, fn})
+				t.whereevals = append(t.whereevals, whereevalT{s, luaState, fn})
 				continue
 			case "nofields":
 				vs = nvs
@@ -735,12 +735,12 @@ loop:
 				err = errInvalidArgument(tokenRParen)
 				return
 			}
-			if parent, empty := ps.pop(); empty {
+			parent, empty := ps.pop()
+			if empty {
 				err = errInvalidArgument(tokenRParen)
 				return
-			} else {
-				ae = parent
 			}
+			ae = parent
 			vsout = nvs
 		case tokenNOT:
 			negate = !negate
@@ -762,13 +762,12 @@ loop:
 					if numChildren < 2 {
 						err = errInvalidNumberOfArguments
 						return
-					} else {
-						ae.children = append(
-							ae.children[:numChildren-1],
-							&areaExpression{
-								op:       AND,
-								children: []*areaExpression{ae.children[numChildren-1]}})
 					}
+					ae.children = append(
+						ae.children[:numChildren-1],
+						&areaExpression{
+							op:       AND,
+							children: []*areaExpression{ae.children[numChildren-1]}})
 				case NOOP:
 					ae.op = AND
 				}
@@ -791,9 +790,8 @@ loop:
 					if len(ae.children) < 2 {
 						err = errInvalidNumberOfArguments
 						return
-					} else {
-						ae = &areaExpression{op: OR, children: []*areaExpression{ae}}
 					}
+					ae = &areaExpression{op: OR, children: []*areaExpression{ae}}
 				case NOOP:
 					ae.op = OR
 				}
@@ -802,20 +800,20 @@ loop:
 			}
 			vsout = nvs
 		case "point", "circle", "object", "bounds", "hash", "quadkey", "tile", "get":
-			if parsedVs, parsedObj, areaErr := s.parseArea(vsout, doClip); areaErr != nil {
+			parsedVs, parsedObj, areaErr := s.parseArea(vsout, doClip)
+			if areaErr != nil {
 				err = areaErr
 				return
-			} else {
-				newExpr := &areaExpression{negate: negate, obj: parsedObj, op: NOOP}
-				negate = false
-				needObj = false
-				if ae == nil {
-					ae = newExpr
-				} else {
-					ae.children = append(ae.children, newExpr)
-				}
-				vsout = parsedVs
 			}
+			newExpr := &areaExpression{negate: negate, obj: parsedObj, op: NOOP}
+			negate = false
+			needObj = false
+			if ae == nil {
+				ae = newExpr
+			} else {
+				ae.children = append(ae.children, newExpr)
+			}
+			vsout = parsedVs
 		default:
 			break loop
 		}
