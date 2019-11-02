@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.0] = 2019-11-02
+### Added
+- #464: Add area expressions commands. (@rshura)
+
+### Fixes
+- #493: Fix invalid JSON when JSET strings that look like numbers. (@spierepf, @JordanArmstrong)
+- #499: Fix invalid PubSub format when output is set to JSON. (@dmvass)
+- #500: Fix Tile38-cli not propertly handling quotes. (@vthorsell)
+- #502: Fix excessive memory usage for objects with TTLs. commit 23b016d. (@FreakyBytes)
+- #503: Fix fprintf type error in stats_cpu.go for non-linux/darwin builds. (@JordanArmstrong)
+
+### Changes
+- #505: Update Travi-ci to use Go 1.13.x
+
 ## [1.18.0] = 2019-10-09
 ### Enhancement
 - 639f6e2: Updated the spatial index (R-tree) implementation.
