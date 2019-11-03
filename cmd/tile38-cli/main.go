@@ -171,6 +171,9 @@ func main() {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
+			if oneCommand != "" {
+				os.Exit(1)
+			}
 		} else if _, err := conn.Do("output " + output); err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
