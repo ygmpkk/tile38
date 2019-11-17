@@ -98,8 +98,8 @@ func (server *Server) aofshrink() {
 					if value, ok := server.expires.Get(keys[0]); ok {
 						exm = value.(*rhh.Map)
 					}
-					var now = time.Now() // used for expiration
-					var count = 0        // the object count
+					var now = time.Now().UnixNano() // used for expiration
+					var count = 0                   // the object count
 					col.ScanGreaterOrEqual(nextid, false, nil, nil,
 						func(id string, obj geojson.Object, fields []float64) bool {
 							if count == maxids {
@@ -123,7 +123,7 @@ func (server *Server) aofshrink() {
 							}
 							if exm != nil {
 								if at, ok := exm.Get(id); ok {
-									expires := at.(time.Time).Sub(now)
+									expires := at.(int64) - now
 									if expires > 0 {
 										values = append(values, "ex")
 										values = append(values, strconv.FormatFloat(math.Floor(float64(expires)/float64(time.Second)*10)/10, 'f', -1, 64))
