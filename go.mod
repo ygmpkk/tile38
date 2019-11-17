@@ -4,9 +4,9 @@ go 1.13
 
 require (
 	github.com/Shopify/sarama v1.13.0
+	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.17.14
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/davecgh/go-spew v1.1.0 // indirect
 	github.com/eapache/go-resiliency v1.0.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934 // indirect
 	github.com/eapache/queue v1.0.2 // indirect
@@ -15,6 +15,7 @@ require (
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
 	github.com/gomodule/redigo v2.0.1-0.20181026001555-e8fc0692a7e2+incompatible
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294
+	github.com/nats-io/gnatsd v1.4.1 // indirect
 	github.com/nats-io/go-nats v1.6.0
 	github.com/nats-io/nuid v1.0.0 // indirect
 	github.com/peterh/liner v1.0.1-0.20170902204657-a37ad3984311
@@ -22,8 +23,10 @@ require (
 	github.com/pierrec/xxHash v0.1.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20161128210544-1f30fe9094a5 // indirect
 	github.com/streadway/amqp v0.0.0-20170926065634-cefed15a0bd8
+	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0
 	github.com/tidwall/buntdb v1.1.0
+	github.com/tidwall/cities v0.0.0-20190730194520-dbe1ae0b862c // indirect
 	github.com/tidwall/geoindex v1.1.0
 	github.com/tidwall/geojson v1.1.7
 	github.com/tidwall/gjson v1.3.2
@@ -43,6 +46,7 @@ require (
 	github.com/yuin/gopher-lua v0.0.0-20170915035107-eb1c7299435c
 	golang.org/x/crypto v0.0.0-20170930174604-9419663f5a44
 	golang.org/x/net v0.0.0-20171004034648-a04bdaca5b32
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20170927054621-314a259e304f // indirect
 	golang.org/x/text v0.1.1-0.20171005092100-d82c1812e304 // indirect
 	google.golang.org/genproto v0.0.0-20171002232614-f676e0f3ac63 // indirect
