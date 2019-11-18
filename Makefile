@@ -16,7 +16,7 @@ tile38-benchmark:
 tile38-luamemtest:
 	@./scripts/build.sh tile38-luamemtest
 
-test:
+test: all
 	@./scripts/test.sh
 
 package:
@@ -43,6 +43,3 @@ uninstall:
 	rm -f /usr/local/bin/tile38-server
 	rm -f /usr/local/bin/tile38-cli
 	rm -f /usr/local/bin/tile38-benchmark
-
-travis-docker-push: tile38-server tile38-cli tile38-benchmark
-	@./scripts/travis-docker-push.sh
