@@ -3,5 +3,9 @@
 set -e
 cd $(dirname "${BASH_SOURCE[0]}")/..
 
+export CGO_ENABLED=0
+export GO111MODULE=on
+export GOFLAGS=-mod=vendor
+
 cd tests && go test && cd ..
 go test $(go list ./... | grep -v /vendor/ | grep -v /tests)
