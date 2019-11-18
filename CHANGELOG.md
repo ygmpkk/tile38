@@ -2,53 +2,61 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.1] = 2019-11-18
+### Updated
+- cfc65a1: Refactored repo, moved to Go modules, updated vendor dependencies.
+
+### Fixed
+- 9d27533: Fix infinite loop on tile38-cli connection failure.
+- #509: Fixed panic on AOFSHRINK. (@jordanferenz)
+
 ## [1.19.0] = 2019-11-02
 ### Added
-- #464: Add area expressions commands. (@rshura)
+- #464: Add area expressions TEST command. (@rshura)
 
-### Fixes
+### Fixed
 - #493: Fix invalid JSON when JSET strings that look like numbers. (@spierepf, @JordanArmstrong)
 - #499: Fix invalid PubSub format when output is set to JSON. (@dmvass)
 - #500: Fix Tile38-cli not propertly handling quotes. (@vthorsell)
 - #502: Fix excessive memory usage for objects with TTLs. commit 23b016d. (@FreakyBytes)
 - #503: Fix fprintf type error in stats_cpu.go for non-linux/darwin builds. (@JordanArmstrong)
 
-### Changes
+### Changed
 - #505: Update Travi-ci to use Go 1.13.x
 
 ## [1.18.0] = 2019-10-09
-### Enhancement
+### Updated
 - 639f6e2: Updated the spatial index (R-tree) implementation.
 
-### Fixes
+### Fixed
 - b092cea: Fixed MQTT blocking on publish/wait.
 - #496: Fixed MQTT client ID uniqueness. (@neterror)
 - #497: Fixed data race on webhook map with TTLs. (@belek)
 - #498: Fixed JSET cancels objects TTL expiry value. (@belek)
 
 ## [1.17.6] - 2019-08-22
-### Fixes
+### Fixed
 - 3d96b17: Fixed periodic stop-the-world pauses for systems with large heaps.
 
 ## [1.17.5] - 2019-08-22
-### Fixes
+### Fixed
 - #489: Fixed nearby count always one (@jkarjala)
 
 ## [1.17.4] - 2019-08-09
-### Fixes
+### Fixed
 - #486: Fixed data condition on connections map (@saltatory)
 
 ## [1.17.3] - 2019-08-03
-### Fixes
+### Fixed
 - #483: Fixed lua pool pruning (@rshura)
 - f7888c1: Fixed malformed json for chans command
 
 ## [1.17.2] - 2019-06-28
-### Fixes
+### Fixed
 - #422: Fixes NEARBY command distance normalization issue (@TrivikrAm-Pamarthi, @melbania)
 
 ## [1.17.1] - 2019-05-04
-### Fixes
+### Fixed
 - #448: Fixed missing commands for unsubscribing from active channel (@githubfr)
 - #454: Fixed colored output for fatalf (@olevole)
 - #453: Fixed nearby json field results showing wrong data (@melbania)
@@ -57,18 +65,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - #446: Added timeouts to allow prepending commands with a TIMEOUT option. (@rshura)
 
-### Fixes
+### Fixed
 - #440: Fixed crash with fence ROAM (@githubfr)
 
-### Changes
+### Changed
 - 3ae5927: Removed experimental evio option
 
 ## [1.16.4] - 2019-03-19
-### Fixes
+### Fixed
 - e1a7145: Hotfix. Do not ignore SIGHUP. Use the `--nohup` flag or `nohup` command.
 
 ## [1.16.3] - 2019-03-19
-### Fixes
+### Fixed
 - #437: Fixed clients blocking while webook sending. (@tesujiro)
 
 ### Added
@@ -78,18 +86,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - 5335aec: Allow for standard SQS URLs. (@tobilg)
 
 ## [1.16.2] - 2019-03-12
-### Fixes
+### Fixed
 - #432: Ignore SIGHUP signals. (@abhit011)
 - #433: Fixed nearby inaccuracy with geofence. (@stcktrce)
 - #429: Memory optimization, recycle AOF buffer.
 - 95a5556: Added periodic yielding to iterators. (@rshura)
 
 ## [1.16.1] - 2019-03-01
-### Fixes
+### Fixed
 - #421: Nearby with MATCH is returning invalid results (@nithinkota)
 
 ## [1.16.0] - 2019-02-25
-### Fixes
+### Fixed
 - #415: Fixed overlapping geofences sending notifcation to wrong endpoint. (@belek, @s32x)
 - #412: Allow SERVER command for Lua scripts. (@1995parham)
 - #410: Allow slashes in MQTT Topics (@pstuifzand)
@@ -102,7 +110,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - #404: Adding more replication data to INFO response. (@s32x)
 
 ## [1.15.0] - 2019-01-16
-### Fixes
+### Fixed
 - #403: JSON Output for INFO and CLIENT (@s32x)
 - #401: Fixing KEYS command (@s32x)
 - #398: Ensuring channel publish order (@s32x)
@@ -115,7 +123,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - #395: Add RENAME and RENAMENX commands. (@rshura)
 
 ## [1.14.4] - 2018-12-03
-### Fixes
+### Fixed
 - #394: Hotfix MultiPolygon intersect failure. (@contra)
 - #392: Fix TLS certs missing in Docker. (@vziukas, @s32x)
 
@@ -125,15 +133,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add optimized spatial index for fences
 
 ## [1.14.3] - 2018-11-20
-### Fixes
+### Fixed
 - Hotfix SCRIPT LOAD not executing from cli. (@rshura)
 
 ## [1.14.2] - 2018-11-15
-### Fixes
+### Fixed
 - #386: Fix version not being set at build. (@stevelacy)
 
 ## [1.14.1] - 2018-11-15
-### Fixes
+### Fixed
 - #385: Add `version` to SERVER command response (@stevelacy)
 - Hotfix replica sync needs flushing (@rshura)
 - Fixed a bug where some AOF commands where corrupted during reload
@@ -146,7 +154,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - kNN haversine distance optimization (@rshura)
 - Evio networking beta using the "-evio yes" and "-threads num" flags
 
-### Fixes
+### Fixed
 - #369: Fix poly in hole query
 
 ## [1.13.0] - 2018-08-29
@@ -157,7 +165,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - #340: Add MQTT tls/cert options (@tobilg)
 - #314: Add CLIP subcommand to INTERSECTS (@rshura)
 
-### Changes
+### Changed
 - 3ae26e3: Updated B-tree implementation
 - 1d78a41: Updated R-tree implementation
 
@@ -184,7 +192,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - 11b42c0: Option to disable AOF or to use a custom path: #220 #223 #297 (@sign0, @umpc, @fmr683, @zhangfeng158)
 - #296: Add Meta data to hooks command (@tobilg)
 
-### Changes
+### Changed
 - 11b42c0: Updated help menu and show more options
 
 ### Fixed
@@ -396,7 +404,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added OUTPUT command to allow for outputing JSON when using RESP
 - Added DETECT option to geofences
 
-### Changes
+### Changed
 - New AOF file structure.
 - Quicker and safer AOFSHRINK.
 
