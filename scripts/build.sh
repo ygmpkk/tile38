@@ -30,8 +30,11 @@ core/gen.sh
 # Set final Go environment options
 LDFLAGS="$LDFLAGS -extldflags '-static'"
 export CGO_ENABLED=0
-export GO111MODULE=on
-export GOFLAGS=-mod=vendor
+
+if [ "$NOMODULES" != "1" ]; then
+	export GO111MODULE=on
+	export GOFLAGS=-mod=vendor
+fi
 
 # Build and store objects into original directory.
 go build -ldflags "$LDFLAGS" -o $1 cmd/$1/*.go

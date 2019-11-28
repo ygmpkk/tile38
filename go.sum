@@ -59,8 +59,8 @@ github.com/tidwall/cities v0.0.0-20190730194520-dbe1ae0b862c h1:K/6v4woP8qym96ZK
 github.com/tidwall/cities v0.0.0-20190730194520-dbe1ae0b862c/go.mod h1:lV/HDp2gCcRcHJWqgt6Di54GiDrTZwh1aG2ZUPNbqa4=
 github.com/tidwall/geoindex v1.1.0 h1:d/pGCgKUonfQINd1235kKqx9gWBU4N7GjDS9WvbPvLY=
 github.com/tidwall/geoindex v1.1.0/go.mod h1:3gTa91BW+eiVIipuR6aU1Y9Sa0q75b1teE/NP2vfsTc=
-github.com/tidwall/geojson v1.1.7 h1:uNeIRbzYzGpFw88CLajyrN3d0To5GcMW5YJSmPqkhH0=
-github.com/tidwall/geojson v1.1.7/go.mod h1:tBjfxeALRFLc25LLpjtWzy2nIrNmW1ze1EAhLtd8+QQ=
+github.com/tidwall/geojson v1.1.8 h1:n/WT/PG0OEHrxUJQoeqkupWDt3pwbHMynl6OF9xKIM0=
+github.com/tidwall/geojson v1.1.8/go.mod h1:tBjfxeALRFLc25LLpjtWzy2nIrNmW1ze1EAhLtd8+QQ=
 github.com/tidwall/gjson v1.3.2 h1:+7p3qQFaH3fOMXAJSrdZwGKcOO/lYdGS0HqGhPqDdTI=
 github.com/tidwall/gjson v1.3.2/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
 github.com/tidwall/grect v0.0.0-20161006141115-ba9a043346eb h1:5NSYaAdrnblKByzd7XByQEJVT8+9v0W/tIY0Oo4OwrE=
