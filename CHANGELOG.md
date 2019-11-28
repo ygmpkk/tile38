@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.19.2] = 2019-11-28
 ### Fixed
-- 6f3716a: Fix false negative for intersecting rings
+- 6f3716a: Fix false negative for intersecting rings (@thomascoquet)
 
 ## [1.19.1] = 2019-11-18
 ### Updated
