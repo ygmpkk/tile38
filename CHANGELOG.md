@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.3] = 2019-12-11
+### Fixed
+- #513: Fix tile38-cli from freezing with non-quoted geojson (@duartejc)
+
 ## [1.19.2] = 2019-11-28
 ### Fixed
 - 6f3716a: Fix false negative for intersecting rings (@thomascoquet)
