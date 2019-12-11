@@ -348,6 +348,9 @@ func (server *Server) netServe() error {
 				conn.Close()
 			}()
 
+			var lastConnType Type
+			var lastOutputType Type
+
 			// check if the connection is protected
 			if !strings.HasPrefix(client.remoteAddr, "127.0.0.1:") &&
 				!strings.HasPrefix(client.remoteAddr, "[::1]:") {
@@ -376,10 +379,6 @@ func (server *Server) netServe() error {
 				pr.wr = client
 
 				msgs, err := pr.ReadMessages()
-				if err != nil {
-					log.Error(err)
-					return // close connection
-				}
 				for _, msg := range msgs {
 					// Just closing connection if we have deprecated HTTP or WS connection,
 					// And --http-transport = false
@@ -457,6 +456,8 @@ func (server *Server) netServe() error {
 						close = true // close connection
 						break
 					}
+					lastOutputType = msg.OutputType
+					lastConnType = msg.ConnType
 				}
 
 				packet = packet[len(packet)-rdbuf.Len():]
@@ -475,10 +476,25 @@ func (server *Server) netServe() error {
 					}
 					conn.Write(client.out)
 					client.out = nil
-
 				}
 				if close {
 					break
+				}
+				if err != nil {
+					log.Error(err)
+					if lastConnType == RESP {
+						var value resp.Value
+						switch lastOutputType {
+						case JSON:
+							value = resp.StringValue(`{"ok":false,"err":` +
+								jsonString(err.Error()) + "}")
+						case RESP:
+							value = resp.ErrorValue(err)
+						}
+						bytes, _ := value.MarshalRESP()
+						conn.Write(bytes)
+					}
+					break // close connection
 				}
 			}
 		}(conn)
@@ -1351,8 +1367,10 @@ moreData:
 	}
 	for len(data) > 0 {
 		msg := &Message{}
-		complete, args, kind, leftover, err := readNextCommand(data, nil, msg, rd.wr)
-		if err != nil {
+		complete, args, kind, leftover, err2 :=
+			readNextCommand(data, nil, msg, rd.wr)
+		if err2 != nil {
+			err = err2
 			break
 		}
 		if !complete {
@@ -1387,10 +1405,7 @@ moreData:
 	} else if len(rd.buf) > 0 {
 		rd.buf = rd.buf[:0]
 	}
-	if err != nil && len(msgs) == 0 {
-		return nil, err
-	}
-	return msgs, nil
+	return msgs, err
 }
 
 func readNativeMessageLine(line []byte) (*Message, error) {

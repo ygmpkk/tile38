@@ -276,6 +276,13 @@ func main() {
 		}
 	}()
 	for {
+		if conn == nil {
+			connDial()
+			if conn == nil {
+				continue
+			}
+		}
+
 		var command string
 		var err error
 		if oneCommand == "" {
@@ -299,11 +306,14 @@ func main() {
 				if conn != nil {
 					_, err := conn.Do("pInG")
 					if err != nil {
-						if err != io.EOF {
+						if err != io.EOF && !strings.Contains(err.Error(), "broken pipe") {
 							fmt.Fprintln(os.Stderr, err.Error())
-							return
+						} else {
+							fmt.Fprintln(os.Stderr, refusedErrorString(addr))
 						}
-						fmt.Fprintln(os.Stderr, refusedErrorString(addr))
+						conn.wr.Close()
+						conn = nil
+						continue
 					}
 				}
 			} else {
@@ -335,11 +345,10 @@ func main() {
 				if err != nil {
 					if err != io.EOF {
 						fmt.Fprintln(os.Stderr, err.Error())
-					} else {
-						conn = nil
-						goto tryAgain
 					}
-					return
+					conn.wr.Close()
+					conn = nil
+					goto tryAgain
 				}
 				switch strings.ToLower(command) {
 				case "output resp":
@@ -518,7 +527,7 @@ func help(arg string) error {
 const liveJSON = `{"ok":true,"live":true}`
 
 type client struct {
-	wr io.Writer
+	wr net.Conn
 	rd *bufio.Reader
 }
 
@@ -531,7 +540,7 @@ func clientDial(network, addr string) (*client, error) {
 }
 
 func (c *client) Do(command string) ([]byte, error) {
-	_, err := c.wr.Write([]byte(command + "\r\n"))
+	_, err := c.wr.Write(plainToCompat(command))
 	if err != nil {
 		return nil, err
 	}
@@ -618,4 +627,52 @@ func (c *client) Reader() io.Reader {
 
 func (c *client) readLiveResp() (message []byte, err error) {
 	return c.readResp()
+}
+
+// plainToCompat converts a plain message like "SET fleet truck1 ..."  into a
+// Tile38 compatible blob.
+func plainToCompat(message string) []byte {
+	var args []string
+	// search for the beginning of the first argument
+	for i := 0; i < len(message); i++ {
+		if message[i] != ' ' {
+			// first argument found
+			if message[i] == '"' || message[i] == '\'' {
+				// using a string caps
+				s := i
+				cap := message[i]
+				for ; i < len(message); i++ {
+					if message[i] == cap {
+						if message[i-1] == '\\' {
+							continue
+						}
+						if i == len(message)-1 || message[i+1] == ' ' {
+							args = append(args, message[s:i+1])
+							i++
+							break
+						}
+					}
+				}
+			} else {
+				// using plain string, terminated by a space
+				s := i
+				var quotes bool
+				for ; i < len(message); i++ {
+					if message[i] == '"' || message[i] == '\'' {
+						quotes = true
+					}
+					if i == len(message)-1 || message[i+1] == ' ' {
+						arg := message[s : i+1]
+						if quotes {
+							arg = strconv.Quote(arg)
+						}
+						args = append(args, arg)
+						i++
+						break
+					}
+				}
+			}
+		}
+	}
+	return []byte(strings.Join(args, " ") + "\r\n")
 }
