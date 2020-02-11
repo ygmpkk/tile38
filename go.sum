@@ -61,6 +61,7 @@ github.com/tidwall/geoindex v1.1.0 h1:d/pGCgKUonfQINd1235kKqx9gWBU4N7GjDS9WvbPvL
 github.com/tidwall/geoindex v1.1.0/go.mod h1:3gTa91BW+eiVIipuR6aU1Y9Sa0q75b1teE/NP2vfsTc=
 github.com/tidwall/geojson v1.1.8 h1:n/WT/PG0OEHrxUJQoeqkupWDt3pwbHMynl6OF9xKIM0=
 github.com/tidwall/geojson v1.1.8/go.mod h1:tBjfxeALRFLc25LLpjtWzy2nIrNmW1ze1EAhLtd8+QQ=
+github.com/tidwall/geojson v1.1.10 h1:ALzsrTn62pq65DudSQpYDjjCUaq6dP1XQm51GVYgJyo=
 github.com/tidwall/geojson v1.1.10/go.mod h1:tBjfxeALRFLc25LLpjtWzy2nIrNmW1ze1EAhLtd8+QQ=
 github.com/tidwall/gjson v1.3.2 h1:+7p3qQFaH3fOMXAJSrdZwGKcOO/lYdGS0HqGhPqDdTI=
 github.com/tidwall/gjson v1.3.2/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
