@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.5] = 2020-02-11
+### Fixed
+- c567512: Fix packages not vendoring on build
+
 ## [1.19.4] = 2020-02-10
 ### Fixed
 - #529: Fix linestring features behave diffrent with CIRCLE (@spierepf)
