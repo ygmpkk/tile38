@@ -485,7 +485,7 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 			}
 
 			if sw.hasFieldsOutput() {
-				fvs := orderFields(sw.fmap, opts.fields)
+				fvs := orderFields(sw.fmap, sw.farr, opts.fields)
 				if len(fvs) > 0 {
 					fvals := make([]resp.Value, 0, len(fvs)*2)
 					for i, fv := range fvs {
