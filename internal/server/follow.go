@@ -121,9 +121,13 @@ func (s *Server) cmdReplConf(msg *Message, client *Client) (res resp.Value, err 
 		}
 
 		// Apply the replication port to the client and return
+		s.connsmu.RLock()
+		defer s.connsmu.RUnlock()
 		for _, c := range s.conns {
 			if c.remoteAddr == client.remoteAddr {
+				c.mu.Lock()
 				c.replPort = port
+				c.mu.Unlock()
 				return OKMessage(msg, start), nil
 			}
 		}
