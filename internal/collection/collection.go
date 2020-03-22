@@ -2,6 +2,7 @@ package collection
 
 import (
 	"runtime"
+	"sort"
 
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geoindex"
@@ -319,6 +320,7 @@ func (c *Collection) FieldArr() []string {
 	for field, i := range c.fieldMap {
 		arr[i] = field
 	}
+	sort.Strings(arr)
 	return arr
 }
 
