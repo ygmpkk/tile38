@@ -2,6 +2,7 @@ package server
 
 import (
 	"math"
+	"sort"
 	"strconv"
 	"time"
 
@@ -61,6 +62,7 @@ func fenceMatch(
 	if details.command == "drop" {
 		return []string{
 			`{"command":"drop"` + hookJSONString(hookName, metas) +
+				`,"key":` + jsonString(details.key) +
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
 	}
@@ -82,14 +84,6 @@ func fenceMatch(
 		}
 	}
 	if details.command == "del" {
-		if fence.roam.on {
-			if fence.roam.nearbys != nil {
-				delete(fence.roam.nearbys, details.id)
-				if len(fence.roam.nearbys) == 0 {
-					fence.roam.nearbys = nil
-				}
-			}
-		}
 		return []string{
 			`{"command":"del"` + hookJSONString(hookName, metas) +
 				`,"key":` + jsonString(details.key) +
@@ -103,8 +97,8 @@ func fenceMatch(
 		if fence.roam.on {
 			if details.command == "set" {
 				roamNearbys, roamFaraways =
-					fenceMatchRoam(sw.s, fence, details.key,
-						details.id, details.obj)
+					fenceMatchRoam(sw.s, fence, details.id,
+						details.oldObj, details.obj)
 			}
 			if len(roamNearbys) == 0 && len(roamFaraways) == 0 {
 				return nil
@@ -354,16 +348,17 @@ func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
 	return false
 }
 
-func fenceMatchRoam(
+func fenceMatchNearbys(
 	s *Server, fence *liveFenceSwitches,
-	tkey, tid string, obj geojson.Object,
-) (nearbys, faraways []roamMatch) {
+	id string, obj geojson.Object,
+) (nearbys []roamMatch) {
+	if obj == nil {
+		return nil
+	}
 	col := s.getCol(fence.roam.key)
 	if col == nil {
-		return
+		return nil
 	}
-	prevNearbys := fence.roam.nearbys[tid]
-	var newNearbys map[string]bool
 	center := obj.Center()
 	minLat, minLon, maxLat, maxLon :=
 		geo.RectFromCenter(center.Y, center.X, fence.roam.meters)
@@ -372,66 +367,75 @@ func fenceMatchRoam(
 		Max: geometry.Point{X: maxLon, Y: maxLat},
 	}
 	col.Intersects(geojson.NewRect(rect), 0, nil, nil, func(
-		id string, obj2 geojson.Object, fields []float64,
+		id2 string, obj2 geojson.Object, fields []float64,
 	) bool {
-		if s.hasExpired(fence.roam.key, id) {
-			return true
+		if s.hasExpired(fence.roam.key, id2) {
+			return true // skip expired
 		}
 		var idMatch bool
-		if id == tid {
+		if id2 == id {
 			return true // skip self
 		}
+		meters := obj.Distance(obj2)
+		if meters > fence.roam.meters {
+			return true // skip outside radius
+		}
 		if fence.roam.pattern {
-			idMatch, _ = glob.Match(fence.roam.id, id)
+			idMatch, _ = glob.Match(fence.roam.id, id2)
 		} else {
-			idMatch = fence.roam.id == id
+			idMatch = fence.roam.id == id2
 		}
 		if !idMatch {
-			return true
-		}
-		if newNearbys == nil {
-			newNearbys = make(map[string]bool)
-		}
-		newNearbys[id] = true
-		prev := prevNearbys[id]
-		if prev {
-			delete(prevNearbys, id)
+			return true // skip non-id match
 		}
 		match := roamMatch{
-			id:     id,
+			id:     id2,
 			obj:    obj2,
 			meters: obj.Distance(obj2),
 		}
-
-		if !prev || !fence.nodwell {
-			// brand new "nearby"
-			nearbys = append(nearbys, match)
-		}
+		nearbys = append(nearbys, match)
 		return true
 	})
-	for id := range prevNearbys {
-		obj2, _, ok := col.Get(id)
-		if ok && !s.hasExpired(fence.roam.key, id) {
-			faraways = append(faraways, roamMatch{
-				id:     id,
-				obj:    obj2,
-				meters: obj.Distance(obj2),
-			})
-		}
-	}
+	return nearbys
+}
 
-	if len(newNearbys) == 0 {
-		if fence.roam.nearbys != nil {
-			delete(fence.roam.nearbys, tid)
-			if len(fence.roam.nearbys) == 0 {
-				fence.roam.nearbys = nil
+func fenceMatchRoam(
+	s *Server, fence *liveFenceSwitches,
+	id string, old, obj geojson.Object,
+) (nearbys, faraways []roamMatch) {
+	oldNearbys := fenceMatchNearbys(s, fence, id, old)
+	newNearbys := fenceMatchNearbys(s, fence, id, obj)
+
+	// Go through all matching objects in new-nearbys and old-nearbys.
+	for i := 0; i < len(oldNearbys); i++ {
+		var match bool
+		var j int
+		for ; j < len(newNearbys); j++ {
+			if newNearbys[i].id == oldNearbys[i].id {
+				match = true
+				break
 			}
 		}
-	} else {
-		if fence.roam.nearbys == nil {
-			fence.roam.nearbys = make(map[string]map[string]bool)
+		if match {
+			// dwelling, more from old-nearbys
+			oldNearbys[i] = oldNearbys[len(oldNearbys)-1]
+			oldNearbys = oldNearbys[:len(oldNearbys)-1]
+			if fence.nodwell {
+				// no dwelling allowed, remove from both lists
+				newNearbys[j] = newNearbys[len(newNearbys)-1]
+				newNearbys = newNearbys[:len(newNearbys)-1]
+			}
 		}
-		fence.roam.nearbys[tid] = newNearbys
 	}
-	return
+	faraways, nearbys = oldNearbys, newNearbys
+	for i := 0; i < len(faraways); i++ {
+		faraways[i].meters = faraways[i].obj.Distance(obj)
+	}
+	sort.Slice(faraways, func(i, j int) bool {
+		return faraways[i].meters < faraways[j].meters
+	})
+	sort.Slice(nearbys, func(i, j int) bool {
+		return nearbys[i].meters < nearbys[j].meters
+	})
+	return nearbys, faraways
 }
