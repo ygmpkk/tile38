@@ -2,7 +2,6 @@ package collection
 
 import (
 	"runtime"
-	"sort"
 
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geoindex"
@@ -47,6 +46,7 @@ type Collection struct {
 	index       *geoindex.Index // items geospatially indexed
 	values      *btree.BTree    // items sorted by value+key
 	fieldMap    map[string]int
+	fieldArr    []string
 	fieldValues map[string][]float64
 	weight      int
 	points      int
@@ -62,6 +62,7 @@ func New() *Collection {
 		index:    geoindex.Wrap(&rbang.RTree{}),
 		values:   btree.New(32, nil),
 		fieldMap: make(map[string]int),
+		fieldArr: make([]string, 0),
 	}
 	return col
 }
@@ -72,11 +73,7 @@ func (c *Collection) setFieldValues(id string, values []float64) {
 	}
 	c.fieldValues[id] = values
 }
-
 func (c *Collection) getFieldValues(id string) (values []float64) {
-	if c.fieldValues == nil {
-		return nil
-	}
 	return c.fieldValues[id]
 }
 func (c *Collection) deleteFieldValues(id string) {
@@ -296,6 +293,7 @@ func (c *Collection) setField(item *itemT, field string, value float64) (
 	if !ok {
 		idx = len(c.fieldMap)
 		c.fieldMap[field] = idx
+		c.addToFieldArr(field)
 	}
 	fields := c.getFieldValues(item.id)
 	c.weight -= len(fields) * 8
@@ -316,12 +314,32 @@ func (c *Collection) FieldMap() map[string]int {
 
 // FieldArr return an array representation of the field names.
 func (c *Collection) FieldArr() []string {
-	arr := make([]string, len(c.fieldMap))
-	for field, i := range c.fieldMap {
-		arr[i] = field
+	return c.fieldArr
+}
+
+// bsearch searches array for value.
+func bsearch(arr []string, val string) (index int, found bool) {
+	i, j := 0, len(arr)
+	for i < j {
+		h := i + (j-i)/2
+		if val >= arr[h] {
+			i = h + 1
+		} else {
+			j = h
+		}
 	}
-	sort.Strings(arr)
-	return arr
+	if i > 0 && arr[i-1] >= val {
+		return i - 1, true
+	}
+	return i, false
+}
+
+func (c *Collection) addToFieldArr(field string) {
+	if index, found := bsearch(c.fieldArr, field); !found {
+		c.fieldArr = append(c.fieldArr, "")
+		copy(c.fieldArr[index+1:], c.fieldArr[index:len(c.fieldArr)-1])
+		c.fieldArr[index] = field
+	}
 }
 
 // Scan iterates though the collection ids.
