@@ -92,6 +92,7 @@ func fenceMatch(
 		}
 		return []string{
 			`{"command":"del"` + hookJSONString(hookName, metas) +
+				`,"key":` + jsonString(details.key) +
 				`,"id":` + jsonString(details.id) +
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
