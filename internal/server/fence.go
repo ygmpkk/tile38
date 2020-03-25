@@ -420,6 +420,7 @@ func fenceMatchRoam(
 			// dwelling, more from old-nearbys
 			oldNearbys[i] = oldNearbys[len(oldNearbys)-1]
 			oldNearbys = oldNearbys[:len(oldNearbys)-1]
+			i--
 			if fence.nodwell {
 				// no dwelling allowed, remove from both lists
 				newNearbys[j] = newNearbys[len(newNearbys)-1]
