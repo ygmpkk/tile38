@@ -27,7 +27,7 @@ func TestClipLineStringSimple(t *testing.T) {
 		{X: 1, Y: 1},
 		{X: 2, Y: 2},
 		{X: 3, Y: 1}})
-	clipped := Clip(ls, RO(1.5, 0.5, 2.5, 1.8))
+	clipped := Clip(ls, RO(1.5, 0.5, 2.5, 1.8), nil)
 	cl, ok := clipped.(*geojson.MultiLineString)
 	if !ok {
 		t.Fatal("wrong type")
@@ -56,7 +56,7 @@ func TestClipPolygonSimple(t *testing.T) {
 		},
 	}
 	polygon := PPO(exterior, holes)
-	clipped := Clip(polygon, RO(1.3, 1.3, 1.4, 2.15))
+	clipped := Clip(polygon, RO(1.3, 1.3, 1.4, 2.15), nil)
 	cp, ok := clipped.(*geojson.Polygon)
 	if !ok {
 		t.Fatal("wrong type")
