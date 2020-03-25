@@ -405,7 +405,6 @@ func fenceMatchRoam(
 ) (nearbys, faraways []roamMatch) {
 	oldNearbys := fenceMatchNearbys(s, fence, id, old)
 	newNearbys := fenceMatchNearbys(s, fence, id, obj)
-
 	// Go through all matching objects in new-nearbys and old-nearbys.
 	for i := 0; i < len(oldNearbys); i++ {
 		var match bool
@@ -429,14 +428,24 @@ func fenceMatchRoam(
 		}
 	}
 	faraways, nearbys = oldNearbys, newNearbys
+	// ensure the faraways distances are to the new object
 	for i := 0; i < len(faraways); i++ {
 		faraways[i].meters = faraways[i].obj.Distance(obj)
 	}
-	sort.Slice(faraways, func(i, j int) bool {
-		return faraways[i].meters < faraways[j].meters
-	})
-	sort.Slice(nearbys, func(i, j int) bool {
-		return nearbys[i].meters < nearbys[j].meters
-	})
+	sortRoamMatches(faraways)
+	sortRoamMatches(nearbys)
 	return nearbys, faraways
+}
+
+// sortRoamMatches stable sorts roam matches
+func sortRoamMatches(matches []roamMatch) {
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].meters < matches[j].meters {
+			return true
+		}
+		if matches[i].meters > matches[j].meters {
+			return false
+		}
+		return matches[i].id < matches[j].id
+	})
 }
