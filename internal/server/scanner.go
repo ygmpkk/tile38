@@ -368,7 +368,7 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 		return sw.count < sw.limit
 	}
 	if opts.clip != nil {
-		opts.o = clip.Clip(opts.o, opts.clip)
+		opts.o = clip.Clip(opts.o, opts.clip, &sw.s.geomIndexOpts)
 	}
 	switch sw.msg.OutputType {
 	case JSON:
