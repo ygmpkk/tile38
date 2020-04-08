@@ -816,7 +816,9 @@ func pointRectDistGeodeticRad(φq, λq, φl, λl, φh, λh float64) float64 {
 		return distRad(φl, λl, φq, λq)
 	}
 
-	if λl <= λq && λq <= λh { // q is north or south of r
+	if λl <= λq && λq <= λh {
+		// q is between the bounding meridians of r
+		// hence, q is north, south or within r
 		if φl <= φq && φq <= φh { // Inside
 			return 0
 		}
