@@ -118,14 +118,20 @@ func (s *Server) newScanWriter(
 		// This fills index value in wheres/whereins
 		// so we don't have to map string field names for each tested object
 		var ok bool
-		for _, where := range wheres {
-			if where.index, ok = sw.fmap[where.field]; ok {
-				sw.wheres = append(sw.wheres, where)
+		if len(wheres) > 0 {
+			sw.wheres = make([]whereT, 0, len(wheres))
+			for _, where := range wheres {
+				if where.index, ok = sw.fmap[where.field]; ok {
+					sw.wheres = append(sw.wheres, where)
+				}
 			}
 		}
-		for _, wherein := range whereins {
-			if wherein.index, ok = sw.fmap[wherein.field]; ok {
-				sw.whereins = append(sw.whereins, wherein)
+		if len(whereins) > 0 {
+			sw.whereins = make([]whereinT, 0, len(whereins))
+			for _, wherein := range whereins {
+				if wherein.index, ok = sw.fmap[wherein.field]; ok {
+					sw.whereins = append(sw.whereins, wherein)
+				}
 			}
 		}
 	}
