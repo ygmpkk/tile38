@@ -119,18 +119,18 @@ func (s *Server) newScanWriter(
 		// so we don't have to map string field names for each tested object
 		var ok bool
 		if len(wheres) > 0 {
-			sw.wheres = make([]whereT, 0, len(wheres))
+			sw.wheres = make([]whereT, len(wheres))
 			for i, where := range wheres {
-				if where.index, ok = sw.fmap[where.field]; ok {
+				if where.index, ok = sw.fmap[where.field]; !ok {
 					where.index = math.MaxInt32
 				}
 				sw.wheres[i] = where
 			}
 		}
 		if len(whereins) > 0 {
-			sw.whereins = make([]whereinT, 0, len(whereins))
+			sw.whereins = make([]whereinT, len(whereins))
 			for i, wherein := range whereins {
-				if wherein.index, ok = sw.fmap[wherein.field]; ok {
+				if wherein.index, ok = sw.fmap[wherein.field]; !ok {
 					wherein.index = math.MaxInt32
 				}
 				sw.whereins[i] = wherein
@@ -231,7 +231,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 				continue
 			}
 			var value float64
-			if len(fields) > where.index {
+			if where.index < len(fields) {
 				value = fields[where.index]
 			}
 			if !where.match(value) {
@@ -240,7 +240,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 		}
 		for _, wherein := range sw.whereins {
 			var value float64
-			if len(fields) > wherein.index {
+			if wherein.index < len(fields) {
 				value = fields[wherein.index]
 			}
 			if !wherein.match(value) {
