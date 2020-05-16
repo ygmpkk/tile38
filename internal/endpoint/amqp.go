@@ -124,7 +124,7 @@ func (conn *AMQPConn) Send(msg string) error {
 			ContentEncoding: "",
 			Body:            []byte(msg),
 			DeliveryMode:    conn.ep.AMQP.DeliveryMode,
-			Priority:        0,
+			Priority:        conn.ep.AMQP.Priority,
 		},
 	)
 }

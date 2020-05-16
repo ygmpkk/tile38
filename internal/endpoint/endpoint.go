@@ -78,6 +78,7 @@ type Endpoint struct {
 		Mandatory    bool
 		Immediate    bool
 		DeliveryMode uint8
+		Priority     uint8
 	}
 	MQTT struct {
 		Host       string
@@ -591,6 +592,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 					endpoint.AMQP.Mandatory = queryBool(val[0])
 				case "delivery_mode":
 					endpoint.AMQP.DeliveryMode = uint8(queryInt(val[0]))
+				case "priority":
+					endpoint.AMQP.Priority = uint8(queryInt(val[0]))
 				}
 			}
 		}
