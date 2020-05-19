@@ -35,6 +35,8 @@ const (
 	AMQP = Protocol("amqp")
 	// SQS protocol
 	SQS = Protocol("sqs")
+	// Google Cloud Pubsub protocol
+	PubSub = Protocol("pubsub")
 	// NATS protocol
 	NATS = Protocol("nats")
 )
@@ -89,6 +91,11 @@ type Endpoint struct {
 		CACertFile string
 		CertFile   string
 		KeyFile    string
+	}
+	PubSub struct {
+		Project  string
+		Topic    string
+		CredPath string
 	}
 	SQS struct {
 		PlainURL    string
@@ -184,6 +191,8 @@ func (epc *Manager) Send(endpoint, msg string) error {
 				conn = newMQTTConn(ep)
 			case AMQP:
 				conn = newAMQPConn(ep)
+			case PubSub:
+				conn = newPubSubConn(ep)
 			case SQS:
 				conn = newSQSConn(ep)
 			case NATS:
@@ -239,6 +248,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.Protocol = AMQP
 	case strings.HasPrefix(s, "mqtt:"):
 		endpoint.Protocol = MQTT
+	case strings.HasPrefix(s, "pubsub:"):
+		endpoint.Protocol = PubSub
 	case strings.HasPrefix(s, "sqs:"):
 		endpoint.Protocol = SQS
 	case strings.HasPrefix(s, "nats:"):
@@ -525,6 +536,37 @@ func parseEndpoint(s string) (Endpoint, error) {
 				}
 			}
 		}
+	}
+	// Basic Pubsub connection strings in HOOKS interface
+	// sqs://<project_name>:<topic_name>?params=value
+	//
+	//  params are:
+	//
+	// credpath - path where gcp credentials are located
+	if endpoint.Protocol == PubSub {
+		split := strings.Split(s, ":")
+		if len(split) != 2 {
+			return endpoint, errors.New("invalid PubSub format should be project/topic")
+		}
+		endpoint.PubSub.Project = split[0]
+		endpoint.PubSub.Topic = split[1]
+
+		if len(sqp) > 1 {
+			m, err := url.ParseQuery(sqp[1])
+			if err != nil {
+				return endpoint, errors.New("invalid Pubsub url")
+			}
+			for key, val := range m {
+				if len(val) == 0 {
+					continue
+				}
+				switch key {
+				case "credpath":
+					endpoint.PubSub.CredPath = val[0]
+				}
+			}
+		}
+
 	}
 
 	// Basic AMQP connection strings in HOOKS interface

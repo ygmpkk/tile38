@@ -3,6 +3,7 @@ module github.com/tidwall/tile38
 go 1.13
 
 require (
+	cloud.google.com/go/pubsub v1.3.1
 	github.com/Shopify/sarama v1.13.0
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.17.14
@@ -11,7 +12,7 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934 // indirect
 	github.com/eapache/queue v1.0.2 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.1.0
-	github.com/golang/protobuf v0.0.0-20170920220647-130e6b02ab05
+	github.com/golang/protobuf v1.3.4
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
 	github.com/gomodule/redigo v2.0.1-0.20181026001555-e8fc0692a7e2+incompatible
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294
@@ -44,12 +45,10 @@ require (
 	github.com/tidwall/tinybtree v0.0.0-20181217131827-de5932d649b5
 	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20170915035107-eb1c7299435c
-	golang.org/x/crypto v0.0.0-20170930174604-9419663f5a44
-	golang.org/x/net v0.0.0-20171004034648-a04bdaca5b32
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20170927054621-314a259e304f // indirect
-	golang.org/x/text v0.1.1-0.20171005092100-d82c1812e304 // indirect
-	google.golang.org/genproto v0.0.0-20171002232614-f676e0f3ac63 // indirect
-	google.golang.org/grpc v1.6.0
+	google.golang.org/api v0.20.0
+	google.golang.org/grpc v1.28.0
 	layeh.com/gopher-json v0.0.0-20161224164157-c128cc74278b
 )
