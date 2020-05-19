@@ -5,7 +5,7 @@ stages:
   - build
   - push
 
-.build_images: &build_images
+build_images:
   before_script:
     - echo $CI_JOB_TOKEN | docker login -u gitlab-ci-token registry.gitlab.com --password-stdin
     - docker login -u _json_key --password-stdin https://eu.gcr.io < $GITLAB_DEPLOY_BOT_KEY
@@ -34,7 +34,7 @@ stages:
     - docker push $GITLAB_IMAGE
 
 
-.push_master: &push_master
+push_master:
   before_script:
     - echo $CI_JOB_TOKEN | docker login -u gitlab-ci-token registry.gitlab.com --password-stdin
     - docker login -u _json_key --password-stdin https://eu.gcr.io < $GITLAB_DEPLOY_BOT_KEY
