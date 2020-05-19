@@ -538,7 +538,7 @@ func parseEndpoint(s string) (Endpoint, error) {
 		}
 	}
 	// Basic Pubsub connection strings in HOOKS interface
-	// sqs://<project_name>:<topic_name>?params=value
+	// pubsub://<project_name>:<topic_name>?params=value
 	//
 	//  params are:
 	//
