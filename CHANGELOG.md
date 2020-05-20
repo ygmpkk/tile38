@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.20.0] = 2020-05-20
+### Updated
+- #534: Avoid sorting fields for each written object. (@rshura)
+- #544: Match geometry indexing to server config
+- b3dc025: Optimize point in ring
+- 3718cd7: Added priority option for AMQP endpoints
+
+### Fixed
+- #538: DEL geofence notifications are missing the "key" field
+- #539: Fixed issue with some features not working with WITHIN (@rshura)
+- #540: Fix a concurrent write/read on the server conn map (@mpoindexter)
+- #543: Fix clipping empty rings (@rshura)
+- #558: Fixed clip test (@mmcloughlin)
+- #562: Crashes under go1.14 runtime
+- ff48054: Fixed a missing faraway event for roaming geofences
+- 5162ac5: Stable sort roam notifications
+
 ## [1.19.5] = 2020-02-11
 ### Fixed
 - c567512: Fix packages not vendoring on build
