@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"google.golang.org/api/option"
-	"os"
 	"sync"
 	"time"
 )
@@ -56,21 +55,17 @@ func (conn *PubSubConn) Send(msg string) error {
 
 	if conn.svc == nil {
 		var creds option.ClientOption
+		var svc *pubsub.Client
+		var err error
 		credPath := conn.ep.PubSub.CredPath
+
 		if credPath != "" {
-
 			creds = option.WithCredentialsFile(credPath)
+			svc, err = pubsub.NewClient(ctx, conn.ep.PubSub.Project, creds)
 		} else {
-
-			envCredPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-			creds = option.WithCredentialsFile(credPath)
-
-			if envCredPath == "" {
-				fmt.Println(errMissingGoogleCredentials)
-				return errMissingGoogleCredentials
-			}
+			svc, err = pubsub.NewClient(ctx, conn.ep.PubSub.Project)
 		}
-		svc, err := pubsub.NewClient(ctx, conn.ep.PubSub.Project, creds)
+
 		if err != nil {
 			fmt.Println(err)
 			return err
