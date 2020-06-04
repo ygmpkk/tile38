@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.20.1] = 2020-06-04
+## Fixed
+- #564: Fix OUTPUT client command requiring authentication. (@LeonardoBonacci)
+
 ## [1.20.0] = 2020-05-20
 ### Updated
 - #534: Avoid sorting fields for each written object. (@rshura)
