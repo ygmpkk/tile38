@@ -771,7 +771,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 
 	var write bool
 
-	if !client.authd || msg.Command() == "auth" {
+	if (!client.authd || msg.Command() == "auth") && msg.Command() != "output" {
 		if server.config.requirePass() != "" {
 			password := ""
 			// This better be an AUTH command or the Message should contain an Auth
