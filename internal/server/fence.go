@@ -410,7 +410,7 @@ func fenceMatchRoam(
 		var match bool
 		var j int
 		for ; j < len(newNearbys); j++ {
-			if newNearbys[i].id == oldNearbys[i].id {
+			if newNearbys[j].id == oldNearbys[i].id {
 				match = true
 				break
 			}
