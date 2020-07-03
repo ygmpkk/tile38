@@ -61,6 +61,7 @@ func (conn *KafkaConn) Send(msg string) error {
 		cfg.Net.WriteTimeout = time.Second * 5
 		// Fix #333 : fix backward incompatibility introduced by sarama library
 		cfg.Producer.Return.Successes = true
+		cfg.Version = sarama.V0_10_0_0
 
 		c, err := sarama.NewSyncProducer([]string{uri}, cfg)
 		if err != nil {
