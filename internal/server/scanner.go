@@ -399,13 +399,14 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 				}
 
 			} else if len(sw.farr) > 0 {
+				fvs := orderFields(sw.fmap, sw.farr, opts.fields)
 				jsfields = `,"fields":[`
-				for i := range sw.farr {
+				for i, fv := range fvs {
 					if i > 0 {
 						jsfields += `,`
 					}
 					if len(opts.fields) > i {
-						jsfields += strconv.FormatFloat(opts.fields[i], 'f', -1, 64)
+						jsfields += strconv.FormatFloat(fv.value, 'f', -1, 64)
 					} else {
 						jsfields += "0"
 					}
