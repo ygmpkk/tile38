@@ -210,7 +210,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 			buf.WriteString(`,"hash":`)
 		}
 		precision, err := strconv.ParseInt(sprecision, 10, 64)
-		if err != nil || precision < 1 || precision > 64 {
+		if err != nil || precision < 1 || precision > 12 {
 			return NOMessage, errInvalidArgument(sprecision)
 		}
 		center := o.Center()
