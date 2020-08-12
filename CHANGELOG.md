@@ -2,8 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.20.1] = 2020-06-04
-## Fixed
+## [1.22.0] = 2020-08-12
+### Added
+- #571 Added MONITOR command (@tomquas)
+
+### Fixed
+- #566: Fixed crash in fenceMatchRoam causing an index out of range panic (@larsw)
+- #569: Fixed wrong order for fields with SCAN (@ipsusila)
+- #573: Fixed crash with geohash precision above 12 (@superloach)
+- 68e2b6d: Updated Kafka client to support (@LeonardoBonacci)
+
+## [1.21.1] = 2020-06-04
+### Fixed
 - #564: Fix OUTPUT client command requiring authentication. (@LeonardoBonacci)
 
 ## [1.20.0] = 2020-05-20
