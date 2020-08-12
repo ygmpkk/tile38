@@ -662,7 +662,8 @@ func (s *Server) parseSearchScanBaseTokens(
 		}
 	}
 	if sprecision != "" {
-		if t.precision, err = strconv.ParseUint(sprecision, 10, 64); err != nil || t.precision == 0 || t.precision > 64 {
+		t.precision, err = strconv.ParseUint(sprecision, 10, 64)
+		if err != nil || t.precision == 0 || t.precision > 12 {
 			err = errInvalidArgument(sprecision)
 			return
 		}
