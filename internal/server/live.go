@@ -87,6 +87,8 @@ func (server *Server) goLive(
 		return server.liveAOF(s.pos, conn, rd, msg)
 	case liveSubscriptionSwitches:
 		return server.liveSubscription(conn, rd, msg, websocket)
+	case liveMonitorSwitches:
+		return server.liveMonitor(conn, rd, msg)
 	case liveFenceSwitches:
 		// fallthrough
 	}
