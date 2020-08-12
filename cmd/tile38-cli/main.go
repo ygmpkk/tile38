@@ -180,6 +180,7 @@ func main() {
 		}
 	}
 	connDial()
+	monitor := false
 	livemode := false
 	aof := false
 	defer func() {
@@ -359,6 +360,10 @@ func main() {
 					if jsonOK(msg) {
 						output = "json"
 					}
+				case "monitor":
+					monitor = true
+					livemode = true
+					output = "resp"
 				}
 				if output == "resp" &&
 					(strings.HasPrefix(string(msg), "*3\r\n$10\r\npsubscribe\r\n") ||
@@ -382,7 +387,7 @@ func main() {
 				}
 
 				mustOutput := true
-				if oneCommand == "" && output == "json" && !jsonOK(msg) {
+				if !monitor && oneCommand == "" && output == "json" && !jsonOK(msg) {
 					var cerr connError
 					if err := json.Unmarshal(msg, &cerr); err == nil {
 						fmt.Fprintln(os.Stderr, "(error) "+cerr.Err)

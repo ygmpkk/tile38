@@ -123,6 +123,9 @@ type Server struct {
 
 	pubsub *pubsub
 	hookex expire.List
+
+	monconnsMu sync.RWMutex
+	monconns   map[net.Conn]bool
 }
 
 // Serve starts a new tile38 server
@@ -152,6 +155,7 @@ func Serve(host string, port int, dir string, http bool) error {
 		conns:    make(map[int]*Client),
 		http:     http,
 		pubsub:   newPubsub(),
+		monconns: make(map[net.Conn]bool),
 	}
 
 	server.hookex.Expired = func(item expire.Item) {
@@ -746,6 +750,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 			}
 			return writeOutput("+PONG\r\n")
 		}
+		server.sendMonitor(nil, msg, client, false)
 		return nil
 	}
 
@@ -866,6 +871,8 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		// No locking for scripts, otherwise writes cannot happen within scripts
 	case "subscribe", "psubscribe", "publish":
 		// No locking for pubsub
+	case "montior":
+		// No locking for monitor
 	}
 	res, d, err := func() (res resp.Value, d commandDetails, err error) {
 		if msg.Deadline != nil {
@@ -1088,7 +1095,10 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, err = server.cmdPublish(msg)
 	case "test":
 		res, err = server.cmdTest(msg)
+	case "monitor":
+		res, err = server.cmdMonitor(msg)
 	}
+	server.sendMonitor(err, msg, client, false)
 	return
 }
 
