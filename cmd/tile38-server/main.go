@@ -101,7 +101,7 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --threads num           : number of network threads (default: num cores)
-  --nohup                 : do not exist on SIGHUP
+  --nohup                 : do not exit on SIGHUP
 
 Developer Options:
   --dev                             : enable developer mode
