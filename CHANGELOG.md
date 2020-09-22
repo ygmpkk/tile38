@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.22.1] = 2020-08-12
+## [1.22.1] = 2020-09-22
 ### Updated
 - 9a34a37: Updated Go version to 1.15
 - b1dc463: Updated outdated dependencies (40 in total)
