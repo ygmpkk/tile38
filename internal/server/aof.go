@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os"
 	"sort"
@@ -14,7 +15,7 @@ import (
 	"time"
 
 	"github.com/tidwall/buntdb"
-	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
@@ -213,33 +214,44 @@ func (s *Server) getQueueCandidates(d *commandDetails) []*Hook {
 		}
 	}
 	// search the hook spatial tree
-	for _, obj := range []geojson.Object{d.obj, d.oldObj} {
-		if obj == nil {
-			continue
+	// build a rectangle that fills the old and new which will be enough to
+	// handle "enter", "inside", "exit", and "cross" detections.
+	var rect geometry.Rect
+	if d.oldObj != nil {
+		rect = d.oldObj.Rect()
+		if d.obj != nil {
+			r2 := d.obj.Rect()
+			rect.Min.X = math.Min(rect.Min.X, r2.Min.X)
+			rect.Min.Y = math.Min(rect.Min.Y, r2.Min.Y)
+			rect.Max.X = math.Max(rect.Max.X, r2.Max.X)
+			rect.Max.Y = math.Max(rect.Max.Y, r2.Max.Y)
 		}
-		rect := obj.Rect()
-		s.hookTree.Search(
-			[2]float64{rect.Min.X, rect.Min.Y},
-			[2]float64{rect.Max.X, rect.Max.Y},
-			func(_, _ [2]float64, value interface{}) bool {
-				hook := value.(*Hook)
-				if hook.Key != d.key {
-					return true
-				}
-				var found bool
-				for _, candidate := range candidates {
-					if candidate == hook {
-						found = true
-						break
-					}
-				}
-				if !found {
-					candidates = append(candidates, hook)
-				}
-				return true
-			},
-		)
+	} else if d.obj != nil {
+		rect = d.obj.Rect()
+	} else {
+		return candidates
 	}
+	s.hookTree.Search(
+		[2]float64{rect.Min.X, rect.Min.Y},
+		[2]float64{rect.Max.X, rect.Max.Y},
+		func(_, _ [2]float64, value interface{}) bool {
+			hook := value.(*Hook)
+			if hook.Key != d.key {
+				return true
+			}
+			var found bool
+			for _, candidate := range candidates {
+				if candidate == hook {
+					found = true
+					break
+				}
+			}
+			if !found {
+				candidates = append(candidates, hook)
+			}
+			return true
+		},
+	)
 	return candidates
 }
 
