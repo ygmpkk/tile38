@@ -16,7 +16,7 @@ type rect struct {
 
 type node struct {
 	count int
-	boxes [maxEntries + 1]rect
+	rects [maxEntries + 1]rect
 }
 
 // RTree ...
@@ -130,8 +130,8 @@ func (tr *RTree) insert(item *rect) {
 	}
 	if tr.root.data.(*node).count == maxEntries+1 {
 		newRoot := new(node)
-		tr.root.splitLargestAxisEdgeSnap(&newRoot.boxes[1])
-		newRoot.boxes[0] = tr.root
+		tr.root.splitLargestAxisEdgeSnap(&newRoot.rects[1])
+		newRoot.rects[0] = tr.root
 		newRoot.count = 2
 		tr.root.data = newRoot
 		tr.root.recalc()
@@ -144,8 +144,8 @@ func (r *rect) chooseLeastEnlargement(b *rect) int {
 	j, jenlargement, jarea := -1, 0.0, 0.0
 	n := r.data.(*node)
 	for i := 0; i < n.count; i++ {
-		area := n.boxes[i].area()
-		enlargement := n.boxes[i].enlargedArea(b) - area
+		area := n.rects[i].area()
+		enlargement := n.rects[i].enlargedArea(b) - area
 		if j == -1 || enlargement < jenlargement {
 			j, jenlargement, jarea = i, enlargement, area
 		} else if enlargement == jenlargement {
@@ -159,10 +159,10 @@ func (r *rect) chooseLeastEnlargement(b *rect) int {
 
 func (r *rect) recalc() {
 	n := r.data.(*node)
-	r.min = n.boxes[0].min
-	r.max = n.boxes[0].max
+	r.min = n.rects[0].min
+	r.max = n.rects[0].max
 	for i := 1; i < n.count; i++ {
-		r.expand(&n.boxes[i])
+		r.expand(&n.rects[i])
 	}
 }
 
@@ -193,31 +193,31 @@ func (r *rect) splitLargestAxisEdgeSnap(right *rect) {
 
 	var equals []rect
 	for i := 0; i < leftNode.count; i++ {
-		minDist := leftNode.boxes[i].min[axis] - left.min[axis]
-		maxDist := left.max[axis] - leftNode.boxes[i].max[axis]
+		minDist := leftNode.rects[i].min[axis] - left.min[axis]
+		maxDist := left.max[axis] - leftNode.rects[i].max[axis]
 		if minDist < maxDist {
 			// stay left
 		} else {
 			if minDist > maxDist {
 				// move to right
-				rightNode.boxes[rightNode.count] = leftNode.boxes[i]
+				rightNode.rects[rightNode.count] = leftNode.rects[i]
 				rightNode.count++
 			} else {
 				// move to equals, at the end of the left array
-				equals = append(equals, leftNode.boxes[i])
+				equals = append(equals, leftNode.rects[i])
 			}
-			leftNode.boxes[i] = leftNode.boxes[leftNode.count-1]
-			leftNode.boxes[leftNode.count-1].data = nil
+			leftNode.rects[i] = leftNode.rects[leftNode.count-1]
+			leftNode.rects[leftNode.count-1].data = nil
 			leftNode.count--
 			i--
 		}
 	}
 	for _, b := range equals {
 		if leftNode.count < rightNode.count {
-			leftNode.boxes[leftNode.count] = b
+			leftNode.rects[leftNode.count] = b
 			leftNode.count++
 		} else {
-			rightNode.boxes[rightNode.count] = b
+			rightNode.rects[rightNode.count] = b
 			rightNode.count++
 		}
 	}
@@ -228,60 +228,31 @@ func (r *rect) splitLargestAxisEdgeSnap(right *rect) {
 func (r *rect) insert(item *rect, height int) (grown bool) {
 	n := r.data.(*node)
 	if height == 0 {
-		n.boxes[n.count] = *item
+		n.rects[n.count] = *item
 		n.count++
 		grown = !r.contains(item)
 		return grown
 	}
 	// choose subtree
 	index := r.chooseLeastEnlargement(item)
-	child := &n.boxes[index]
+	child := &n.rects[index]
 	grown = child.insert(item, height-1)
 	if grown {
 		child.expand(item)
 		grown = !r.contains(item)
 	}
 	if child.data.(*node).count == maxEntries+1 {
-		child.splitLargestAxisEdgeSnap(&n.boxes[n.count])
+		child.splitLargestAxisEdgeSnap(&n.rects[n.count])
 		n.count++
 	}
 	return grown
 }
 
-// fit an external item into a box type
+// fit an external item into a rect type
 func fit(min, max [2]float64, value interface{}, target *rect) {
 	target.min = min
 	target.max = max
 	target.data = value
-}
-
-type overlapsResult int
-
-const (
-	not overlapsResult = iota
-	intersects
-	contains
-)
-
-// overlaps detects if r insersects or contains b.
-// return not, intersects, contains
-func (r *rect) overlaps(b *rect) overlapsResult {
-	if b.min[0] > r.max[0] || b.max[0] < r.min[0] {
-		return not
-	}
-	if r.min[0] > b.min[0] || b.max[0] > r.max[0] {
-		if b.min[1] > r.max[1] || b.max[1] < r.min[1] {
-			return not
-		}
-		return intersects
-	}
-	if b.min[1] > r.max[1] || b.max[1] < r.min[1] {
-		return not
-	}
-	if r.min[1] > b.min[1] || b.max[1] > r.max[1] {
-		return intersects
-	}
-	return contains
 }
 
 // contains return struct when b is fully contained inside of n
@@ -302,22 +273,31 @@ func (r *rect) search(
 	n := r.data.(*node)
 	if height == 0 {
 		for i := 0; i < n.count; i++ {
-			if target.intersects(&n.boxes[i]) {
-				if !iter(n.boxes[i].min, n.boxes[i].max,
-					n.boxes[i].data) {
+			if target.intersects(&n.rects[i]) {
+				if !iter(n.rects[i].min, n.rects[i].max,
+					n.rects[i].data) {
 					return false
+				}
+			}
+		}
+	} else if height == 1 {
+		for i := 0; i < n.count; i++ {
+			if target.intersects(&n.rects[i]) {
+				cn := n.rects[i].data.(*node)
+				for i := 0; i < cn.count; i++ {
+					if target.intersects(&cn.rects[i]) {
+						if !iter(cn.rects[i].min, cn.rects[i].max,
+							cn.rects[i].data) {
+							return false
+						}
+					}
 				}
 			}
 		}
 	} else {
 		for i := 0; i < n.count; i++ {
-			switch target.overlaps(&n.boxes[i]) {
-			case intersects:
-				if !n.boxes[i].search(target, height-1, iter) {
-					return false
-				}
-			case contains:
-				if !n.boxes[i].scan(height-1, iter) {
+			if target.intersects(&n.rects[i]) {
+				if !n.rects[i].search(target, height-1, iter) {
 					return false
 				}
 			}
@@ -333,11 +313,8 @@ func (tr *RTree) search(
 	if tr.root.data == nil {
 		return
 	}
-	res := target.overlaps(&tr.root)
-	if res == intersects {
+	if target.intersects(&tr.root) {
 		tr.root.search(target, tr.height, iter)
-	} else if res == contains {
-		tr.root.scan(tr.height, iter)
 	}
 }
 
@@ -358,13 +335,22 @@ func (r *rect) scan(
 	n := r.data.(*node)
 	if height == 0 {
 		for i := 0; i < n.count; i++ {
-			if !iter(n.boxes[i].min, n.boxes[i].max, n.boxes[i].data) {
+			if !iter(n.rects[i].min, n.rects[i].max, n.rects[i].data) {
 				return false
+			}
+		}
+	} else if height == 1 {
+		for i := 0; i < n.count; i++ {
+			cn := n.rects[i].data.(*node)
+			for j := 0; j < cn.count; j++ {
+				if !iter(cn.rects[j].min, cn.rects[j].max, cn.rects[j].data) {
+					return false
+				}
 			}
 		}
 	} else {
 		for i := 0; i < n.count; i++ {
-			if !n.boxes[i].scan(height-1, iter) {
+			if !n.rects[i].scan(height-1, iter) {
 				return false
 			}
 		}
@@ -399,7 +385,7 @@ func (tr *RTree) Delete(min, max [2]float64, data interface{}) {
 		recalced = false
 	} else {
 		for tr.height > 0 && tr.root.data.(*node).count == 1 {
-			tr.root = tr.root.data.(*node).boxes[0]
+			tr.root = tr.root.data.(*node).rects[0]
 			tr.height--
 			tr.root.recalc()
 		}
@@ -419,11 +405,11 @@ func (r *rect) delete(item *rect, height int, reinsert []rect) (
 	n := r.data.(*node)
 	if height == 0 {
 		for i := 0; i < n.count; i++ {
-			if n.boxes[i].data == item.data {
+			if n.rects[i].data == item.data {
 				// found the target item to delete
-				recalced = r.onEdge(&n.boxes[i])
-				n.boxes[i] = n.boxes[n.count-1]
-				n.boxes[n.count-1].data = nil
+				recalced = r.onEdge(&n.rects[i])
+				n.rects[i] = n.rects[n.count-1]
+				n.rects[n.count-1].data = nil
 				n.count--
 				if recalced {
 					r.recalc()
@@ -433,22 +419,22 @@ func (r *rect) delete(item *rect, height int, reinsert []rect) (
 		}
 	} else {
 		for i := 0; i < n.count; i++ {
-			if !n.boxes[i].contains(item) {
+			if !n.rects[i].contains(item) {
 				continue
 			}
 			removed, recalced, reinsert =
-				n.boxes[i].delete(item, height-1, reinsert)
+				n.rects[i].delete(item, height-1, reinsert)
 			if !removed {
 				continue
 			}
-			if n.boxes[i].data.(*node).count < minEntries {
+			if n.rects[i].data.(*node).count < minEntries {
 				// underflow
 				if !recalced {
-					recalced = r.onEdge(&n.boxes[i])
+					recalced = r.onEdge(&n.rects[i])
 				}
-				reinsert = n.boxes[i].flatten(reinsert, height-1)
-				n.boxes[i] = n.boxes[n.count-1]
-				n.boxes[n.count-1].data = nil
+				reinsert = n.rects[i].flatten(reinsert, height-1)
+				n.rects[i] = n.rects[n.count-1]
+				n.rects[n.count-1].data = nil
 				n.count--
 			}
 			if recalced {
@@ -460,14 +446,14 @@ func (r *rect) delete(item *rect, height int, reinsert []rect) (
 	return false, false, reinsert
 }
 
-// flatten flattens all leaf boxes into a single list
+// flatten flattens all leaf rects into a single list
 func (r *rect) flatten(all []rect, height int) []rect {
 	n := r.data.(*node)
 	if height == 0 {
-		all = append(all, n.boxes[:n.count]...)
+		all = append(all, n.rects[:n.count]...)
 	} else {
 		for i := 0; i < n.count; i++ {
-			all = n.boxes[i].flatten(all, height-1)
+			all = n.rects[i].flatten(all, height-1)
 		}
 	}
 	return all
@@ -489,7 +475,7 @@ func (tr *RTree) Len() int {
 	return tr.count
 }
 
-// Bounds returns the minimum bounding box
+// Bounds returns the minimum bounding rect
 func (tr *RTree) Bounds() (min, max [2]float64) {
 	if tr.root.data == nil {
 		return
@@ -523,18 +509,28 @@ func (tr *RTree) Children(
 		n := parent.(*node)
 		item := true
 		if n.count > 0 {
-			if _, ok := n.boxes[0].data.(*node); ok {
+			if _, ok := n.rects[0].data.(*node); ok {
 				item = false
 			}
 		}
 		for i := 0; i < n.count; i++ {
 			children = append(children, child.Child{
-				Min:  n.boxes[i].min,
-				Max:  n.boxes[i].max,
-				Data: n.boxes[i].data,
+				Min:  n.rects[i].min,
+				Max:  n.rects[i].max,
+				Data: n.rects[i].data,
 				Item: item,
 			})
 		}
 	}
 	return children
+}
+
+// Replace an item in the structure. This is effectively just a Delete
+// followed by an Insert.
+func (tr *RTree) Replace(
+	oldMin, oldMax [2]float64, oldData interface{},
+	newMin, newMax [2]float64, newData interface{},
+) {
+	tr.Delete(oldMin, oldMax, oldData)
+	tr.Insert(newMin, newMax, newData)
 }

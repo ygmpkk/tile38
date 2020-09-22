@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -43,8 +44,10 @@ type Conn interface {
 	WriteBulkString(bulk string)
 	// WriteInt writes an integer to the client.
 	WriteInt(num int)
-	// WriteInt64 writes a 64-but signed integer to the client.
+	// WriteInt64 writes a 64-bit signed integer to the client.
 	WriteInt64(num int64)
+	// WriteUint64 writes a 64-bit unsigned integer to the client.
+	WriteUint64(num uint64)
 	// WriteArray writes an array header. You must then write additional
 	// sub-responses to the client to complete the response.
 	// For example to write two strings:
@@ -57,6 +60,19 @@ type Conn interface {
 	WriteNull()
 	// WriteRaw writes raw data to the client.
 	WriteRaw(data []byte)
+	// WriteAny writes any type to the client.
+	//   nil             -> null
+	//   error           -> error (adds "ERR " when first word is not uppercase)
+	//   string          -> bulk-string
+	//   numbers         -> bulk-string
+	//   []byte          -> bulk-string
+	//   bool            -> bulk-string ("0" or "1")
+	//   slice           -> array
+	//   map             -> array with key/value pairs
+	//   SimpleString    -> string
+	//   SimpleInt       -> integer
+	//   everything-else -> bulk-string representation using fmt.Sprint()
+	WriteAny(any interface{})
 	// Context returns a user-defined context
 	Context() interface{}
 	// SetContext sets a user-defined context
@@ -178,6 +194,11 @@ func (s *Server) ListenAndServe() error {
 	return s.ListenServeAndSignal(nil)
 }
 
+// Addr returns server's listen address
+func (s *Server) Addr() net.Addr {
+	return s.ln.Addr()
+}
+
 // Close stops listening on the TCP address.
 // Already Accepted connections will be closed.
 func (s *TLSServer) Close() error {
@@ -193,6 +214,25 @@ func (s *TLSServer) Close() error {
 // ListenAndServe serves incoming connections.
 func (s *TLSServer) ListenAndServe() error {
 	return s.ListenServeAndSignal(nil)
+}
+
+// Serve creates a new server and serves with the given net.Listener.
+func Serve(ln net.Listener,
+	handler func(conn Conn, cmd Command),
+	accept func(conn Conn) bool,
+	closed func(conn Conn, err error),
+) error {
+	s := &Server{
+		net:     ln.Addr().Network(),
+		laddr:   ln.Addr().String(),
+		ln:      ln,
+		handler: handler,
+		accept:  accept,
+		closed:  closed,
+		conns:   make(map[*conn]bool),
+	}
+
+	return serve(s)
 }
 
 // ListenAndServe creates a new server and binds to addr configured on "tcp" network net.
@@ -247,10 +287,19 @@ func (s *Server) ListenServeAndSignal(signal chan error) error {
 		}
 		return err
 	}
+	s.ln = ln
 	if signal != nil {
 		signal <- nil
 	}
-	return serve(s, ln)
+	return serve(s)
+}
+
+// Serve serves incoming connections with the given net.Listener.
+func (s *Server) Serve(ln net.Listener) error {
+	s.ln = ln
+	s.net = ln.Addr().Network()
+	s.laddr = ln.Addr().String()
+	return serve(s)
 }
 
 // ListenServeAndSignal serves incoming connections and passes nil or error
@@ -263,18 +312,16 @@ func (s *TLSServer) ListenServeAndSignal(signal chan error) error {
 		}
 		return err
 	}
+	s.ln = ln
 	if signal != nil {
 		signal <- nil
 	}
-	return serve(s.Server, ln)
+	return serve(s.Server)
 }
 
-func serve(s *Server, ln net.Listener) error {
-	s.mu.Lock()
-	s.ln = ln
-	s.mu.Unlock()
+func serve(s *Server) error {
 	defer func() {
-		ln.Close()
+		s.ln.Close()
 		func() {
 			s.mu.Lock()
 			defer s.mu.Unlock()
@@ -285,7 +332,7 @@ func serve(s *Server, ln net.Listener) error {
 		}()
 	}()
 	for {
-		lnconn, err := ln.Accept()
+		lnconn, err := s.ln.Accept()
 		if err != nil {
 			s.mu.Lock()
 			done := s.done
@@ -293,7 +340,10 @@ func serve(s *Server, ln net.Listener) error {
 			if done {
 				return nil
 			}
-			return err
+			if s.AcceptError != nil {
+				s.AcceptError(err)
+			}
+			continue
 		}
 		c := &conn{
 			conn: lnconn,
@@ -400,10 +450,12 @@ func (c *conn) WriteBulk(bulk []byte)       { c.wr.WriteBulk(bulk) }
 func (c *conn) WriteBulkString(bulk string) { c.wr.WriteBulkString(bulk) }
 func (c *conn) WriteInt(num int)            { c.wr.WriteInt(num) }
 func (c *conn) WriteInt64(num int64)        { c.wr.WriteInt64(num) }
+func (c *conn) WriteUint64(num uint64)      { c.wr.WriteUint64(num) }
 func (c *conn) WriteError(msg string)       { c.wr.WriteError(msg) }
 func (c *conn) WriteArray(count int)        { c.wr.WriteArray(count) }
 func (c *conn) WriteNull()                  { c.wr.WriteNull() }
 func (c *conn) WriteRaw(data []byte)        { c.wr.WriteRaw(data) }
+func (c *conn) WriteAny(v interface{})      { c.wr.WriteAny(v) }
 func (c *conn) RemoteAddr() string          { return c.addr }
 func (c *conn) ReadPipeline() []Command {
 	cmds := c.cmds
@@ -459,9 +511,6 @@ func (dc *detachedConn) Flush() error {
 
 // ReadCommand read the next command from the client.
 func (dc *detachedConn) ReadCommand() (Command, error) {
-	if dc.closed {
-		return Command{}, errors.New("closed")
-	}
 	if len(dc.cmds) > 0 {
 		cmd := dc.cmds[0]
 		if len(dc.cmds) == 1 {
@@ -497,6 +546,9 @@ type Server struct {
 	conns   map[*conn]bool
 	ln      net.Listener
 	done    bool
+
+	// AcceptError is an optional function used to handle Accept errors.
+	AcceptError func(err error)
 }
 
 // TLSServer defines a server for clients for managing client connections.
@@ -585,9 +637,30 @@ func (w *Writer) WriteInt64(num int64) {
 	w.b = AppendInt(w.b, num)
 }
 
+// WriteUint64 writes a 64-bit unsigned integer to the client.
+func (w *Writer) WriteUint64(num uint64) {
+	w.b = AppendUint(w.b, num)
+}
+
 // WriteRaw writes raw data to the client.
 func (w *Writer) WriteRaw(data []byte) {
 	w.b = append(w.b, data...)
+}
+
+// WriteAny writes any type to client.
+//   nil             -> null
+//   error           -> error (adds "ERR " when first word is not uppercase)
+//   string          -> bulk-string
+//   numbers         -> bulk-string
+//   []byte          -> bulk-string
+//   bool            -> bulk-string ("0" or "1")
+//   slice           -> array
+//   map             -> array with key/value pairs
+//   SimpleString    -> string
+//   SimpleInt       -> integer
+//   everything-else -> bulk-string representation using fmt.Sprint()
+func (w *Writer) WriteAny(v interface{}) {
+	w.b = AppendAny(w.b, v)
 }
 
 // Reader represent a reader for RESP or telnet commands.
@@ -868,4 +941,67 @@ func Parse(raw []byte) (Command, error) {
 	}
 	return cmds[0], nil
 
+}
+
+// A Handler responds to an RESP request.
+type Handler interface {
+	ServeRESP(conn Conn, cmd Command)
+}
+
+// The HandlerFunc type is an adapter to allow the use of
+// ordinary functions as RESP handlers. If f is a function
+// with the appropriate signature, HandlerFunc(f) is a
+// Handler that calls f.
+type HandlerFunc func(conn Conn, cmd Command)
+
+// ServeRESP calls f(w, r)
+func (f HandlerFunc) ServeRESP(conn Conn, cmd Command) {
+	f(conn, cmd)
+}
+
+// ServeMux is an RESP command multiplexer.
+type ServeMux struct {
+	handlers map[string]Handler
+}
+
+// NewServeMux allocates and returns a new ServeMux.
+func NewServeMux() *ServeMux {
+	return &ServeMux{
+		handlers: make(map[string]Handler),
+	}
+}
+
+// HandleFunc registers the handler function for the given command.
+func (m *ServeMux) HandleFunc(command string, handler func(conn Conn, cmd Command)) {
+	if handler == nil {
+		panic("redcon: nil handler")
+	}
+	m.Handle(command, HandlerFunc(handler))
+}
+
+// Handle registers the handler for the given command.
+// If a handler already exists for command, Handle panics.
+func (m *ServeMux) Handle(command string, handler Handler) {
+	if command == "" {
+		panic("redcon: invalid command")
+	}
+	if handler == nil {
+		panic("redcon: nil handler")
+	}
+	if _, exist := m.handlers[command]; exist {
+		panic("redcon: multiple registrations for " + command)
+	}
+
+	m.handlers[command] = handler
+}
+
+// ServeRESP dispatches the command to the handler.
+func (m *ServeMux) ServeRESP(conn Conn, cmd Command) {
+	command := strings.ToLower(string(cmd.Args[0]))
+
+	if handler, ok := m.handlers[command]; ok {
+		handler.ServeRESP(conn, cmd)
+	} else {
+		conn.WriteError("ERR unknown command '" + command + "'")
+	}
 }
