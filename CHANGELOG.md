@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.1] = 2020-08-12
+### Updated
+- 9a34a37: Updated Go version to 1.15
+- b1dc463: Updated outdated dependencies (40 in total)
+
+### Added
+- #578 Fix "cross" detection not firing in some cases (@feichler-or)
+
 ## [1.22.0] = 2020-08-12
 ### Added
 - #571 Added MONITOR command (@tomquas)
