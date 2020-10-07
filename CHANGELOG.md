@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.2] = 2020-10-07
+### Fix
+- #230: Fix trailing zeros in AOF at startup
+
 ## [1.22.1] = 2020-09-22
 ### Updated
 - 9a34a37: Updated Go version to 1.15
