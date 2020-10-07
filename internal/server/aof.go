@@ -32,7 +32,7 @@ func (err errAOFHook) Error() string {
 
 var errInvalidAOF = errors.New("invalid aof file")
 
-func (s *Server) loadAOF() error {
+func (s *Server) loadAOF() (err error) {
 	fi, err := s.aof.Stat()
 	if err != nil {
 		return err
@@ -58,12 +58,25 @@ func (s *Server) loadAOF() error {
 	var buf []byte
 	var args [][]byte
 	var packet [0xFFFF]byte
+	var zeros int
 	for {
 		n, err := s.aof.Read(packet[:])
 		if err != nil {
 			if err == io.EOF {
 				if len(buf) > 0 {
 					return io.ErrUnexpectedEOF
+				}
+				if zeros > 0 {
+					// Trailing zeros in AOF. Truncate the file so it's sane.
+					// See issue #230 for more information. Force a warning.
+					log.Infof("Truncating %d zeros from AOF (issue #230)", zeros)
+					s.aofsz -= zeros
+					if err := s.aof.Truncate(int64(s.aofsz)); err != nil {
+						return err
+					}
+					if _, err := s.aof.Seek(int64(s.aofsz), 0); err != nil {
+						return err
+					}
 				}
 				return nil
 			}
@@ -76,6 +89,16 @@ func (s *Server) loadAOF() error {
 		}
 		var complete bool
 		for {
+			if len(data) > 0 {
+				if data[0] == 0 {
+					zeros++
+					data = data[1:]
+					continue
+				}
+				if zeros > 0 {
+					return errors.New("Zeros found in AOF file (issue #230)")
+				}
+			}
 			complete, args, _, data, err = redcon.ReadNextCommand(data, args[:0])
 			if err != nil {
 				return err
