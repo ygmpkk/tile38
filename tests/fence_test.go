@@ -10,6 +10,8 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,6 +32,9 @@ func subTestFence(t *testing.T, mc *mockServer) {
 
 	// channel meta
 	runStep(t, mc, "channel meta", fence_channel_meta_test)
+
+	// various
+	runStep(t, mc, "detect eecio", fence_eecio_test)
 }
 
 type fenceReader struct {
@@ -332,4 +337,182 @@ func fence_channel_meta_test(mc *mockServer) error {
 			},
 		},
 	})
+}
+
+func dialTile38(port int) (redis.Conn, error) {
+	conn, err := redis.Dial("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return nil, err
+	}
+	if _, err := conn.Do("OUTPUT", "json"); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return conn, nil
+}
+
+func doTile38(c redis.Conn, cmd string, args ...interface{}) (string, error) {
+	js, err := redis.String(c.Do(cmd, args...))
+	if !gjson.Get(js, "ok").Bool() {
+		return "", errors.New(gjson.Get(js, "err").String())
+	}
+	return js, err
+}
+
+func fence_eecio_test(mc *mockServer) error {
+	// simulates issue #578
+	var wg sync.WaitGroup
+	wg.Add(3)
+	ch := make(chan bool)
+	var err1, err2, err3 error
+	var msgs1, msgs2 []string
+	// terminal 1
+	go func() {
+		defer wg.Done()
+		err1 = func() error {
+			conn, err := dialTile38(mc.port)
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			_, err = doTile38(conn,
+				"SETCHAN", "test-eec", "NEARBY", "fleet",
+				"FENCE", "DETECT", "enter,exit,cross",
+				"POINT", "10.000", "10.000", "10000")
+			if err != nil {
+				return err
+			}
+			_, err = doTile38(conn, "SUBSCRIBE", "test-eec")
+			if err != nil {
+				return err
+			}
+			ch <- true
+			for {
+				js, err := redis.String(conn.Receive())
+				if err != nil {
+					return err
+				}
+				if js == `"DONE"` {
+					break
+				}
+				msgs1 = append(msgs1, js)
+			}
+			return nil
+		}()
+	}()
+	// terminal 2
+	go func() {
+		defer wg.Done()
+		err2 = func() error {
+			conn, err := dialTile38(mc.port)
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			_, err = doTile38(conn,
+				"SETCHAN", "test-eecio", "NEARBY", "fleet",
+				"FENCE", "DETECT", "enter,exit,cross,inside,outside",
+				"POINT", "10.000", "10.000", "10000")
+			if err != nil {
+				return err
+			}
+			_, err = doTile38(conn, "SUBSCRIBE", "test-eecio")
+			if err != nil {
+				return err
+			}
+			ch <- true
+			for {
+				js, err := redis.String(conn.Receive())
+				if err != nil {
+					return err
+				}
+				if js == `"DONE"` {
+					break
+				}
+				msgs2 = append(msgs2, js)
+			}
+			return nil
+		}()
+	}()
+	// terminal 3
+	var ok bool
+	go func() {
+		defer wg.Done()
+		err3 = func() error {
+			<-ch // terminal 1
+			<-ch // terminal 2
+			conn, err := dialTile38(mc.port)
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			if _, err = doTile38(conn,
+				"SET", "fleet", "vehicle_1",
+				"POINT", "10.0", "10.0"); err != nil {
+				return err
+			}
+			if _, err = doTile38(conn,
+				"SET", "fleet", "vehicle_1",
+				"POINT", "0.0", "0.0"); err != nil {
+				return err
+			}
+			if _, err = doTile38(conn,
+				"SET", "fleet", "vehicle_1",
+				"POINT", "20.0", "20.0"); err != nil {
+				return err
+			}
+			if _, err = doTile38(conn, "PUBLISH", "test-eecio",
+				"DONE"); err != nil {
+				return err
+			}
+			if _, err = doTile38(conn, "PUBLISH", "test-eec",
+				"DONE"); err != nil {
+				return err
+			}
+			ok = true
+			return nil
+		}()
+	}()
+	var timeok int32
+	go func() {
+		time.Sleep(time.Second * 10)
+		if atomic.LoadInt32(&timeok) == 0 {
+			panic("timeout")
+		}
+	}()
+	wg.Wait()
+	atomic.StoreInt32(&timeok, 1)
+	if err3 != nil {
+		return err3
+	}
+	if !ok {
+		if err2 != nil {
+			return err2
+		}
+		if err1 != nil {
+			return err1
+		}
+	}
+	var detects []string
+	for i := 0; i < len(msgs1); i++ {
+		detects = append(detects, gjson.Get(msgs1[i], "detect").String())
+	}
+	if strings.Join(detects, ",") != "enter,exit,cross" {
+		errmsg := fmt.Sprintf("expected 'enter,exit,cross', got '%s'\n",
+			strings.Join(detects, ","))
+		return errors.New(errmsg)
+	}
+	detects = nil
+	for i := 0; i < len(msgs2); i++ {
+		detects = append(detects, gjson.Get(msgs2[i], "detect").String())
+	}
+
+	if strings.Join(detects, ",") != "enter,inside,exit,outside,cross,outside" {
+		errmsg := fmt.Sprintf(
+			"expected 'enter,inside,exit,outside,cross,outside', got '%s'\n",
+			strings.Join(detects, ","))
+		return errors.New(errmsg)
+	}
+
+	return nil
 }
