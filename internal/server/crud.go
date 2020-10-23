@@ -514,6 +514,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
 	server.hookTree = rbang.RTree{}
+	server.hookCross = rbang.RTree{}
 	d.command = "flushdb"
 	d.updated = true
 	d.timestamp = time.Now()

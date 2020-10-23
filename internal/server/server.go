@@ -115,7 +115,8 @@ type Server struct {
 	shrinking  bool             // aof shrinking flag
 	shrinklog  [][]string       // aof shrinking log
 	hooks      map[string]*Hook // hook name
-	hookTree   rbang.RTree      // hook spatial tree containing all
+	hookCross  rbang.RTree      // hook spatial tree for "cross" geofences
+	hookTree   rbang.RTree      // hook spatial tree for all
 	hooksOut   map[string]*Hook // hooks with "outside" detection
 	aofconnM   map[net.Conn]bool
 	luascripts *lScriptMap
