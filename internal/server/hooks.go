@@ -197,6 +197,12 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 			[2]float64{rect.Min.X, rect.Min.Y},
 			[2]float64{rect.Max.X, rect.Max.Y},
 			prevHook)
+		if prevHook.Fence.detect["cross"] {
+			s.hookCross.Delete(
+				[2]float64{rect.Min.X, rect.Min.Y},
+				[2]float64{rect.Max.X, rect.Max.Y},
+				prevHook)
+		}
 	}
 	// add hook to spatial index
 	if hook != nil && hook.Fence != nil && hook.Fence.obj != nil {
@@ -205,6 +211,12 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 			[2]float64{rect.Min.X, rect.Min.Y},
 			[2]float64{rect.Max.X, rect.Max.Y},
 			hook)
+		if hook.Fence.detect["cross"] {
+			s.hookCross.Insert(
+				[2]float64{rect.Min.X, rect.Min.Y},
+				[2]float64{rect.Max.X, rect.Max.Y},
+				hook)
+		}
 	}
 
 	hook.Open() // Opens a goroutine to notify the hook
@@ -246,6 +258,12 @@ func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
 				[2]float64{rect.Min.X, rect.Min.Y},
 				[2]float64{rect.Max.X, rect.Max.Y},
 				hook)
+			if hook.Fence.detect["cross"] {
+				s.hookCross.Delete(
+					[2]float64{rect.Min.X, rect.Min.Y},
+					[2]float64{rect.Max.X, rect.Max.Y},
+					hook)
+			}
 		}
 		d.updated = true
 	}
@@ -298,6 +316,12 @@ func (s *Server) cmdPDelHook(msg *Message, channel bool) (
 				[2]float64{rect.Min.X, rect.Min.Y},
 				[2]float64{rect.Max.X, rect.Max.Y},
 				hook)
+			if hook.Fence.detect["cross"] {
+				s.hookCross.Delete(
+					[2]float64{rect.Min.X, rect.Min.Y},
+					[2]float64{rect.Max.X, rect.Max.Y},
+					hook)
+			}
 		}
 		d.updated = true
 		count++
