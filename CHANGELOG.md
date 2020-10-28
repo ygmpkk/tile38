@@ -2,8 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.3] = 2020-10-28
+### Updated
+- #583: Optimization for non-"cross" based geofence detection (@cliedeman)
+- #79bee85: Replaced the underlying B-tree structure.
+
 ## [1.22.2] = 2020-10-07
-### Fix
+### Fixed
 - #230: Fix trailing zeros in AOF at startup
 
 ## [1.22.1] = 2020-09-22
