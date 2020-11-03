@@ -3,6 +3,8 @@
 set -e
 cd $(dirname "${BASH_SOURCE[0]}")/..
 
+# GIT_BRANCH is the current branch name
+export GIT_BRANCH=$(git branch --show-current)
 # GIT_VERSION - always the last verison number, like 1.12.1.
 export GIT_VERSION=$(git describe --tags --abbrev=0)  
 # GIT_COMMIT_SHORT - the short git commit number, like a718ef0.
@@ -10,13 +12,18 @@ export GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
 # DOCKER_REPO - the base repository name to push the docker build to.
 export DOCKER_REPO=$DOCKER_USER/tile38
 
-if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then 
-	# never push from a pull request
-	echo "Not pushing, on a PR or not running in Travis CI"
-elif [ "$TRAVIS_BRANCH" != "master" ]; then
-	# only the master branch will work
+if [ "$GIT_BRANCH" != "master" ]; then
 	echo "Not pushing, not on master"
-else
+elif [ "$DOCKER_USER" == "" ]; then
+	echo "Not pushing, DOCKER_USER not set"	
+	exit 1
+elif [ "$DOCKER_LOGIN" == "" ]; then
+	echo "Not pushing, DOCKER_LOGIN not set"	
+	exit 1
+elif [ "$DOCKER_PASSWORD" == "" ]; then
+	echo "Not pushing, DOCKER_PASSWORD not set"
+	exit 1
+else 
 	push(){
 		docker tag $DOCKER_REPO:$GIT_COMMIT_SHORT $DOCKER_REPO:$1
 		docker push $DOCKER_REPO:$1
