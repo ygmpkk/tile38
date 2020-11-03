@@ -30,8 +30,4 @@ jobs:
         fi
 
     - name: Test
-      run: |
-        cd tests
-        go test -v
-        cd ..
-        go test $(go list ./... | grep -v /vendor/ | grep -v /tests)
+      run: make test
