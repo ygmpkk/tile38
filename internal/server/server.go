@@ -25,6 +25,7 @@ import (
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/rbang"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
@@ -81,6 +82,7 @@ type Server struct {
 	// env opts
 	geomParseOpts geojson.ParseOptions
 	geomIndexOpts geometry.IndexOptions
+	http500Errors bool
 
 	// atomics
 	followc            aint // counter increases when follow property changes
@@ -178,6 +180,10 @@ func Serve(host string, port int, dir string, http bool) error {
 	if err != nil {
 		return err
 	}
+
+	// Send "500 Internal Server" error instead of "200 OK" for json responses
+	// with `"ok":false`. T38HTTP500ERRORS=1
+	server.http500Errors, _ = strconv.ParseBool(os.Getenv("T38HTTP500ERRORS"))
 
 	// Allow for geometry indexing options through environment variables:
 	// T38IDXGEOMKIND -- None, RTree, QuadTree
@@ -708,11 +714,15 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		case WebSocket:
 			return WriteWebSocketMessage(client, []byte(res))
 		case HTTP:
-			_, err := fmt.Fprintf(client, "HTTP/1.1 200 OK\r\n"+
+			status := "200 OK"
+			if server.http500Errors && !gjson.Get(res, "ok").Bool() {
+				status = "500 Internal Server Error"
+			}
+			_, err := fmt.Fprintf(client, "HTTP/1.1 %s\r\n"+
 				"Connection: close\r\n"+
 				"Content-Length: %d\r\n"+
 				"Content-Type: application/json; charset=utf-8\r\n"+
-				"\r\n", len(res)+2)
+				"\r\n", status, len(res)+2)
 			if err != nil {
 				return err
 			}
