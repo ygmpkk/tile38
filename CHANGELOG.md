@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.5] = 2020-11-09
+### Fixed
+- 9ce2033: Fixed fields being shuffled after AOFSHRINK
+
 ## [1.22.4] = 2020-11-07
+### Updated
 - 1a7d8d6: Added ENV var for 500 http errors
 
 ## [1.22.3] = 2020-10-28
