@@ -94,6 +94,7 @@ func (server *Server) aofshrink() {
 						return
 					}
 					var fnames = col.FieldArr() // reload an array of field names to match each object
+					var fmap = col.FieldMap()   //
 					var exm *rhh.Map            // the expiration map
 					if value, ok := server.expires.Get(keys[0]); ok {
 						exm = value.(*rhh.Map)
@@ -114,11 +115,14 @@ func (server *Server) aofshrink() {
 							values = append(values, "set")
 							values = append(values, keys[0])
 							values = append(values, id)
-							for i, fvalue := range fields {
-								if fvalue != 0 {
-									values = append(values, "field")
-									values = append(values, fnames[i])
-									values = append(values, strconv.FormatFloat(fvalue, 'f', -1, 64))
+							if len(fields) > 0 {
+								fvs := orderFields(fmap, fnames, fields)
+								for _, fv := range fvs {
+									if fv.value != 0 {
+										values = append(values, "field")
+										values = append(values, fv.field)
+										values = append(values, strconv.FormatFloat(fv.value, 'f', -1, 64))
+									}
 								}
 							}
 							if exm != nil {
