@@ -277,13 +277,6 @@ func main() {
 		}
 	}()
 	for {
-		if conn == nil {
-			connDial()
-			if conn == nil {
-				continue
-			}
-		}
-
 		var command string
 		var err error
 		if oneCommand == "" {
