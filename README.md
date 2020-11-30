@@ -4,7 +4,7 @@
     width="284" height="108" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
-<a href="https://tile38.com/slack"><img src="https://img.shields.io/badge/slack-channel-orange.svg" alt="Slack Channel"></a>
+<a href="https://tile38.com/slack/"><img src="https://img.shields.io/badge/slack-channel-orange.svg" alt="Slack Channel"></a>
 <a href="https://hub.docker.com/r/tile38/tile38"><img src="https://img.shields.io/badge/docker-ready-blue.svg" alt="Docker Ready"></a>
 </p>
 
