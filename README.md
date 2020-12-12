@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://tile38.com"><img 
-    src="/.github/images/logo.svg" 
+    src="/.github/images/logo-auto.svg" 
     width="284" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
