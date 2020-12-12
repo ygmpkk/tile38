@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://tile38.com"><img 
-    src="/.github/images/logo.png" 
-    width="284" height="108" border="0" alt="Tile38"></a>
+    src="/.github/images/logo.svg" 
+    width="284" border="0" alt="Tile38"></a>
 </p>
 <p align="center">
 <a href="https://tile38.com/slack/"><img src="https://img.shields.io/badge/slack-channel-orange.svg" alt="Slack Channel"></a>
