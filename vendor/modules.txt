@@ -81,7 +81,7 @@ github.com/mmcloughlin/geohash
 github.com/nats-io/go-nats
 github.com/nats-io/go-nats/encoders/builtin
 github.com/nats-io/go-nats/util
-# github.com/nats-io/nuid v1.0.0
+# github.com/nats-io/nuid v1.0.1
 github.com/nats-io/nuid
 # github.com/peterh/liner v1.2.0
 github.com/peterh/liner
@@ -92,9 +92,9 @@ github.com/pierrec/lz4/internal/xxh32
 github.com/rcrowley/go-metrics
 # github.com/streadway/amqp v1.0.0
 github.com/streadway/amqp
-# github.com/tidwall/btree v0.2.2
+# github.com/tidwall/btree v0.3.0
 github.com/tidwall/btree
-# github.com/tidwall/buntdb v1.1.4
+# github.com/tidwall/buntdb v1.1.8
 github.com/tidwall/buntdb
 # github.com/tidwall/geoindex v1.1.0
 github.com/tidwall/geoindex
@@ -103,30 +103,30 @@ github.com/tidwall/geoindex/child
 github.com/tidwall/geojson
 github.com/tidwall/geojson/geo
 github.com/tidwall/geojson/geometry
-# github.com/tidwall/gjson v1.6.1
+# github.com/tidwall/gjson v1.6.7
 github.com/tidwall/gjson
-# github.com/tidwall/grect v0.0.0-20161006141115-ba9a043346eb
+# github.com/tidwall/grect v0.1.0
 github.com/tidwall/grect
-# github.com/tidwall/match v1.0.1
+# github.com/tidwall/match v1.0.3
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.0.2
 github.com/tidwall/pretty
 # github.com/tidwall/rbang v1.2.2
 github.com/tidwall/rbang
-# github.com/tidwall/redbench v0.0.0-20181110173744-17c5b5b864a4
+# github.com/tidwall/redbench v0.1.0
 github.com/tidwall/redbench
 # github.com/tidwall/redcon v1.3.2
 github.com/tidwall/redcon
-# github.com/tidwall/resp v0.0.0-20160908231031-b2b1a7ca20e3
+# github.com/tidwall/resp v0.1.0
 github.com/tidwall/resp
 # github.com/tidwall/rhh v1.1.0
 github.com/tidwall/rhh
-# github.com/tidwall/rtree v0.0.0-20201027154624-32188eeb08a8
+# github.com/tidwall/rtree v0.1.0
 github.com/tidwall/rtree
 github.com/tidwall/rtree/base
 # github.com/tidwall/sjson v1.1.1
 github.com/tidwall/sjson
-# github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563
+# github.com/tidwall/tinyqueue v0.1.1
 github.com/tidwall/tinyqueue
 # github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 github.com/yuin/gopher-lua
