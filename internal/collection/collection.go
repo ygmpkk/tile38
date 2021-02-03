@@ -5,6 +5,7 @@ import (
 
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geoindex"
+	"github.com/tidwall/geoindex/algo"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
@@ -573,19 +574,19 @@ func (c *Collection) geoSparseInner(
 		w := rect.Max.X - rect.Min.X
 		h := rect.Max.Y - rect.Min.Y
 		quads := [4]geometry.Rect{
-			geometry.Rect{
+			{
 				Min: geometry.Point{X: rect.Min.X, Y: rect.Min.Y + h/2},
 				Max: geometry.Point{X: rect.Min.X + w/2, Y: rect.Max.Y},
 			},
-			geometry.Rect{
+			{
 				Min: geometry.Point{X: rect.Min.X + w/2, Y: rect.Min.Y + h/2},
 				Max: geometry.Point{X: rect.Max.X, Y: rect.Max.Y},
 			},
-			geometry.Rect{
+			{
 				Min: geometry.Point{X: rect.Min.X, Y: rect.Min.Y},
 				Max: geometry.Point{X: rect.Min.X + w/2, Y: rect.Min.Y + h/2},
 			},
-			geometry.Rect{
+			{
 				Min: geometry.Point{X: rect.Min.X + w/2, Y: rect.Min.Y},
 				Max: geometry.Point{X: rect.Max.X, Y: rect.Min.Y + h/2},
 			},
@@ -745,10 +746,10 @@ func (c *Collection) Nearby(
 		cursor.Step(offset)
 	}
 	c.index.Nearby(
-		geoindex.SimpleBoxAlgo(
+		algo.Box(
 			[2]float64{center.X, center.Y},
 			[2]float64{center.X, center.Y},
-		),
+			false, nil),
 		func(_, _ [2]float64, itemv interface{}, _ float64) bool {
 			count++
 			if count <= offset {
