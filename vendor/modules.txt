@@ -146,7 +146,7 @@ github.com/tidwall/match
 # github.com/tidwall/pretty v1.0.2
 ## explicit
 github.com/tidwall/pretty
-# github.com/tidwall/rbang v1.2.3
+# github.com/tidwall/rbang v1.2.4
 ## explicit
 github.com/tidwall/rbang
 # github.com/tidwall/redbench v0.1.0
