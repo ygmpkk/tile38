@@ -21,7 +21,7 @@ require (
 	github.com/tidwall/gjson v1.6.8
 	github.com/tidwall/match v1.0.3
 	github.com/tidwall/pretty v1.0.2
-	github.com/tidwall/rbang v1.2.2
+	github.com/tidwall/rbang v1.2.3
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.0
 	github.com/tidwall/resp v0.1.0
