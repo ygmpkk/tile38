@@ -14,18 +14,17 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/btree v0.3.0
-	github.com/tidwall/buntdb v1.1.8
-	github.com/tidwall/cities v0.1.0 // indirect
-	github.com/tidwall/geoindex v1.4.0
-	github.com/tidwall/geojson v1.2.3
+	github.com/tidwall/buntdb v1.2.0
+	github.com/tidwall/geoindex v1.4.1
+	github.com/tidwall/geojson v1.2.4
 	github.com/tidwall/gjson v1.6.8
 	github.com/tidwall/match v1.0.3
 	github.com/tidwall/pretty v1.0.2
-	github.com/tidwall/rbang v1.2.4
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.0
 	github.com/tidwall/resp v0.1.0
 	github.com/tidwall/rhh v1.1.1
+	github.com/tidwall/rtree v1.2.6
 	github.com/tidwall/sjson v1.1.5
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad

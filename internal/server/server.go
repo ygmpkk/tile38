@@ -27,10 +27,10 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/gjson"
-	"github.com/tidwall/rbang"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/rhh"
+	"github.com/tidwall/rtree"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/deadline"
@@ -117,8 +117,8 @@ type Server struct {
 	shrinking  bool             // aof shrinking flag
 	shrinklog  [][]string       // aof shrinking log
 	hooks      map[string]*Hook // hook name
-	hookCross  rbang.RTree      // hook spatial tree for "cross" geofences
-	hookTree   rbang.RTree      // hook spatial tree for all
+	hookCross  rtree.RTree      // hook spatial tree for "cross" geofences
+	hookTree   rtree.RTree      // hook spatial tree for all
 	hooksOut   map[string]*Hook // hooks with "outside" detection
 	aofconnM   map[net.Conn]bool
 	luascripts *lScriptMap

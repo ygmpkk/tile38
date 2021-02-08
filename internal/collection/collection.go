@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/tidwall/rbang"
+	"github.com/tidwall/rtree"
 	"github.com/tidwall/tile38/internal/deadline"
 )
 
@@ -64,7 +64,7 @@ var counter uint64
 func New() *Collection {
 	col := &Collection{
 		items:    btree.New(byID),
-		index:    geoindex.Wrap(&rbang.RTree{}),
+		index:    geoindex.Wrap(&rtree.RTree{}),
 		values:   btree.New(byValue),
 		fieldMap: make(map[string]int),
 		fieldArr: make([]string, 0),
