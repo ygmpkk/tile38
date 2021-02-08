@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.6] = 2020-02-07
+### Updated
+- 72dfaae: Updated various dependencies
+- 016f397: Updated btree library, optimization 
+- 4f8bc05: Updated rtree library, optimization
+
+### Fixed
+- 6092f73: Better handle connection errors in tile38-cli
+
 ## [1.22.5] = 2020-11-09
 ### Fixed
 - 9ce2033: Fixed fields being shuffled after AOFSHRINK
