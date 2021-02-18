@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"sync"
 	"time"
 
@@ -61,7 +60,7 @@ func (conn *KafkaConn) Send(msg string) error {
 	conn.t = time.Now()
 
 	if log.Level > 2 {
-		sarama.Logger = lg.New(os.Stdout, "[sarama] ", lg.LstdFlags)
+		sarama.Logger = lg.New(log.Output(), "[sarama] ", 0)
 	}
 
 	uri := fmt.Sprintf("%s:%d", conn.ep.Kafka.Host, conn.ep.Kafka.Port)
