@@ -61,9 +61,13 @@ type Endpoint struct {
 		Channel string
 	}
 	Kafka struct {
-		Host      string
-		Port      int
-		TopicName string
+		Host       string
+		Port       int
+		TopicName  string
+		TLS        bool
+		CACertFile string
+		CertFile   string
+		KeyFile    string
 	}
 	AMQP struct {
 		URI          string
@@ -387,6 +391,29 @@ func parseEndpoint(s string) (Endpoint, error) {
 		// Throw error if we not provide any queue name
 		if endpoint.Kafka.TopicName == "" {
 			return endpoint, errors.New("missing kafka topic name")
+		}
+
+		// Parsing additional params
+		if len(sqp) > 1 {
+			m, err := url.ParseQuery(sqp[1])
+			if err != nil {
+				return endpoint, errors.New("invalid kafka url")
+			}
+			for key, val := range m {
+				if len(val) == 0 {
+					continue
+				}
+				switch key {
+				case "tls":
+					endpoint.Kafka.TLS, _ = strconv.ParseBool(val[0])
+				case "cacert":
+					endpoint.Kafka.CACertFile = val[0]
+				case "cert":
+					endpoint.Kafka.CertFile = val[0]
+				case "key":
+					endpoint.Kafka.KeyFile = val[0]
+				}
+			}
 		}
 	}
 

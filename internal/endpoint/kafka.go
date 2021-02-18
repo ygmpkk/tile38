@@ -1,13 +1,19 @@
 package endpoint
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"time"
 
+	lg "log"
+
 	"github.com/Shopify/sarama"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/tile38/internal/log"
 )
 
 const kafkaExpiresAfter = time.Second * 30
@@ -53,9 +59,24 @@ func (conn *KafkaConn) Send(msg string) error {
 	}
 	conn.t = time.Now()
 
+	if log.Level > 2 {
+		sarama.Logger = lg.New(log.Output(), "[sarama] ", 0)
+	}
+
 	uri := fmt.Sprintf("%s:%d", conn.ep.Kafka.Host, conn.ep.Kafka.Port)
 	if conn.conn == nil {
 		cfg := sarama.NewConfig()
+
+		if conn.ep.Kafka.TLS {
+			log.Debugf("building kafka tls config")
+			tlsConfig, err := newKafkaTLSConfig(conn.ep.Kafka.CertFile, conn.ep.Kafka.KeyFile, conn.ep.Kafka.CACertFile)
+			if err != nil {
+				return err
+			}
+			cfg.Net.TLS.Enable = true
+			cfg.Net.TLS.Config = tlsConfig
+		}
+
 		cfg.Net.DialTimeout = time.Second
 		cfg.Net.ReadTimeout = time.Second * 5
 		cfg.Net.WriteTimeout = time.Second * 5
@@ -101,4 +122,27 @@ func newKafkaConn(ep Endpoint) *KafkaConn {
 		ep: ep,
 		t:  time.Now(),
 	}
+}
+
+func newKafkaTLSConfig(CertFile, KeyFile, CACertFile string) (*tls.Config, error) {
+	tlsConfig := tls.Config{}
+
+	// Load client cert
+	cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
+	if err != nil {
+		return &tlsConfig, err
+	}
+	tlsConfig.Certificates = []tls.Certificate{cert}
+
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(CACertFile)
+	if err != nil {
+		return &tlsConfig, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	tlsConfig.RootCAs = caCertPool
+
+	tlsConfig.BuildNameToCertificate()
+	return &tlsConfig, err
 }
