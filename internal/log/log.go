@@ -32,6 +32,11 @@ func init() {
 	SetOutput(os.Stderr)
 }
 
+// Output retuns the output writer
+func Output() io.Writer {
+	return wr
+}
+
 func log(level int, tag, color string, formatted bool, format string, args ...interface{}) {
 	if Level < level {
 		return
