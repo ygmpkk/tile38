@@ -380,6 +380,7 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 				o:               o,
 				fields:          fields,
 				distance:        meters,
+				distOutput:      s.distance,
 				noLock:          true,
 				ignoreGlobMatch: true,
 				skipTesting:     true,

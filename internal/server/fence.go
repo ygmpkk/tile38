@@ -172,11 +172,12 @@ func fenceMatch(
 	sw.fullFields = true
 	sw.msg.OutputType = JSON
 	sw.writeObject(ScanWriterParams{
-		id:       details.id,
-		o:        details.obj,
-		fields:   details.fields,
-		noLock:   true,
-		distance: distance,
+		id:         details.id,
+		o:          details.obj,
+		fields:     details.fields,
+		noLock:     true,
+		distance:   distance,
+		distOutput: fence.distance,
 	})
 
 	if sw.wr.Len() == 0 {
