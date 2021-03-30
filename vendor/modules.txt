@@ -114,20 +114,20 @@ github.com/rcrowley/go-metrics
 # github.com/streadway/amqp v1.0.0
 ## explicit
 github.com/streadway/amqp
-# github.com/tidwall/btree v0.3.0
+# github.com/tidwall/btree v0.4.2
 ## explicit
 github.com/tidwall/btree
-# github.com/tidwall/buntdb v1.2.0
+# github.com/tidwall/buntdb v1.2.1
 ## explicit
 github.com/tidwall/buntdb
 # github.com/tidwall/cities v0.1.0
 github.com/tidwall/cities
-# github.com/tidwall/geoindex v1.4.1
+# github.com/tidwall/geoindex v1.4.3
 ## explicit
 github.com/tidwall/geoindex
 github.com/tidwall/geoindex/algo
 github.com/tidwall/geoindex/child
-# github.com/tidwall/geojson v1.2.4
+# github.com/tidwall/geojson v1.2.7
 ## explicit
 github.com/tidwall/geojson
 github.com/tidwall/geojson/geo
@@ -135,7 +135,7 @@ github.com/tidwall/geojson/geometry
 # github.com/tidwall/gjson v1.7.4
 ## explicit
 github.com/tidwall/gjson
-# github.com/tidwall/grect v0.1.0
+# github.com/tidwall/grect v0.1.1
 github.com/tidwall/grect
 # github.com/tidwall/lotsa v1.0.1
 github.com/tidwall/lotsa
@@ -148,7 +148,7 @@ github.com/tidwall/pretty
 # github.com/tidwall/redbench v0.1.0
 ## explicit
 github.com/tidwall/redbench
-# github.com/tidwall/redcon v1.4.0
+# github.com/tidwall/redcon v1.4.1
 ## explicit
 github.com/tidwall/redcon
 # github.com/tidwall/resp v0.1.0
@@ -160,10 +160,10 @@ github.com/tidwall/rhh
 # github.com/tidwall/rtred v0.1.2
 github.com/tidwall/rtred
 github.com/tidwall/rtred/base
-# github.com/tidwall/rtree v1.2.6
+# github.com/tidwall/rtree v1.2.7
 ## explicit
 github.com/tidwall/rtree
-# github.com/tidwall/sjson v1.1.5
+# github.com/tidwall/sjson v1.1.6
 ## explicit
 github.com/tidwall/sjson
 # github.com/tidwall/tinyqueue v0.1.1
