@@ -143,6 +143,5 @@ func newKafkaTLSConfig(CertFile, KeyFile, CACertFile string) (*tls.Config, error
 	caCertPool.AppendCertsFromPEM(caCert)
 	tlsConfig.RootCAs = caCertPool
 
-	tlsConfig.BuildNameToCertificate()
 	return &tlsConfig, err
 }
