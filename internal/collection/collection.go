@@ -58,8 +58,6 @@ type Collection struct {
 	nobjects    int // non-geometry count
 }
 
-var counter uint64
-
 // New creates an empty collection
 func New() *Collection {
 	col := &Collection{
