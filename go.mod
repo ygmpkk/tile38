@@ -14,7 +14,7 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/btree v0.4.2
-	github.com/tidwall/buntdb v1.2.2
+	github.com/tidwall/buntdb v1.2.3
 	github.com/tidwall/geoindex v1.4.3
 	github.com/tidwall/geojson v1.2.7
 	github.com/tidwall/gjson v1.7.4
