@@ -309,7 +309,7 @@ The server will respond in [JSON](https://json.org) or [RESP](https://redis.io/t
 - HTTP and Websockets use JSON. 
 - Telnet and RESP clients use RESP.
 
-## Tile38 Clients Libraries
+## Tile38 Client Libraries
 
 The following clients are built specifically for Tile38.  
 Clients that support most Tile38 features are marked with a ⭐️.
