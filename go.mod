@@ -13,7 +13,7 @@ require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/peterh/liner v1.2.1
 	github.com/streadway/amqp v1.0.0
-	github.com/tidwall/btree v0.4.2
+	github.com/tidwall/btree v0.5.0
 	github.com/tidwall/buntdb v1.2.3
 	github.com/tidwall/geoindex v1.4.3
 	github.com/tidwall/geojson v1.2.7
