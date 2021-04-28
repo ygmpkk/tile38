@@ -128,7 +128,7 @@ type Server struct {
 	hookex expire.List
 
 	monconnsMu sync.RWMutex
-	monconns   map[net.Conn]bool
+	monconns   map[net.Conn]bool // monitor connections
 }
 
 // Serve starts a new tile38 server
