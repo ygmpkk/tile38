@@ -21,23 +21,9 @@ import (
 	"github.com/tidwall/tile38/internal/hservice"
 	"github.com/tidwall/tile38/internal/log"
 	"github.com/tidwall/tile38/internal/server"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-)
-
-var (
-	dir         string
-	port        int
-	host        string
-	verbose     bool
-	veryVerbose bool
-	devMode     bool
-	quiet       bool
-	pidfile     string
-	cpuprofile  string
-	memprofile  string
-	pprofport   int
-	nohup       bool
 )
 
 // TODO: Set to false in 2.*
@@ -151,8 +137,12 @@ Developer Options:
 		return
 	}
 
-	var showEvioDisabled bool
-	var showThreadsDisabled bool
+	var (
+		devMode             bool
+		nohup               bool
+		showEvioDisabled    bool
+		showThreadsDisabled bool
+	)
 
 	// parse non standard args.
 	nargs := []string{os.Args[0]}
@@ -255,6 +245,21 @@ Developer Options:
 		nargs = append(nargs, os.Args[i])
 	}
 	os.Args = nargs
+
+	metricsAddr := flag.String("metrics-addr", "", "The listening addr for Prometheus metrics.")
+
+	var (
+		dir         string
+		port        int
+		host        string
+		verbose     bool
+		veryVerbose bool
+		quiet       bool
+		pidfile     string
+		cpuprofile  string
+		memprofile  string
+		pprofport   int
+	)
 
 	flag.IntVar(&port, "p", 9851, "The listening port.")
 	flag.StringVar(&pidfile, "pidfile", "", "A file that contains the pid")
@@ -403,6 +408,7 @@ Developer Options:
   |       |       |   tile38.com
   |_______|_______| 
 `+"\n", core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, port, os.Getpid())
+
 	if pidferr != nil {
 		log.Warnf("pidfile: %v", pidferr)
 	}
@@ -413,7 +419,8 @@ Developer Options:
 	if showThreadsDisabled {
 		log.Warnf("thread flag is deprecated use GOMAXPROCS to set number of threads instead")
 	}
-	if err := server.Serve(host, port, dir, httpTransport); err != nil {
+
+	if err := server.Serve(host, port, dir, httpTransport, *metricsAddr); err != nil {
 		log.Fatal(err)
 	}
 }
