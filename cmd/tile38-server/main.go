@@ -100,7 +100,6 @@ Advanced Options:
   --queuefilename path    : Event queue path (default:data/queue.db)
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
-  --threads num           : number of network threads (default: num cores)
   --nohup                 : do not exit on SIGHUP
 
 Developer Options:
@@ -153,6 +152,7 @@ Developer Options:
 	}
 
 	var showEvioDisabled bool
+	var showThreadsDisabled bool
 
 	// parse non standard args.
 	nargs := []string{os.Args[0]}
@@ -230,15 +230,15 @@ Developer Options:
 		case "--threads", "-threads":
 			i++
 			if i < len(os.Args) {
-				n, err := strconv.ParseUint(os.Args[i], 10, 16)
+				_, err := strconv.ParseUint(os.Args[i], 10, 16)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "threads must be a valid number\n")
 					os.Exit(1)
 				}
-				core.NumThreads = int(n)
+				showThreadsDisabled = true
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "http-transport must be 'yes' or 'no'\n")
+			fmt.Fprintf(os.Stderr, "threads must be a valid number \n")
 			os.Exit(1)
 		case "--evio", "-evio":
 			i++
@@ -409,6 +409,9 @@ Developer Options:
 	if showEvioDisabled {
 		// we don't currently support evio in Tile38
 		log.Warnf("evio is not currently supported")
+	}
+	if showThreadsDisabled {
+		log.Warnf("thread flag is deprecated use GOMAXPROCS to set number of threads instead")
 	}
 	if err := server.Serve(host, port, dir, httpTransport); err != nil {
 		log.Fatal(err)
