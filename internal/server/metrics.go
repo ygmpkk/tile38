@@ -15,7 +15,7 @@ var (
 			these metrics are taken from basicStats() / extStats()
 			by accessing the map and directly exporting the value found
 		*/
-		"num_collections":          prometheus.NewDesc("tile38_collections_total", "Total number of collections", nil, nil),
+		"num_collections":          prometheus.NewDesc("tile38_collections", "Total number of collections", nil, nil),
 		"pid":                      prometheus.NewDesc("tile38_pid", "", nil, nil),
 		"aof_size":                 prometheus.NewDesc("tile38_aof_size_bytes", "", nil, nil),
 		"num_hooks":                prometheus.NewDesc("tile38_hooks_total", "", nil, nil),
@@ -57,9 +57,7 @@ func (s *Server) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 		s,
 	)
 
-	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
-
-	h.ServeHTTP(w, r)
+	promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, r)
 }
 
 func (s *Server) Describe(ch chan<- *prometheus.Desc) {
@@ -69,6 +67,9 @@ func (s *Server) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (s *Server) Collect(ch chan<- prometheus.Metric) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	m := make(map[string]interface{})
 	s.basicStats(m)
 	s.extStats(m)
@@ -87,7 +88,7 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 	)
 
 	/*
-		add stats per collection
+		add objects/points/strings stats for each collection
 	*/
 	s.cols.Ascend(nil, func(v interface{}) bool {
 		c := v.(*collectionKeyContainer)
