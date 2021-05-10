@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/tidwall/tile38/core"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -79,6 +81,11 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	ch <- prometheus.MustNewConstMetric(
+		metricDescriptions["server_info"],
+		prometheus.GaugeValue, 1.0, s.config.serverID(), core.Version,
+	)
+
 	/*
 		add stats per collection
 	*/
@@ -110,9 +117,4 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 		)
 		return true
 	})
-
-	ch <- prometheus.MustNewConstMetric(
-		metricDescriptions["server_info"],
-		prometheus.GaugeValue, 1.0, m["id"].(string), m["version"].(string),
-	)
 }
