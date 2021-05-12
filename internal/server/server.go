@@ -289,6 +289,7 @@ func Serve(host string, port int, dir string, http bool, metricsAddr string) err
 	if metricsAddr != "" {
 		log.Infof("Listening for metrics at: %s", metricsAddr)
 		go func() {
+			net_http.HandleFunc("/", server.MetricsIndexHandler)
 			net_http.HandleFunc("/metrics", server.MetricsHandler)
 			log.Fatal(net_http.ListenAndServe(metricsAddr, nil))
 		}()
