@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/tidwall/tile38/core"
@@ -18,7 +19,7 @@ var (
 		"num_collections":          prometheus.NewDesc("tile38_collections", "Total number of collections", nil, nil),
 		"pid":                      prometheus.NewDesc("tile38_pid", "", nil, nil),
 		"aof_size":                 prometheus.NewDesc("tile38_aof_size_bytes", "", nil, nil),
-		"num_hooks":                prometheus.NewDesc("tile38_hooks_total", "", nil, nil),
+		"num_hooks":                prometheus.NewDesc("tile38_hooks", "", nil, nil),
 		"in_memory_size":           prometheus.NewDesc("tile38_in_memory_size_bytes", "", nil, nil),
 		"heap_size":                prometheus.NewDesc("tile38_heap_size_bytes", "", nil, nil),
 		"heap_released":            prometheus.NewDesc("tile38_memory_reap_released_bytes", "", nil, nil),
@@ -27,6 +28,10 @@ var (
 		"pointer_size":             prometheus.NewDesc("tile38_pointer_size_bytes", "", nil, nil),
 		"cpus":                     prometheus.NewDesc("tile38_num_cpus", "", nil, nil),
 		"tile38_connected_clients": prometheus.NewDesc("tile38_connected_clients", "", nil, nil),
+
+		"tile38_total_connections_received": prometheus.NewDesc("tile38_connections_received_total", "", nil, nil),
+		"tile38_total_messages_sent":        prometheus.NewDesc("tile38_messages_sent_total", "", nil, nil),
+		"tile38_expired_keys":               prometheus.NewDesc("tile38_expired_keys_total", "", nil, nil),
 
 		/*
 			these metrics are NOT taken from basicStats() / extStats()
@@ -37,6 +42,8 @@ var (
 		"collection_strings": prometheus.NewDesc("tile38_collection_strings", "Total number of strings per collection", []string{"col"}, nil),
 		"collection_weight":  prometheus.NewDesc("tile38_collection_weight_bytes", "Total weight of collection in bytes", []string{"col"}, nil),
 		"server_info":        prometheus.NewDesc("tile38_server_info", "Server info", []string{"id", "version"}, nil),
+		"replication":        prometheus.NewDesc("tile38_replication_info", "Replication info", []string{"role", "following", "caught_up", "caught_up_once"}, nil),
+		"start_time":         prometheus.NewDesc("tile38_start_time_seconds", "", nil, nil),
 	}
 
 	cmdDurations = prometheus.NewSummaryVec(prometheus.SummaryOpts{
@@ -45,6 +52,14 @@ var (
 	}, []string{"cmd"},
 	)
 )
+
+func (s *Server) MetricsIndexHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(`<html><head>
+<title>Tile38 ` + core.Version + `</title></head>
+<body><h1>Tile38 ` + core.Version + `</h1>
+<p><a href='/metrics'>Metrics</a></p>
+</body></html>`))
+}
 
 func (s *Server) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 	reg := prometheus.NewRegistry()
@@ -84,8 +99,23 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(
 		metricDescriptions["server_info"],
-		prometheus.GaugeValue, 1.0, s.config.serverID(), core.Version,
-	)
+		prometheus.GaugeValue, 1.0,
+		s.config.serverID(), core.Version)
+
+	ch <- prometheus.MustNewConstMetric(
+		metricDescriptions["start_time"],
+		prometheus.GaugeValue, float64(s.started.Unix()))
+
+	replLbls := []string{"leader", "", "", ""}
+	if s.config.followHost() != "" {
+		replLbls = []string{"follower",
+			fmt.Sprintf("%s:%d", s.config.followHost(), s.config.followPort()),
+			fmt.Sprintf("%t", s.fcup), fmt.Sprintf("%t", s.fcuponce)}
+	}
+	ch <- prometheus.MustNewConstMetric(
+		metricDescriptions["replication"],
+		prometheus.GaugeValue, 1.0,
+		replLbls...)
 
 	/*
 		add objects/points/strings stats for each collection
