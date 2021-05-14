@@ -39,7 +39,7 @@ func subTestMetrics(t *testing.T, mc *mockServer) {
 		t.Fatalf("Expected status code 200, got: %d", status)
 	}
 	for _, want := range []string{
-		`tile38_connected_clients 1`,
+		`tile38_connected_clients`,
 		`tile38_cmd_duration_seconds_count{cmd="set"}`,
 		`go_build_info`,
 		`go_threads`,
