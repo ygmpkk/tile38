@@ -97,13 +97,13 @@ func (s *Server) cmdStats(msg *Message) (res resp.Value, err error) {
 
 func (s *Server) cmdHealthz(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
-	// if s.config.followHost() != "" {
-	m := make(map[string]interface{})
-	s.basicStats(m)
-	if fmt.Sprintf("%v\n", m["caught_up"]) != "true" {
-		return NOMessage, errors.New("not caught up")
+	if s.config.followHost() != "" {
+		m := make(map[string]interface{})
+		s.basicStats(m)
+		if fmt.Sprintf("%v\n", m["caught_up"]) != "true" {
+			return NOMessage, errors.New("not caught up")
+		}
 	}
-	// }
 	switch msg.OutputType {
 	case JSON:
 		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
