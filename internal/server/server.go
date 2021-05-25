@@ -744,7 +744,8 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 			return WriteWebSocketMessage(client, []byte(res))
 		case HTTP:
 			status := "200 OK"
-			if server.http500Errors && !gjson.Get(res, "ok").Bool() {
+			if (server.http500Errors || msg._command == "healthz") &&
+				!gjson.Get(res, "ok").Bool() {
 				status = "500 Internal Server Error"
 			}
 			_, err := fmt.Fprintf(client, "HTTP/1.1 %s\r\n"+
@@ -881,7 +882,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 		}
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks",
 		"chans", "search", "ttl", "bounds", "server", "info", "type", "jget",
-		"evalro", "evalrosha":
+		"evalro", "evalrosha", "healthz":
 		// read operations
 
 		server.mu.RLock()
@@ -1067,6 +1068,8 @@ func (server *Server) command(msg *Message, client *Client) (
 		res, err = server.cmdStats(msg)
 	case "server":
 		res, err = server.cmdServer(msg)
+	case "healthz":
+		res, err = server.cmdHealthz(msg)
 	case "info":
 		res, err = server.cmdInfo(msg)
 	case "scan":
