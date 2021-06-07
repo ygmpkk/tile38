@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.24.2] = 2021-06-07
+### Updated
+- b610633 Update Go to 1.16
+
 ## [1.24.1] = 2021-06-07
 ### Added
 - #609 Added HEALTHZ command (@iwpnd, @stevelacy)
