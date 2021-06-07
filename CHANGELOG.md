@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.24.1] = 2021-06-07
+### Added
+- #609 Added HEALTHZ command (@iwpnd, @stevelacy)
+
 ## [1.24.0] = 2021-05-19
 ### Added
 - #604 Added Prometheus metrics (@oliver006)
