@@ -100,7 +100,7 @@ func (s *Server) cmdHealthz(msg *Message) (res resp.Value, err error) {
 	if s.config.followHost() != "" {
 		m := make(map[string]interface{})
 		s.basicStats(m)
-		if fmt.Sprintf("%v\n", m["caught_up"]) != "true" {
+		if fmt.Sprintf("%v", m["caught_up"]) != "true" {
 			return NOMessage, errors.New("not caught up")
 		}
 	}
