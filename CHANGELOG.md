@@ -2,20 +2,24 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.24.3] = 2021-06-09
+### Fixed
+- af43d5a: Hotfix. Fixed invalid healthz output.
+
 ## [1.24.2] = 2021-06-07
 ### Updated
-- b610633 Update Go to 1.16
+- b610633: Update Go to 1.16
 
 ## [1.24.1] = 2021-06-07
 ### Added
-- #609 Added HEALTHZ command (@iwpnd, @stevelacy)
+- #609: Added HEALTHZ command (@iwpnd, @stevelacy)
 
 ## [1.24.0] = 2021-05-19
 ### Added
-- #604 Added Prometheus metrics (@oliver006)
+- #604: Added Prometheus metrics (@oliver006)
 
 ### Fixed
-- #605 Remove deprecated threads flag (@cep-ter) 
+- #605: Remove deprecated threads flag (@cep-ter) 
 
 ## [1.23.0] = 2021-04-01
 ### Updated
