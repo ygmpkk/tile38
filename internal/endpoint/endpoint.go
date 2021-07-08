@@ -64,6 +64,9 @@ type Endpoint struct {
 		Host       string
 		Port       int
 		TopicName  string
+		SASL       bool
+		SASLSHA256 bool
+		SASLSHA512 bool
 		TLS        bool
 		CACertFile string
 		CertFile   string
@@ -412,6 +415,12 @@ func parseEndpoint(s string) (Endpoint, error) {
 					endpoint.Kafka.CertFile = val[0]
 				case "key":
 					endpoint.Kafka.KeyFile = val[0]
+				case "sasl":
+					endpoint.Kafka.SASL, _ = strconv.ParseBool(val[0])
+				case "sha256":
+					endpoint.Kafka.SASLSHA256, _ = strconv.ParseBool(val[0])
+				case "sha512":
+					endpoint.Kafka.SASLSHA512, _ = strconv.ParseBool(val[0])
 				}
 			}
 		}
