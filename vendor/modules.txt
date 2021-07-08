@@ -92,9 +92,9 @@ github.com/pierrec/lz4/internal/xxh32
 github.com/rcrowley/go-metrics
 # github.com/streadway/amqp v1.0.0
 github.com/streadway/amqp
-# github.com/tidwall/btree v0.0.0-20191029221954-400434d76274
+# github.com/tidwall/btree v0.2.2
 github.com/tidwall/btree
-# github.com/tidwall/buntdb v1.1.0
+# github.com/tidwall/buntdb v1.1.4
 github.com/tidwall/buntdb
 # github.com/tidwall/geoindex v1.1.0
 github.com/tidwall/geoindex
@@ -121,12 +121,12 @@ github.com/tidwall/redcon
 github.com/tidwall/resp
 # github.com/tidwall/rhh v1.1.0
 github.com/tidwall/rhh
-# github.com/tidwall/rtree v0.0.0-20180113144539-6cd427091e0e
+# github.com/tidwall/rtree v0.0.0-20201027154624-32188eeb08a8
 github.com/tidwall/rtree
 github.com/tidwall/rtree/base
 # github.com/tidwall/sjson v1.1.1
 github.com/tidwall/sjson
-# github.com/tidwall/tinybtree v0.0.0-20181217131827-de5932d649b5
+# github.com/tidwall/tinybtree v1.0.1
 github.com/tidwall/tinybtree
 # github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563
 github.com/tidwall/tinyqueue
