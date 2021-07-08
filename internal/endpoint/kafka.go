@@ -76,7 +76,9 @@ func (conn *KafkaConn) Send(msg string) error {
 			}
 			cfg.Net.TLS.Enable = true
 			cfg.Net.TLS.Config = tlsConfig
-		} else {
+		}
+
+		if conn.ep.Kafka.SASL {
 			log.Debugf("building kafka sasl config")
 			cfg.ClientID = "sasl_scram_client"
 			cfg.Net.SASL.Enable = true
