@@ -80,7 +80,6 @@ func (conn *KafkaConn) Send(msg string) error {
 
 		if conn.ep.Kafka.SASL {
 			log.Debugf("building kafka sasl config")
-			cfg.ClientID = "sasl_scram_client"
 			cfg.Net.SASL.Enable = true
 			cfg.Net.SASL.User = os.Getenv("KAFKA_USERNAME")
 			cfg.Net.SASL.Password = os.Getenv("KAFKA_PASSWORD")
