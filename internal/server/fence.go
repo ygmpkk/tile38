@@ -164,12 +164,9 @@ func fenceMatch(
 		break
 	}
 	sw.mu.Lock()
-	var meters float64
-	distance := Distance{false, meters}
+	var distance float64
 	if fence.distance && fence.obj != nil {
-		meters = details.obj.Distance(fence.obj)
-		distance.ready = true
-		distance.meters = meters
+		distance = details.obj.Distance(fence.obj)
 	}
 	sw.fmap = details.fmap
 	sw.fullFields = true

@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.37.3
 	github.com/eclipse/paho.mqtt.golang v1.3.1
 	github.com/golang/protobuf v1.4.3
-	github.com/gomodule/redigo v2.0.1-0.20181026001555-e8fc0692a7e2+incompatible
+	github.com/gomodule/redigo v1.8.3
 	github.com/mmcloughlin/geohash v0.10.0
 	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
 	github.com/nats-io/nats.go v1.10.0
