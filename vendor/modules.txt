@@ -220,6 +220,11 @@ github.com/tidwall/rtree
 github.com/tidwall/sjson
 # github.com/tidwall/tinyqueue v0.1.1
 github.com/tidwall/tinyqueue
+# github.com/xdg/scram v1.0.3
+## explicit
+github.com/xdg/scram
+# github.com/xdg/stringprep v1.0.0
+github.com/xdg/stringprep
 # github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 ## explicit
 github.com/yuin/gopher-lua
