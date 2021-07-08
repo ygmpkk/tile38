@@ -32,7 +32,7 @@ func (conn *KafkaConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
-		if time.Now().Sub(conn.t) > kafkaExpiresAfter {
+		if time.Since(conn.t) > kafkaExpiresAfter {
 			if conn.conn != nil {
 				conn.close()
 			}
