@@ -372,15 +372,18 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	if sw.col != nil {
 		iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
 			meters := 0.0
+			distance := Distance{false, meters}
+
 			if s.distance {
 				meters = geo.DistanceFromHaversine(dist)
+				distance.ready = true
+				distance.meters = meters
 			}
 			return sw.writeObject(ScanWriterParams{
 				id:              id,
 				o:               o,
 				fields:          fields,
-				distance:        meters,
-				distOutput:      s.distance,
+				distance:        distance,
 				noLock:          true,
 				ignoreGlobMatch: true,
 				skipTesting:     true,

@@ -19,7 +19,6 @@ require (
 	github.com/tidwall/geoindex v1.4.3
 	github.com/tidwall/geojson v1.2.7
 	github.com/tidwall/gjson v1.7.4
-	github.com/tidwall/lotsa v1.0.2 // indirect
 	github.com/tidwall/match v1.0.3
 	github.com/tidwall/pretty v1.1.0
 	github.com/tidwall/redbench v0.1.0
