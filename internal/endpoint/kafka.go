@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -75,6 +76,15 @@ func (conn *KafkaConn) Send(msg string) error {
 			}
 			cfg.Net.TLS.Enable = true
 			cfg.Net.TLS.Config = tlsConfig
+		} else {
+			log.Debugf("building kafka sasl config")
+			cfg.ClientID = "sasl_scram_client"
+			cfg.Net.SASL.Enable = true
+			cfg.Net.SASL.User = os.Getenv("KAFKA_USERNAME")
+			cfg.Net.SASL.Password = os.Getenv("KAFKA_PASSWORD")
+			cfg.Net.SASL.Handshake = true
+			cfg.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+			cfg.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 		}
 
 		cfg.Net.DialTimeout = time.Second
