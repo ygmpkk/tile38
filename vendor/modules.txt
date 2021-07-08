@@ -132,7 +132,7 @@ github.com/tidwall/geoindex/child
 github.com/tidwall/geojson
 github.com/tidwall/geojson/geo
 github.com/tidwall/geojson/geometry
-# github.com/tidwall/gjson v1.6.8
+# github.com/tidwall/gjson v1.7.4
 ## explicit
 github.com/tidwall/gjson
 # github.com/tidwall/grect v0.1.0
@@ -142,7 +142,7 @@ github.com/tidwall/lotsa
 # github.com/tidwall/match v1.0.3
 ## explicit
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.0.2
+# github.com/tidwall/pretty v1.1.0
 ## explicit
 github.com/tidwall/pretty
 # github.com/tidwall/redbench v0.1.0

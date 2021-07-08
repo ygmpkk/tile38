@@ -1,6 +1,6 @@
 module github.com/tidwall/tile38
 
-go 1.15
+go 1.16
 
 require (
 	cloud.google.com/go/pubsub v1.3.1
@@ -18,10 +18,10 @@ require (
 	github.com/tidwall/buntdb v1.2.0
 	github.com/tidwall/geoindex v1.4.1
 	github.com/tidwall/geojson v1.2.4
-	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/gjson v1.7.4
 	github.com/tidwall/lotsa v1.0.2 // indirect
 	github.com/tidwall/match v1.0.3
-	github.com/tidwall/pretty v1.0.2
+	github.com/tidwall/pretty v1.1.0
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.0
 	github.com/tidwall/resp v0.1.0
