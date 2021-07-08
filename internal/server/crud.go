@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mmcloughlin/geohash"
+	"github.com/tidwall/btree"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/rbang"
@@ -14,7 +15,6 @@ import (
 	"github.com/tidwall/rhh"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/glob"
-	"github.com/tidwall/tinybtree"
 )
 
 type fvt struct {
@@ -509,7 +509,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		err = errInvalidNumberOfArguments
 		return
 	}
-	server.cols = tinybtree.BTree{}
+	server.cols = btree.New(byCollectionKey)
 	server.expires = rhh.New(0)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)

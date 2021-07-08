@@ -126,8 +126,6 @@ github.com/tidwall/rtree
 github.com/tidwall/rtree/base
 # github.com/tidwall/sjson v1.1.1
 github.com/tidwall/sjson
-# github.com/tidwall/tinybtree v1.0.1
-github.com/tidwall/tinybtree
 # github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563
 github.com/tidwall/tinyqueue
 # github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da

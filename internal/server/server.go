@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/btree"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
@@ -36,7 +37,6 @@ import (
 	"github.com/tidwall/tile38/internal/endpoint"
 	"github.com/tidwall/tile38/internal/expire"
 	"github.com/tidwall/tile38/internal/log"
-	"github.com/tidwall/tinybtree"
 )
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
@@ -98,14 +98,14 @@ type Server struct {
 	conns   map[int]*Client
 
 	mu       sync.RWMutex
-	aof      *os.File        // active aof file
-	aofdirty int32           // mark the aofbuf as having data
-	aofbuf   []byte          // prewrite buffer
-	aofsz    int             // active size of the aof file
-	qdb      *buntdb.DB      // hook queue log
-	qidx     uint64          // hook queue log last idx
-	cols     tinybtree.BTree // data collections
-	expires  *rhh.Map        // map[string]map[string]time.Time
+	aof      *os.File     // active aof file
+	aofdirty int32        // mark the aofbuf as having data
+	aofbuf   []byte       // prewrite buffer
+	aofsz    int          // active size of the aof file
+	qdb      *buntdb.DB   // hook queue log
+	qidx     uint64       // hook queue log last idx
+	cols     *btree.BTree // data collections
+	expires  *rhh.Map     // map[string]map[string]time.Time
 
 	follows    map[*bytes.Buffer]bool
 	fcond      *sync.Cond
@@ -159,6 +159,7 @@ func Serve(host string, port int, dir string, http bool) error {
 		http:     http,
 		pubsub:   newPubsub(),
 		monconns: make(map[net.Conn]bool),
+		cols:     btree.New(byCollectionKey),
 	}
 
 	server.hookex.Expired = func(item expire.Item) {
@@ -636,13 +637,25 @@ func (server *Server) backgroundSyncAOF() {
 	}
 }
 
+// collectionKeyContainer is a wrapper object around a collection that includes
+// the collection and the key. It's needed for support with the btree package,
+// which requires a comparator less function.
+type collectionKeyContainer struct {
+	key string
+	col *collection.Collection
+}
+
+func byCollectionKey(a, b interface{}) bool {
+	return a.(*collectionKeyContainer).key < b.(*collectionKeyContainer).key
+}
+
 func (server *Server) setCol(key string, col *collection.Collection) {
-	server.cols.Set(key, col)
+	server.cols.Set(&collectionKeyContainer{key, col})
 }
 
 func (server *Server) getCol(key string) *collection.Collection {
-	if value, ok := server.cols.Get(key); ok {
-		return value.(*collection.Collection)
+	if v := server.cols.Get(&collectionKeyContainer{key: key}); v != nil {
+		return v.(*collectionKeyContainer).col
 	}
 	return nil
 }
@@ -650,14 +663,17 @@ func (server *Server) getCol(key string) *collection.Collection {
 func (server *Server) scanGreaterOrEqual(
 	key string, iterator func(key string, col *collection.Collection) bool,
 ) {
-	server.cols.Ascend(key, func(ikey string, ivalue interface{}) bool {
-		return iterator(ikey, ivalue.(*collection.Collection))
-	})
+	server.cols.Ascend(&collectionKeyContainer{key: key},
+		func(v interface{}) bool {
+			vcol := v.(*collectionKeyContainer)
+			return iterator(vcol.key, vcol.col)
+		},
+	)
 }
 
 func (server *Server) deleteCol(key string) *collection.Collection {
-	if prev, ok := server.cols.Delete(key); ok {
-		return prev.(*collection.Collection)
+	if v := server.cols.Delete(&collectionKeyContainer{key: key}); v != nil {
+		return v.(*collectionKeyContainer).col
 	}
 	return nil
 }
@@ -956,7 +972,7 @@ func randomKey(n int) string {
 
 func (server *Server) reset() {
 	server.aofsz = 0
-	server.cols = tinybtree.BTree{}
+	server.cols = btree.New(byCollectionKey)
 	server.expires = rhh.New(0)
 }
 

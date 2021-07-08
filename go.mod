@@ -33,6 +33,7 @@ require (
 	github.com/tidwall/rhh v1.1.0
 	github.com/tidwall/sjson v1.1.1
 	github.com/tidwall/tinybtree v1.0.1
+	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
