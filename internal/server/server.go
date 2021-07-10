@@ -778,7 +778,7 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 
 	cmd := msg.Command()
 	defer func() {
-		took := time.Now().Sub(start).Seconds()
+		took := time.Since(start).Seconds()
 		cmdDurations.With(prometheus.Labels{"cmd": cmd}).Observe(took)
 	}()
 

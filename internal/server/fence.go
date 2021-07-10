@@ -335,8 +335,7 @@ func makemsg(
 }
 
 func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
-	gobj, _ := obj.(geojson.Object)
-	if gobj == nil {
+	if obj == nil {
 		return false
 	}
 	if fence.roam.on {
@@ -346,11 +345,11 @@ func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
 	switch fence.cmd {
 	case "nearby":
 		// nearby is an INTERSECT on a Circle
-		return gobj.Intersects(fence.obj)
+		return obj.Intersects(fence.obj)
 	case "within":
-		return gobj.Within(fence.obj)
+		return obj.Within(fence.obj)
 	case "intersects":
-		return gobj.Intersects(fence.obj)
+		return obj.Intersects(fence.obj)
 	}
 	return false
 }

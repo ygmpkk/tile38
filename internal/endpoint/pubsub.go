@@ -1,36 +1,25 @@
 package endpoint
 
 import (
-	"cloud.google.com/go/pubsub"
 	"context"
-	"errors"
 	"fmt"
-	"github.com/streadway/amqp"
-	"google.golang.org/api/option"
 	"sync"
 	"time"
+
+	"cloud.google.com/go/pubsub"
+	"google.golang.org/api/option"
 )
 
 const pubsubExpiresAfter = time.Second * 30
 
-var errMissingGoogleCredentials = errors.New("Could not find GCP credentials - no credential path was submitted and envar GOOGLE_APPLICATION_CREDENTIALS is not set")
-
 // SQSConn is an endpoint connection
 type PubSubConn struct {
-	mu      sync.Mutex
-	ep      Endpoint
-	svc     *pubsub.Client
-	topic   *pubsub.Topic
-	channel *amqp.Channel
-	ex      bool
-	t       time.Time
-}
-
-func (conn *PubSubConn) generatePubSubURL() string {
-	if conn.ep.SQS.PlainURL != "" {
-		return conn.ep.SQS.PlainURL
-	}
-	return "projects/" + conn.ep.PubSub.Project + "/topics/" + conn.ep.PubSub.Topic
+	mu    sync.Mutex
+	ep    Endpoint
+	svc   *pubsub.Client
+	topic *pubsub.Topic
+	ex    bool
+	t     time.Time
 }
 
 func (conn *PubSubConn) close() {
@@ -93,7 +82,7 @@ func (conn *PubSubConn) Expired() bool {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	if !conn.ex {
-		if time.Now().Sub(conn.t) > pubsubExpiresAfter {
+		if time.Since(conn.t) > pubsubExpiresAfter {
 			conn.ex = true
 			conn.close()
 		}
