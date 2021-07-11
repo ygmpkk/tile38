@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/bing"
+	"github.com/tidwall/tile38/internal/clip"
 	"github.com/tidwall/tile38/internal/glob"
 )
 
@@ -429,11 +430,14 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 				meters = dist
 			}
 			return sw.writeObject(ScanWriterParams{
-				id:       id,
-				o:        o,
-				fields:   fields,
-				distance: meters,
-				noLock:   true,
+				id:              id,
+				o:               o,
+				fields:          fields,
+				distance:        meters,
+				distOutput:      s.distance,
+				noLock:          true,
+				ignoreGlobMatch: true,
+				skipTesting:     true,
 			})
 		}
 		sw.col.Nearby(s.obj, sw, msg.Deadline, iter)

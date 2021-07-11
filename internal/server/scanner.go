@@ -62,12 +62,15 @@ type scanWriter struct {
 
 // ScanWriterParams ...
 type ScanWriterParams struct {
-	id       string
-	o        geojson.Object
-	fields   []float64
-	distance float64
-	noLock   bool
-	clip     geojson.Object
+	id              string
+	o               geojson.Object
+	fields          []float64
+	distance        float64
+	distOutput      bool // query or fence requested distance output
+	noLock          bool
+	ignoreGlobMatch bool
+	clip            geojson.Object
+	skipTesting     bool
 }
 
 func (s *Server) newScanWriter(
