@@ -2,13 +2,19 @@ package tests
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"testing"
+	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/tidwall/gjson"
 )
 
 func subTestSearch(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "KNN", keys_KNN_test)
+	runStep(t, mc, "KNN_BASIC", keys_KNN_basic_test)
+	runStep(t, mc, "KNN_RANDOM", keys_KNN_random_test)
 	runStep(t, mc, "KNN_CURSOR", keys_KNN_cursor_test)
 	runStep(t, mc, "WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
 	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
@@ -24,7 +30,7 @@ func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "FIELDS", keys_FIELDS_search_test)
 }
 
-func keys_KNN_test(mc *mockServer) error {
+func keys_KNN_basic_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
 		{"SET", "mykey", "1", "POINT", 5, 5}, {"OK"},
 		{"SET", "mykey", "2", "POINT", 19, 19}, {"OK"},
@@ -39,6 +45,56 @@ func keys_KNN_test(mc *mockServer) error {
 		{"NEARBY", "mykey", "LIMIT", 10, "DISTANCE", "POINT", 52, 13, 100}, {`[0 [[6 {"type":"Point","coordinates":[13,52]} 0]]]`},
 		{"NEARBY", "mykey", "LIMIT", 10, "DISTANCE", "POINT", 52.1, 13.1, 100000}, {`[0 [[6 {"type":"Point","coordinates":[13,52]} 13053.885940801563]]]`},
 	})
+}
+
+func keys_KNN_random_test(mc *mockServer) error {
+
+	// do random points
+	mc.Do("OUTPUT", "resp")
+	mc.Do("DROP", "points")
+	defer mc.Do("DROP", "points")
+
+	seed := time.Now().UnixNano()
+	// seed = 98123098
+	rng := rand.New(rand.NewSource(seed))
+	rpoint := func() [2]float64 {
+		return [2]float64{
+			rng.Float64()*360 - 180,
+			rng.Float64()*180 - 90,
+		}
+	}
+	N := 5000
+	points := make([][2]float64, N)
+	for i := 0; i < len(points); i++ {
+		points[i] = rpoint()
+		res, err := redis.String(mc.Do("SET", "points", i, "POINT", points[i][1], points[i][0]))
+		if err != nil {
+			return err
+		}
+		if res != "OK" {
+			return fmt.Errorf("expected 'OK', got '%s'", res)
+		}
+	}
+	target := rpoint()
+
+	mc.Do("OUTPUT", "json")
+	defer mc.Do("OUTPUT", "resp")
+
+	start := time.Now()
+	res, err := redis.String(mc.Do("NEARBY", "points", "LIMIT", N, "POINT", target[1], target[0]))
+	println(time.Since(start).String())
+	if err != nil {
+		return err
+	}
+
+	ldist := math.Inf(-1)
+	for _, dist := range gjson.Get(res, "objects.#.distance").Array() {
+		if ldist > dist.Float() {
+			return fmt.Errorf("out of order")
+		}
+		ldist = dist.Float()
+	}
+	return nil
 }
 
 func keys_KNN_cursor_test(mc *mockServer) error {
