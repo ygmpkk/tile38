@@ -62,8 +62,9 @@ type Collection struct {
 // New creates an empty collection
 func New() *Collection {
 	col := &Collection{
-		index:       geoindex.Wrap(&rbang.RTree{}),
-		values:      btree.New(32, nil),
+		items:       btree.New(byID),
+		index:       geoindex.Wrap(&rtree.RTree{}),
+		values:      btree.New(byValue),
 		fieldMap:    make(map[string]int),
 		fieldArr:    make([]string, 0),
 		fieldValues: &fieldValues{},
@@ -354,7 +355,7 @@ func (c *Collection) Scan(
 			return true
 		}
 		nextStep(count, cursor, deadline)
-		iitm := value.(*itemT)
+		iitm := item.(*itemT)
 		keepon = iterator(iitm.id, iitm.obj, c.fieldValues.get(iitm.fieldValuesSlot))
 		return keepon
 	}
