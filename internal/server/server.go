@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
-	net_http "net/http"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -30,7 +30,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/resp"
-	"github.com/tidwall/rhh"
 	"github.com/tidwall/rtree"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
@@ -108,7 +107,6 @@ type Server struct {
 	qdb      *buntdb.DB   // hook queue log
 	qidx     uint64       // hook queue log last idx
 	cols     *btree.BTree // data collections
-	expires  *rhh.Map     // map[string]map[string]time.Time
 
 	follows    map[*bytes.Buffer]bool
 	fcond      *sync.Cond
@@ -135,7 +133,7 @@ type Server struct {
 }
 
 // Serve starts a new tile38 server
-func Serve(host string, port int, dir string, http bool, metricsAddr string) error {
+func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) error {
 	if core.AppendFileName == "" {
 		core.AppendFileName = path.Join(dir, "appendonly.aof")
 	}
@@ -156,10 +154,9 @@ func Serve(host string, port int, dir string, http bool, metricsAddr string) err
 		hooks:    make(map[string]*Hook),
 		hooksOut: make(map[string]*Hook),
 		aofconnM: make(map[net.Conn]io.Closer),
-		expires:  rhh.New(0),
 		started:  time.Now(),
 		conns:    make(map[int]*Client),
-		http:     http,
+		http:     useHTTP,
 		pubsub:   newPubsub(),
 		monconns: make(map[net.Conn]bool),
 		cols:     btree.New(byCollectionKey),
@@ -289,9 +286,9 @@ func Serve(host string, port int, dir string, http bool, metricsAddr string) err
 	if metricsAddr != "" {
 		log.Infof("Listening for metrics at: %s", metricsAddr)
 		go func() {
-			net_http.HandleFunc("/", server.MetricsIndexHandler)
-			net_http.HandleFunc("/metrics", server.MetricsHandler)
-			log.Fatal(net_http.ListenAndServe(metricsAddr, nil))
+			http.HandleFunc("/", server.MetricsIndexHandler)
+			http.HandleFunc("/metrics", server.MetricsHandler)
+			log.Fatal(http.ListenAndServe(metricsAddr, nil))
 		}()
 	}
 
@@ -993,7 +990,6 @@ func randomKey(n int) string {
 func (server *Server) reset() {
 	server.aofsz = 0
 	server.cols = btree.New(byCollectionKey)
-	server.expires = rhh.New(0)
 }
 
 func (server *Server) command(msg *Message, client *Client) (
@@ -1003,7 +999,7 @@ func (server *Server) command(msg *Message, client *Client) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = server.cmdSet(msg, true)
+		res, d, err = server.cmdSet(msg)
 	case "fset":
 		res, d, err = server.cmdFset(msg)
 	case "del":

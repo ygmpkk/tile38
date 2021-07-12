@@ -592,7 +592,7 @@ func (s *Server) commandInScript(msg *Message) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = s.cmdSet(msg, true)
+		res, d, err = s.cmdSet(msg)
 	case "fset":
 		res, d, err = s.cmdFset(msg)
 	case "del":

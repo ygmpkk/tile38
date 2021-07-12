@@ -304,7 +304,7 @@ func (server *Server) cmdSearchArgs(
 			err = errKeyNotFound
 			return
 		}
-		s.obj, _, ok = col.Get(id)
+		s.obj, _, _, ok = col.Get(id)
 		if !ok {
 			err = errIDNotFound
 			return
@@ -417,10 +417,6 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	if sw.col != nil {
 		maxDist := s.obj.(*geojson.Circle).Meters()
 		iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
-			if server.hasExpired(s.key, id) {
-				return true
-			}
-
 			if maxDist > 0 && dist > maxDist {
 				return false
 			}
@@ -496,9 +492,6 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 			sw.col.Within(s.obj, s.sparse, sw, msg.Deadline, func(
 				id string, o geojson.Object, fields []float64,
 			) bool {
-				if server.hasExpired(s.key, id) {
-					return true
-				}
 				return sw.writeObject(ScanWriterParams{
 					id:     id,
 					o:      o,
@@ -512,9 +505,6 @@ func (server *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.
 				o geojson.Object,
 				fields []float64,
 			) bool {
-				if server.hasExpired(s.key, id) {
-					return true
-				}
 				params := ScanWriterParams{
 					id:     id,
 					o:      o,

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tidwall/geojson"
-	"github.com/tidwall/rhh"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/log"
@@ -92,23 +91,18 @@ func (server *Server) aofshrink() {
 					if col == nil {
 						return
 					}
-					var fnames = col.FieldArr() // reload an array of field names to match each object
-					var fmap = col.FieldMap()   //
-					var exm *rhh.Map            // the expiration map
-					if value, ok := server.expires.Get(keys[0]); ok {
-						exm = value.(*rhh.Map)
-					}
+					var fnames = col.FieldArr()     // reload an array of field names to match each object
+					var fmap = col.FieldMap()       //
 					var now = time.Now().UnixNano() // used for expiration
 					var count = 0                   // the object count
 					col.ScanGreaterOrEqual(nextid, false, nil, nil,
-						func(id string, obj geojson.Object, fields []float64) bool {
+						func(id string, obj geojson.Object, fields []float64, ex int64) bool {
 							if count == maxids {
 								// we reached the max number of ids for one batch
 								nextid = id
 								idsdone = false
 								return false
 							}
-
 							// here we fill the values array with a new command
 							values = values[:0]
 							values = append(values, "set")
@@ -124,14 +118,14 @@ func (server *Server) aofshrink() {
 									}
 								}
 							}
-							if exm != nil {
-								if at, ok := exm.Get(id); ok {
-									expires := at.(int64) - now
-									if expires > 0 {
-										values = append(values, "ex")
-										values = append(values, strconv.FormatFloat(math.Floor(float64(expires)/float64(time.Second)*10)/10, 'f', -1, 64))
-									}
+							if ex != 0 {
+								ttl := math.Floor(float64(ex-now)/float64(time.Second)*10) / 10
+								if ttl < 0.1 {
+									// always leave a little bit of ttl.
+									ttl = 0.1
 								}
+								values = append(values, "ex")
+								values = append(values, strconv.FormatFloat(ttl, 'f', -1, 64))
 							}
 							if objIsSpatial(obj) {
 								values = append(values, "object")

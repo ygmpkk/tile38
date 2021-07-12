@@ -24,6 +24,7 @@ type Cursor interface {
 type itemT struct {
 	id              string
 	obj             geojson.Object
+	expires         int64 // unix nano expiration
 	fieldValuesSlot fieldValuesSlot
 }
 
@@ -44,11 +45,25 @@ func byValue(a, b interface{}) bool {
 	return byID(a, b)
 }
 
+func byExpires(a, b interface{}) bool {
+	item1 := a.(*itemT)
+	item2 := b.(*itemT)
+	if item1.expires < item2.expires {
+		return true
+	}
+	if item1.expires > item2.expires {
+		return false
+	}
+	// the values match so we'll compare IDs, which are always unique.
+	return byID(a, b)
+}
+
 // Collection represents a collection of geojson objects.
 type Collection struct {
-	items       *btree.BTree    // items sorted by keys
+	items       *btree.BTree    // items sorted by id
 	index       *geoindex.Index // items geospatially indexed
-	values      *btree.BTree    // items sorted by value+key
+	values      *btree.BTree    // items sorted by value+id
+	expires     *btree.BTree    // items sorted by ex+id
 	fieldMap    map[string]int
 	fieldArr    []string
 	fieldValues *fieldValues
@@ -64,6 +79,7 @@ func New() *Collection {
 		items:       btree.New(byID),
 		index:       geoindex.Wrap(&rtree.RTree{}),
 		values:      btree.New(byValue),
+		expires:     btree.New(byExpires),
 		fieldMap:    make(map[string]int),
 		fieldArr:    make([]string, 0),
 		fieldValues: &fieldValues{},
@@ -141,11 +157,11 @@ func (c *Collection) indexInsert(item *itemT) {
 // The fields argument is optional.
 // The return values are the old object, the old fields, and the new fields
 func (c *Collection) Set(
-	id string, obj geojson.Object, fields []string, values []float64,
+	id string, obj geojson.Object, fields []string, values []float64, ex int64,
 ) (
 	oldObject geojson.Object, oldFieldValues []float64, newFieldValues []float64,
 ) {
-	newItem := &itemT{id: id, obj: obj, fieldValuesSlot: nilValuesSlot}
+	newItem := &itemT{id: id, obj: obj, fieldValuesSlot: nilValuesSlot, expires: ex}
 
 	// add the new item to main btree and remove the old one if needed
 	oldItem := c.items.Set(newItem)
@@ -158,6 +174,10 @@ func (c *Collection) Set(
 		} else {
 			c.values.Delete(oldItem)
 			c.nobjects--
+		}
+		// delete old item from the expires queue
+		if oldItem.expires != 0 {
+			c.expires.Delete(oldItem)
 		}
 
 		// decrement the point count
@@ -191,6 +211,10 @@ func (c *Collection) Set(
 		c.values.Set(newItem)
 		c.nobjects++
 	}
+	// insert item into expires queue.
+	if newItem.expires != 0 {
+		c.expires.Set(newItem)
+	}
 
 	// increment the point count
 	c.points += newItem.obj.NumPoints()
@@ -206,11 +230,11 @@ func (c *Collection) Set(
 func (c *Collection) Delete(id string) (
 	obj geojson.Object, fields []float64, ok bool,
 ) {
-	oldItemV := c.items.Delete(&itemT{id: id})
-	if oldItemV == nil {
+	v := c.items.Delete(&itemT{id: id})
+	if v == nil {
 		return nil, nil, false
 	}
-	oldItem := oldItemV.(*itemT)
+	oldItem := v.(*itemT)
 	if objIsSpatial(oldItem.obj) {
 		if !oldItem.obj.Empty() {
 			c.indexDelete(oldItem)
@@ -219,6 +243,10 @@ func (c *Collection) Delete(id string) (
 	} else {
 		c.values.Delete(oldItem)
 		c.nobjects--
+	}
+	// delete old item from expires queue
+	if oldItem.expires != 0 {
+		c.expires.Delete(oldItem)
 	}
 	c.weight -= c.objWeight(oldItem)
 	c.points -= oldItem.obj.NumPoints()
@@ -231,14 +259,30 @@ func (c *Collection) Delete(id string) (
 // Get returns an object.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Get(id string) (
-	obj geojson.Object, fields []float64, ok bool,
+	obj geojson.Object, fields []float64, ex int64, ok bool,
 ) {
 	itemV := c.items.Get(&itemT{id: id})
 	if itemV == nil {
-		return nil, nil, false
+		return nil, nil, 0, false
 	}
 	item := itemV.(*itemT)
-	return item.obj, c.fieldValues.get(item.fieldValuesSlot), true
+	return item.obj, c.fieldValues.get(item.fieldValuesSlot), item.expires, true
+}
+
+func (c *Collection) SetExpires(id string, ex int64) bool {
+	v := c.items.Get(&itemT{id: id})
+	if v == nil {
+		return false
+	}
+	item := v.(*itemT)
+	if item.expires != 0 {
+		c.expires.Delete(item)
+	}
+	item.expires = ex
+	if item.expires != 0 {
+		c.expires.Set(item)
+	}
+	return true
 }
 
 // SetField set a field value for an object and returns that object.
@@ -487,7 +531,7 @@ func bGT(tr *btree.BTree, a, b interface{}) bool { return tr.Less(b, a) }
 func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 	cursor Cursor,
 	deadline *deadline.Deadline,
-	iterator func(id string, obj geojson.Object, fields []float64) bool,
+	iterator func(id string, obj geojson.Object, fields []float64, ex int64) bool,
 ) bool {
 	var keepon = true
 	var count uint64
@@ -496,14 +540,14 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		offset = cursor.Offset()
 		cursor.Step(offset)
 	}
-	iter := func(value interface{}) bool {
+	iter := func(v interface{}) bool {
 		count++
 		if count <= offset {
 			return true
 		}
 		nextStep(count, cursor, deadline)
-		iitm := value.(*itemT)
-		keepon = iterator(iitm.id, iitm.obj, c.fieldValues.get(iitm.fieldValuesSlot))
+		item := v.(*itemT)
+		keepon = iterator(item.id, item.obj, c.fieldValues.get(item.fieldValuesSlot), item.expires)
 		return keepon
 	}
 	if desc {
@@ -756,4 +800,24 @@ func nextStep(step uint64, cursor Cursor, deadline *deadline.Deadline) {
 	if cursor != nil {
 		cursor.Step(1)
 	}
+}
+
+type Expired struct {
+	ID     string
+	Obj    geojson.Object
+	Fields []float64
+}
+
+// Expired returns a list of all objects that have expired.
+func (c *Collection) Expired(now int64, buffer []string) (ids []string) {
+	ids = buffer[:0]
+	c.expires.Ascend(nil, func(v interface{}) bool {
+		item := v.(*itemT)
+		if now < item.expires {
+			return false
+		}
+		ids = append(ids, item.id)
+		return true
+	})
+	return ids
 }

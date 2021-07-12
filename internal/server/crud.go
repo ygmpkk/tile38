@@ -11,7 +11,6 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
-	"github.com/tidwall/rhh"
 	"github.com/tidwall/rtree"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/glob"
@@ -150,8 +149,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 		}
 		return NOMessage, errKeyNotFound
 	}
-	o, fields, ok := col.Get(id)
-	ok = ok && !server.hasExpired(key, id)
+	o, fields, _, ok := col.Get(id)
 	if !ok {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
@@ -310,7 +308,6 @@ func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, er
 			found = true
 		}
 	}
-	server.clearIDExpires(d.key, d.id)
 	d.command = "del"
 	d.updated = found
 	d.timestamp = time.Now()
@@ -375,7 +372,6 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 			} else {
 				d.children[i] = dc
 			}
-			server.clearIDExpires(d.key, dc.id)
 		}
 		if atLeastOneNotDeleted {
 			var nchildren []*commandDetails
@@ -429,7 +425,6 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, e
 	}
 	d.command = "drop"
 	d.timestamp = time.Now()
-	server.clearKeyExpires(d.key)
 	switch msg.OutputType {
 	case JSON:
 		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
@@ -478,13 +473,11 @@ func (server *Server) cmdRename(msg *Message, nx bool) (res resp.Value, d comman
 		d.updated = false
 	} else {
 		server.deleteCol(d.newKey)
-		server.clearKeyExpires(d.newKey)
 		d.updated = true
 	}
 	if d.updated {
 		server.deleteCol(d.key)
 		server.setCol(d.newKey, col)
-		server.moveKeyExpires(d.key, d.newKey)
 	}
 	d.timestamp = time.Now()
 	switch msg.OutputType {
@@ -510,7 +503,6 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		return
 	}
 	server.cols = btree.New(byCollectionKey)
-	server.expires = rhh.New(0)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
 	server.hookTree = rtree.RTree{}
@@ -530,7 +522,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 func (server *Server) parseSetArgs(vs []string) (
 	d commandDetails, fields []string, values []float64,
 	xx, nx bool,
-	expires *float64, etype []byte, evs []string, err error,
+	ex int64, etype []byte, evs []string, err error,
 ) {
 	var ok bool
 	var typ []byte
@@ -577,7 +569,7 @@ func (server *Server) parseSetArgs(vs []string) (
 		}
 		if lcb(arg, "ex") {
 			vs = nvs
-			if expires != nil {
+			if ex != 0 {
 				err = errInvalidArgument(string(arg))
 				return
 			}
@@ -592,7 +584,7 @@ func (server *Server) parseSetArgs(vs []string) (
 				err = errInvalidArgument(s)
 				return
 			}
-			expires = &v
+			ex = time.Now().UnixNano() + int64(float64(time.Second)*v)
 			continue
 		}
 		if lcb(arg, "xx") {
@@ -747,7 +739,7 @@ func (server *Server) parseSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdSet(msg *Message, resetExpires bool) (res resp.Value, d commandDetails, err error) {
+func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, err error) {
 	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
 		err = errOOM
 		return
@@ -758,7 +750,7 @@ func (server *Server) cmdSet(msg *Message, resetExpires bool) (res resp.Value, d
 	var fields []string
 	var values []float64
 	var xx, nx bool
-	var ex *float64
+	var ex int64
 	d, fields, values, xx, nx, ex, _, _, err = server.parseSetArgs(vs)
 	if err != nil {
 		return
@@ -772,15 +764,12 @@ func (server *Server) cmdSet(msg *Message, resetExpires bool) (res resp.Value, d
 		server.setCol(d.key, col)
 	}
 	if xx || nx {
-		_, _, ok := col.Get(d.id)
+		_, _, _, ok := col.Get(d.id)
 		if (nx && ok) || (xx && !ok) {
 			goto notok
 		}
 	}
-	if resetExpires {
-		server.clearIDExpires(d.key, d.id)
-	}
-	d.oldObj, d.oldFields, d.fields = col.Set(d.id, d.obj, fields, values)
+	d.oldObj, d.oldFields, d.fields = col.Set(d.id, d.obj, fields, values, ex)
 	d.command = "set"
 	d.updated = true // perhaps we should do a diff on the previous object?
 	d.timestamp = time.Now()
@@ -792,9 +781,9 @@ func (server *Server) cmdSet(msg *Message, resetExpires bool) (res resp.Value, d
 			d.fmap[key] = idx
 		}
 	}
-	if ex != nil {
-		server.expireAt(d.key, d.id, d.timestamp.Add(time.Duration(float64(time.Second)*(*ex))))
-	}
+	// if ex != nil {
+	// 	server.expireAt(d.key, d.id, d.timestamp.Add(time.Duration(float64(time.Second)*(*ex))))
+	// }
 	switch msg.OutputType {
 	default:
 	case JSON:
@@ -936,11 +925,10 @@ func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails,
 	ok = false
 	col := server.getCol(key)
 	if col != nil {
-		_, _, ok = col.Get(id)
-		ok = ok && !server.hasExpired(key, id)
+		ex := time.Now().Add(time.Duration(float64(time.Second) * value)).UnixNano()
+		ok = col.SetExpires(id, ex)
 	}
 	if ok {
-		server.expireAt(key, id, time.Now().Add(time.Duration(float64(time.Second)*value)))
 		d.updated = true
 	}
 	switch msg.OutputType {
@@ -981,10 +969,13 @@ func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails
 	ok = false
 	col := server.getCol(key)
 	if col != nil {
-		_, _, ok = col.Get(id)
-		ok = ok && !server.hasExpired(key, id)
-		if ok {
-			cleared = server.clearIDExpires(key, id)
+		var ex int64
+		_, _, ex, ok = col.Get(id)
+		if ok && ex != 0 {
+			ok = col.SetExpires(id, 0)
+			if ok {
+				cleared = true
+			}
 		}
 	}
 	if !ok {
@@ -1031,19 +1022,19 @@ func (server *Server) cmdTTL(msg *Message) (res resp.Value, err error) {
 	var ok2 bool
 	col := server.getCol(key)
 	if col != nil {
-		_, _, ok = col.Get(id)
-		ok = ok && !server.hasExpired(key, id)
+		var ex int64
+		_, _, ex, ok = col.Get(id)
 		if ok {
-			var at time.Time
-			at, ok2 = server.getExpires(key, id)
-			if ok2 {
-				if time.Now().After(at) {
+			if ex != 0 {
+				now := start.UnixNano()
+				if now > ex {
 					ok2 = false
 				} else {
-					v = float64(time.Until(at)) / float64(time.Second)
+					v = float64(ex-now) / float64(time.Second)
 					if v < 0 {
 						v = 0
 					}
+					ok2 = true
 				}
 			}
 		}

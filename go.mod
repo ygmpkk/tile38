@@ -25,7 +25,6 @@ require (
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.1
 	github.com/tidwall/resp v0.1.0
-	github.com/tidwall/rhh v1.1.1
 	github.com/tidwall/rtree v1.2.7
 	github.com/tidwall/sjson v1.1.6
 	github.com/xdg/scram v1.0.3

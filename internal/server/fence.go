@@ -276,7 +276,7 @@ func extendRoamMessage(
 		nmsg = append(nmsg, `,"scan":[`...)
 		col := sw.s.getCol(fence.roam.key)
 		if col != nil {
-			obj, _, ok := col.Get(match.id)
+			obj, _, _, ok := col.Get(match.id)
 			if ok {
 				nmsg = append(nmsg, `{"id":`...)
 				nmsg = appendJSONString(nmsg, match.id)
@@ -375,9 +375,6 @@ func fenceMatchNearbys(
 	col.Intersects(geojson.NewRect(rect), 0, nil, nil, func(
 		id2 string, obj2 geojson.Object, fields []float64,
 	) bool {
-		if s.hasExpired(fence.roam.key, id2) {
-			return true // skip expired
-		}
 		var idMatch bool
 		if id2 == id {
 			return true // skip self

@@ -119,6 +119,10 @@ func (s *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 						fmt.Sprintf("fname:%d", i),
 						strconv.FormatFloat(fval, 'f', -1, 64))
 				}
+				if rand.Int()%2 == 0 {
+					values = append(values, "EX", fmt.Sprint(rand.Intn(25)+5))
+				}
+
 				if j%8 == 0 {
 					values = append(values, "STRING", fmt.Sprintf("str%v", j))
 				} else {
