@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.0] = 2021-07-12
+### Added
+- #504: Added TLS support for Nats webhook provider.
+- #552: Add CLIPBY subcommand to INTERSECTS/WITHIN. (@rshura)
+- #561: Added geofence webhook for GCP Pubsub. (@mscno)
+- #615: Add SASL to Kafka provider. (@mathieux51, @iwpnd)
+
+### Updated
+- #551: Optimize field value access. (@mpoindexter)
+- #554: Improved kNN using geodesic algorithm for NEARBY command. (@mpoindexter)
+
+### Fixed
+- #611: Close follower files before finishing aofshrink. (@mzbrau)
+- #613: Fix Memory Leak in Kafka Producer. (@iwpnd)
+- #616: Fixed expiration logic issue. (@Neuintown)
+
 ## [1.24.3] = 2021-06-09
 ### Fixed
 - af43d5a: Hotfix. Fixed invalid healthz output.
