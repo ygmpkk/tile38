@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -16,6 +17,7 @@ func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "KNN_BASIC", keys_KNN_basic_test)
 	runStep(t, mc, "KNN_RANDOM", keys_KNN_random_test)
 	runStep(t, mc, "KNN_CURSOR", keys_KNN_cursor_test)
+	runStep(t, mc, "NEARBY_SPARSE", keys_NEARBY_SPARSE_test)
 	runStep(t, mc, "WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
 	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
 	runStep(t, mc, "WITHIN", keys_WITHIN_test)
@@ -393,6 +395,89 @@ func keys_WITHIN_CIRCLE_test(mc *mockServer) error {
 			"[0 [1 2 3 4 5]]"},
 		{"WITHIN", "mykey", "IDS", "CIRCLE", 37.7335, -122.4412, 10}, {
 			"[0 [1 2]]"},
+	})
+}
+
+func keys_NEARBY_SPARSE_test(mc *mockServer) error {
+	// https://github.com/tidwall/tile38/issues/618
+	return mc.DoBatch([][]interface{}{
+		{"SET", "location", "379", "FIELD", "story", "214", "POINT", "38.343763352486", "-0.48118065817742"}, {"OK"},
+		{"SET", "location", "380", "FIELD", "story", "216", "POINT", "38.343210451684", "-0.48164476701469"}, {"OK"},
+		{"SET", "location", "381", "FIELD", "story", "217", "POINT", "38.343548609904", "-0.4815616494057"}, {"OK"},
+		{"SET", "location", "382", "FIELD", "story", "219", "POINT", "38.342949723291", "-0.48180543529947"}, {"OK"},
+		{"SET", "location", "383", "FIELD", "story", "222", "POINT", "38.343527453662", "-0.48118542576204"}, {"OK"},
+		{"SET", "location", "384", "FIELD", "story", "223", "POINT", "38.342894310235", "-0.48121117150688"}, {"OK"},
+		{"SET", "location", "385", "FIELD", "story", "224", "POINT", "38.343665011791", "-0.48128042649575"}, {"OK"},
+		{"SET", "location", "386", "FIELD", "story", "226", "POINT", "38.34300663218", "-0.48136455958069"}, {"OK"},
+		{"SET", "location", "387", "FIELD", "story", "227", "POINT", "38.343561105586", "-0.48133979329476"}, {"OK"},
+		{"SET", "location", "388", "FIELD", "story", "228", "POINT", "38.343021516797", "-0.48111203609768"}, {"OK"},
+		{"SET", "location", "389", "FIELD", "story", "229", "POINT", "38.34377906915", "-0.48100754592639"}, {"OK"},
+		{"SET", "location", "390", "FIELD", "story", "230", "POINT", "38.343028862949", "-0.48107204744577"}, {"OK"},
+		{"SET", "location", "391", "FIELD", "story", "231", "POINT", "38.342956973955", "-0.48123798785545"}, {"OK"},
+		{"SET", "location", "392", "FIELD", "story", "233", "POINT", "38.343342938888", "-0.48181034196501"}, {"OK"},
+		{"SET", "location", "393", "FIELD", "story", "234", "POINT", "38.343323273543", "-0.48119160635951"}, {"OK"},
+		{"SET", "location", "394", "FIELD", "story", "235", "POINT", "38.343475947604", "-0.48128444286906"}, {"OK"},
+		{"SET", "location", "395", "FIELD", "story", "236", "POINT", "38.343553742872", "-0.48161695699988"}, {"OK"},
+		{"SET", "location", "396", "FIELD", "story", "237", "POINT", "38.343657786414", "-0.48109919689955"}, {"OK"},
+		{"SET", "location", "397", "FIELD", "story", "238", "POINT", "38.342934456291", "-0.48126912781599"}, {"OK"},
+		{"SET", "location", "398", "FIELD", "story", "239", "POINT", "38.343254792078", "-0.48115765613124"}, {"OK"},
+		{"SET", "location", "399", "FIELD", "story", "240", "POINT", "38.342851143141", "-0.48151031587298"}, {"OK"},
+		{"SET", "location", "400", "FIELD", "story", "244", "POINT", "38.343298791244", "-0.48121409612892"}, {"OK"},
+		{"SET", "location", "401", "FIELD", "story", "246", "POINT", "38.343436945653", "-0.48141198331599"}, {"OK"},
+		{"SET", "location", "402", "FIELD", "story", "248", "POINT", "38.343033046491", "-0.48183781756703"}, {"OK"},
+		{"SET", "location", "403", "FIELD", "story", "249", "POINT", "38.343115572723", "-0.48114768365296"}, {"OK"},
+		{"SET", "location", "404", "FIELD", "story", "250", "POINT", "38.343318663597", "-0.48120263102647"}, {"OK"},
+		{"SET", "location", "405", "FIELD", "story", "251", "POINT", "38.343434654108", "-0.4814578363497"}, {"OK"},
+		{"SET", "location", "406", "FIELD", "story", "252", "POINT", "38.343810655958", "-0.48181221112942"}, {"OK"},
+		{"SET", "location", "407", "FIELD", "story", "253", "POINT", "38.342910776509", "-0.48124848403503"}, {"OK"},
+		{"SET", "location", "408", "FIELD", "story", "176", "POINT", "38.343429050328", "-0.48134829622424"}, {"OK"},
+		{"SET", "location", "409", "FIELD", "story", "177", "POINT", "38.343375167926", "-0.4813182716687"}, {"OK"},
+		{"SET", "location", "410", "FIELD", "story", "178", "POINT", "38.343686937911", "-0.48184949541056"}, {"OK"},
+		{"SET", "location", "411", "FIELD", "story", "179", "POINT", "38.343095509246", "-0.48121296750565"}, {"OK"},
+		{"SET", "location", "412", "FIELD", "story", "243", "POINT", "38.343052434763", "-0.48133792363582"}, {"OK"},
+		{"SET", "location", "413", "FIELD", "story", "174", "POINT", "38.343556877562", "-0.4814408412531"}, {"OK"},
+		{"SET", "location", "414", "FIELD", "story", "182", "POINT", "38.34352896108", "-0.48127167080998"}, {"OK"},
+		{"SET", "location", "415", "FIELD", "story", "183", "POINT", "38.343458562741", "-0.48113117383504"}, {"OK"},
+		{"SET", "location", "416", "FIELD", "story", "187", "POINT", "38.343372242633", "-0.48198426529928"}, {"OK"},
+		{"SET", "location", "417", "FIELD", "story", "200", "POINT", "38.343365745635", "-0.48145747589433"}, {"OK"},
+		{"SET", "location", "418", "FIELD", "story", "206", "POINT", "38.343019183653", "-0.48177065402226"}, {"OK"},
+		{"SET", "location", "419", "FIELD", "story", "180", "POINT", "38.343492978961", "-0.48146214309728"}, {"OK"},
+		{"SET", "location", "420", "FIELD", "story", "181", "POINT", "38.343614147661", "-0.48178183237141"}, {"OK"},
+		{"SET", "location", "421", "FIELD", "story", "172", "POINT", "38.34365219519", "-0.48163252690471"}, {"OK"},
+		{"SET", "location", "422", "FIELD", "story", "193", "POINT", "38.343284579937", "-0.48191851957019"}, {"OK"},
+		{"SET", "location", "423", "FIELD", "story", "194", "POINT", "38.342957462369", "-0.48169612941468"}, {"OK"},
+		{"SET", "location", "424", "FIELD", "story", "195", "POINT", "38.343050765851", "-0.48189678247055"}, {"OK"},
+		{"SET", "location", "425", "FIELD", "story", "196", "POINT", "38.343767590125", "-0.48171070193171"}, {"OK"},
+		{"SET", "location", "426", "FIELD", "story", "197", "POINT", "38.343547519997", "-0.4813692941909"}, {"OK"},
+		{"SET", "location", "427", "FIELD", "story", "198", "POINT", "38.342914769086", "-0.48155727196514"}, {"OK"},
+		{"SET", "location", "428", "FIELD", "story", "211", "POINT", "38.342873132946", "-0.48120151934304"}, {"OK"},
+		{"SET", "location", "429", "FIELD", "story", "212", "POINT", "38.343776804477", "-0.48175041955478"}, {"OK"},
+		{"SET", "location", "430", "FIELD", "story", "218", "POINT", "38.343321288826", "-0.48138129717684"}, {"OK"},
+		{"SET", "location", "431", "FIELD", "story", "241", "POINT", "38.34353344767", "-0.4814278700903"}, {"OK"},
+		{"SET", "location", "432", "FIELD", "story", "247", "POINT", "38.34366410657", "-0.48163485684748"}, {"OK"},
+		{"SET", "location", "433", "FIELD", "story", "203", "POINT", "38.343237196083", "-0.48114844901293"}, {"OK"},
+		{"SET", "location", "434", "FIELD", "story", "204", "POINT", "38.342949966718", "-0.48104381934163"}, {"OK"},
+		{"SET", "location", "435", "FIELD", "story", "205", "POINT", "38.343334803169", "-0.48143352609798"}, {"OK"},
+		{"SET", "location", "436", "FIELD", "story", "215", "POINT", "38.343231760033", "-0.48177962151034"}, {"OK"},
+		{"SET", "location", "437", "FIELD", "story", "220", "POINT", "38.34381041238", "-0.48184807353803"}, {"OK"},
+		{"SET", "location", "438", "FIELD", "story", "232", "POINT", "38.3437321952", "-0.4810338033529"}, {"OK"},
+		{"SET", "location", "439", "FIELD", "story", "221", "POINT", "38.343038197665", "-0.48194660158614"}, {"OK"},
+		{"OUTPUT", "json"}, {func(res string) bool { return gjson.Get(res, "ok").Bool() }},
+		{"NEARBY", "location", "SPARSE", "1", "DISTANCE", "POINT", "38.342940855731506", "-0.48126081948077476", "25"}, {
+			// should return 4 objects that include a "distance" field
+			func(res string) error {
+				if !gjson.Get(res, "ok").Bool() {
+					return errors.New("not ok")
+				}
+				if gjson.Get(res, "objects.#").Int() != 4 {
+					return fmt.Errorf("expected '%d' objects, got '%d'", 4, gjson.Get(res, "objects.#").Int())
+				}
+				if gjson.Get(res, "objects.#.distance|#").Int() != 4 {
+					return fmt.Errorf("expected '%d' distances, got '%d'", 4, gjson.Get(res, "objects.#.distance|#").Int())
+				}
+				return nil
+			},
+		},
 	})
 }
 

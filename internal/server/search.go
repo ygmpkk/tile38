@@ -415,16 +415,7 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	}
 	sw.writeHead()
 	if sw.col != nil {
-		maxDist := s.obj.(*geojson.Circle).Meters()
-		iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
-			if maxDist > 0 && dist > maxDist {
-				return false
-			}
-
-			meters := 0.0
-			if s.distance {
-				meters = dist
-			}
+		iterStep := func(id string, o geojson.Object, fields []float64, meters float64) bool {
 			return sw.writeObject(ScanWriterParams{
 				id:              id,
 				o:               o,
@@ -436,7 +427,35 @@ func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 				skipTesting:     true,
 			})
 		}
-		sw.col.Nearby(s.obj, sw, msg.Deadline, iter)
+		maxDist := s.obj.(*geojson.Circle).Meters()
+		if s.sparse > 0 {
+			if maxDist < 0 {
+				// error cannot use SPARSE and KNN together
+				return NOMessage,
+					errors.New("cannot use SPARSE without a point distance")
+			}
+			// An intersects operation is required for SPARSE
+			iter := func(id string, o geojson.Object, fields []float64) bool {
+				var meters float64
+				if s.distance {
+					meters = o.Distance(s.obj)
+				}
+				return iterStep(id, o, fields, meters)
+			}
+			sw.col.Intersects(s.obj, s.sparse, sw, msg.Deadline, iter)
+		} else {
+			iter := func(id string, o geojson.Object, fields []float64, dist float64) bool {
+				if maxDist > 0 && dist > maxDist {
+					return false
+				}
+				var meters float64
+				if s.distance {
+					meters = dist
+				}
+				return iterStep(id, o, fields, meters)
+			}
+			sw.col.Nearby(s.obj, sw, msg.Deadline, iter)
+		}
 	}
 	sw.writeFoot()
 	if msg.OutputType == JSON {

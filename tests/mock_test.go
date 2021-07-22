@@ -164,7 +164,7 @@ func (mc *mockServer) DoBatch(commands ...interface{}) error { //[][]interface{}
 				if dur, ok := cmds[0].(time.Duration); ok {
 					time.Sleep(dur)
 				} else {
-					if err := mc.DoExpect(commands[i+1][0], cmds[0].(string), cmds[1:]...); err != nil {
+					if err := mc.DoExpect(commands[i+1], cmds[0].(string), cmds[1:]...); err != nil {
 						if tag == "" {
 							return fmt.Errorf("batch[%d]: %v", i/2, err)
 						} else {
@@ -193,6 +193,9 @@ func normalize(v interface{}) interface{} {
 	return v
 }
 func (mc *mockServer) DoExpect(expect interface{}, commandName string, args ...interface{}) error {
+	if v, ok := expect.([]interface{}); ok {
+		expect = v[0]
+	}
 	resp, err := mc.Do(commandName, args...)
 	if err != nil {
 		if exs, ok := expect.(string); ok {
@@ -257,7 +260,16 @@ func (mc *mockServer) DoExpect(expect interface{}, commandName string, args ...i
 	if err != nil {
 		return err
 	}
-	if fmt.Sprintf("%v", resp) != fmt.Sprintf("%v", expect) {
+	if fn, ok := expect.(func(string) bool); ok {
+		if !fn(fmt.Sprintf("%v", resp)) {
+			return fmt.Errorf("unexpected for response '%v'", resp)
+		}
+	} else if fn, ok := expect.(func(string) error); ok {
+		err := fn(fmt.Sprintf("%v", resp))
+		if err != nil {
+			return fmt.Errorf("%s, for response '%v'", err.Error(), resp)
+		}
+	} else if fmt.Sprintf("%v", resp) != fmt.Sprintf("%v", expect) {
 		return fmt.Errorf("expected '%v', got '%v'", expect, resp)
 	}
 	return nil
