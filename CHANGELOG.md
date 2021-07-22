@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.1] = 2021-07-22
+### Fixed
+- #618: Fixed NEARBY with SPARSE returning too many results. (@nesjett)
+
 ## [1.25.0] = 2021-07-12
 ### Added
 - #504: Added TLS support for Nats webhook provider.
