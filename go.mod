@@ -10,8 +10,8 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/gomodule/redigo v1.8.3
 	github.com/mmcloughlin/geohash v0.10.0
-	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
-	github.com/nats-io/nats.go v1.10.0
+	github.com/nats-io/nats-server/v2 v2.2.0 // indirect
+	github.com/nats-io/nats.go v1.10.1-0.20210228004050-ed743748acac
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
@@ -29,7 +29,7 @@ require (
 	github.com/tidwall/sjson v1.1.6
 	github.com/xdg/scram v1.0.3
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 	google.golang.org/api v0.20.0
 	google.golang.org/grpc v1.35.0
