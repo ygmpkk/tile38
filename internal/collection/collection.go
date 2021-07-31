@@ -76,10 +76,10 @@ type Collection struct {
 // New creates an empty collection
 func New() *Collection {
 	col := &Collection{
-		items:       btree.New(byID),
+		items:       btree.NewNonConcurrent(byID),
 		index:       geoindex.Wrap(&rtree.RTree{}),
-		values:      btree.New(byValue),
-		expires:     btree.New(byExpires),
+		values:      btree.NewNonConcurrent(byValue),
+		expires:     btree.NewNonConcurrent(byExpires),
 		fieldMap:    make(map[string]int),
 		fieldArr:    make([]string, 0),
 		fieldValues: &fieldValues{},

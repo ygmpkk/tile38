@@ -502,7 +502,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		err = errInvalidNumberOfArguments
 		return
 	}
-	server.cols = btree.New(byCollectionKey)
+	server.cols = btree.NewNonConcurrent(byCollectionKey)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
 	server.hookTree = rtree.RTree{}

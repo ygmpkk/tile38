@@ -162,10 +162,10 @@ github.com/rcrowley/go-metrics
 # github.com/streadway/amqp v1.0.0
 ## explicit
 github.com/streadway/amqp
-# github.com/tidwall/btree v0.5.0
+# github.com/tidwall/btree v0.6.0
 ## explicit
 github.com/tidwall/btree
-# github.com/tidwall/buntdb v1.2.3
+# github.com/tidwall/buntdb v1.2.5
 ## explicit
 github.com/tidwall/buntdb
 # github.com/tidwall/cities v0.1.0
@@ -180,10 +180,10 @@ github.com/tidwall/geoindex/child
 github.com/tidwall/geojson
 github.com/tidwall/geojson/geo
 github.com/tidwall/geojson/geometry
-# github.com/tidwall/gjson v1.7.4
+# github.com/tidwall/gjson v1.8.0
 ## explicit
 github.com/tidwall/gjson
-# github.com/tidwall/grect v0.1.1
+# github.com/tidwall/grect v0.1.2
 github.com/tidwall/grect
 # github.com/tidwall/lotsa v1.0.2
 github.com/tidwall/lotsa

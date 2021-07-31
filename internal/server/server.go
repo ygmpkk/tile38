@@ -159,7 +159,7 @@ func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) 
 		http:     useHTTP,
 		pubsub:   newPubsub(),
 		monconns: make(map[net.Conn]bool),
-		cols:     btree.New(byCollectionKey),
+		cols:     btree.NewNonConcurrent(byCollectionKey),
 	}
 
 	server.hookex.Expired = func(item expire.Item) {
@@ -989,7 +989,7 @@ func randomKey(n int) string {
 
 func (server *Server) reset() {
 	server.aofsz = 0
-	server.cols = btree.New(byCollectionKey)
+	server.cols = btree.NewNonConcurrent(byCollectionKey)
 }
 
 func (server *Server) command(msg *Message, client *Client) (

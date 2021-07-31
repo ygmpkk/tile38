@@ -15,11 +15,11 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
-	github.com/tidwall/btree v0.5.0
-	github.com/tidwall/buntdb v1.2.3
+	github.com/tidwall/btree v0.6.0
+	github.com/tidwall/buntdb v1.2.5
 	github.com/tidwall/geoindex v1.4.3
 	github.com/tidwall/geojson v1.2.7
-	github.com/tidwall/gjson v1.7.4
+	github.com/tidwall/gjson v1.8.0
 	github.com/tidwall/match v1.0.3
 	github.com/tidwall/pretty v1.1.0
 	github.com/tidwall/redbench v0.1.0

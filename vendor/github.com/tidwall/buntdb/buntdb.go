@@ -69,6 +69,7 @@ type DB struct {
 	keys      *btree.BTree      // a tree of all item ordered by key
 	exps      *btree.BTree      // a tree of items ordered by expiration
 	idxs      map[string]*index // the index trees.
+	insIdxs   []*index          // a reuse buffer for gathering indexes
 	flushes   int               // a count of the number of disk flushes
 	closed    bool              // set when the database has been closed
 	config    Config            // the database configuration
@@ -139,8 +140,8 @@ type exctx struct {
 func Open(path string) (*DB, error) {
 	db := &DB{}
 	// initialize trees and indexes
-	db.keys = btree.New(lessCtx(nil))
-	db.exps = btree.New(lessCtx(&exctx{db}))
+	db.keys = btreeNew(lessCtx(nil))
+	db.exps = btreeNew(lessCtx(&exctx{db}))
 	db.idxs = make(map[string]*index)
 	// initialize default configuration
 	db.config = Config{
@@ -283,7 +284,7 @@ func (idx *index) clearCopy() *index {
 	}
 	// initialize with empty trees
 	if nidx.less != nil {
-		nidx.btr = btree.New(lessCtx(nidx))
+		nidx.btr = btreeNew(lessCtx(nidx))
 	}
 	if nidx.rect != nil {
 		nidx.rtr = rtred.New(nidx)
@@ -295,7 +296,7 @@ func (idx *index) clearCopy() *index {
 func (idx *index) rebuild() {
 	// initialize trees
 	if idx.less != nil {
-		idx.btr = btree.New(lessCtx(idx))
+		idx.btr = btreeNew(lessCtx(idx))
 	}
 	if idx.rect != nil {
 		idx.rtr = rtred.New(idx)
@@ -454,16 +455,23 @@ func (db *DB) SetConfig(config Config) error {
 // will be replaced with the new one, and return the previous item.
 func (db *DB) insertIntoDatabase(item *dbItem) *dbItem {
 	var pdbi *dbItem
+	// Generate a list of indexes that this item will be inserted in to.
+	idxs := db.insIdxs
+	for _, idx := range db.idxs {
+		if idx.match(item.key) {
+			idxs = append(idxs, idx)
+		}
+	}
 	prev := db.keys.Set(item)
 	if prev != nil {
 		// A previous item was removed from the keys tree. Let's
 		// fully delete this item from all indexes.
 		pdbi = prev.(*dbItem)
 		if pdbi.opts != nil && pdbi.opts.ex {
-			// Remove it from the exipres tree.
+			// Remove it from the expires tree.
 			db.exps.Delete(pdbi)
 		}
-		for _, idx := range db.idxs {
+		for _, idx := range idxs {
 			if idx.btr != nil {
 				// Remove it from the btree index.
 				idx.btr.Delete(pdbi)
@@ -479,10 +487,7 @@ func (db *DB) insertIntoDatabase(item *dbItem) *dbItem {
 		// expires tree
 		db.exps.Set(item)
 	}
-	for _, idx := range db.idxs {
-		if !idx.match(item.key) {
-			continue
-		}
+	for i, idx := range idxs {
 		if idx.btr != nil {
 			// Add new item to btree index.
 			idx.btr.Set(item)
@@ -491,7 +496,11 @@ func (db *DB) insertIntoDatabase(item *dbItem) *dbItem {
 			// Add new item to rtree index.
 			idx.rtr.Insert(item)
 		}
+		// clear the index
+		idxs[i] = nil
 	}
+	// reuse the index list slice
+	db.insIdxs = idxs[:0]
 	// we must return the previous item to the caller.
 	return pdbi
 }
@@ -512,6 +521,9 @@ func (db *DB) deleteFromDatabase(item *dbItem) *dbItem {
 			db.exps.Delete(pdbi)
 		}
 		for _, idx := range db.idxs {
+			if !idx.match(pdbi.key) {
+				continue
+			}
 			if idx.btr != nil {
 				// Remove it from the btree index.
 				idx.btr.Delete(pdbi)
@@ -908,8 +920,8 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) (n int64, err error) {
 			db.deleteFromDatabase(&dbItem{key: parts[1]})
 		} else if (parts[0][0] == 'f' || parts[0][0] == 'F') &&
 			strings.ToLower(parts[0]) == "flushdb" {
-			db.keys = btree.New(lessCtx(nil))
-			db.exps = btree.New(lessCtx(&exctx{db}))
+			db.keys = btreeNew(lessCtx(nil))
+			db.exps = btreeNew(lessCtx(&exctx{db}))
 			db.idxs = make(map[string]*index)
 		} else {
 			return totalSize, ErrInvalid
@@ -1054,8 +1066,8 @@ func (tx *Tx) DeleteAll() error {
 	}
 
 	// now reset the live database trees
-	tx.db.keys = btree.New(lessCtx(nil))
-	tx.db.exps = btree.New(lessCtx(&exctx{tx.db}))
+	tx.db.keys = btreeNew(lessCtx(nil))
+	tx.db.exps = btreeNew(lessCtx(&exctx{tx.db}))
 	tx.db.idxs = make(map[string]*index)
 
 	// finally re-create the indexes
@@ -2299,4 +2311,9 @@ func btreeDescendLessOrEqual(tr *btree.BTree, pivot interface{},
 	iter func(item interface{}) bool,
 ) {
 	tr.Descend(pivot, iter)
+}
+
+func btreeNew(less func(a, b interface{}) bool) *btree.BTree {
+	// Using NewNonConcurrent because we're managing our own locks.
+	return btree.NewNonConcurrent(less)
 }

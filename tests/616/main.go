@@ -33,12 +33,12 @@ func main() {
 		"The SCAN and ACTUAL values should reach about 1850 and stay\n" +
 			"roughly the same from there on.\n")
 	var mu sync.Mutex
-	objs := btree.New(func(a, b interface{}) bool {
+	objs := btree.NewNonConcurrent(func(a, b interface{}) bool {
 		ajson := a.(string)
 		bjson := b.(string)
 		return gjson.Get(ajson, "id").String() < gjson.Get(bjson, "id").String()
 	})
-	expires := btree.New(func(a, b interface{}) bool {
+	expires := btree.NewNonConcurrent(func(a, b interface{}) bool {
 		ajson := a.(string)
 		bjson := b.(string)
 		if gjson.Get(ajson, "properties.ex").Int() < gjson.Get(bjson, "properties.ex").Int() {
