@@ -170,17 +170,17 @@ github.com/tidwall/btree
 github.com/tidwall/buntdb
 # github.com/tidwall/cities v0.1.0
 github.com/tidwall/cities
-# github.com/tidwall/geoindex v1.4.3
+# github.com/tidwall/geoindex v1.4.4
 ## explicit
 github.com/tidwall/geoindex
 github.com/tidwall/geoindex/algo
 github.com/tidwall/geoindex/child
-# github.com/tidwall/geojson v1.2.7
+# github.com/tidwall/geojson v1.3.0
 ## explicit
 github.com/tidwall/geojson
 github.com/tidwall/geojson/geo
 github.com/tidwall/geojson/geometry
-# github.com/tidwall/gjson v1.8.0
+# github.com/tidwall/gjson v1.8.1
 ## explicit
 github.com/tidwall/gjson
 # github.com/tidwall/grect v0.1.2
@@ -190,7 +190,7 @@ github.com/tidwall/lotsa
 # github.com/tidwall/match v1.0.3
 ## explicit
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.1.0
+# github.com/tidwall/pretty v1.2.0
 ## explicit
 github.com/tidwall/pretty
 # github.com/tidwall/redbench v0.1.0
@@ -205,10 +205,10 @@ github.com/tidwall/resp
 # github.com/tidwall/rtred v0.1.2
 github.com/tidwall/rtred
 github.com/tidwall/rtred/base
-# github.com/tidwall/rtree v1.2.7
+# github.com/tidwall/rtree v1.3.1
 ## explicit
 github.com/tidwall/rtree
-# github.com/tidwall/sjson v1.1.6
+# github.com/tidwall/sjson v1.1.7
 ## explicit
 github.com/tidwall/sjson
 # github.com/tidwall/tinyqueue v0.1.1

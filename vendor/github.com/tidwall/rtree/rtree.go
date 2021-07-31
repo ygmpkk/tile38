@@ -5,6 +5,8 @@
 package rtree
 
 import (
+	"math"
+
 	"github.com/tidwall/geoindex/child"
 )
 
@@ -20,7 +22,7 @@ type rect struct {
 
 type node struct {
 	count int
-	rects [maxEntries + 1]rect
+	rects [maxEntries]rect
 }
 
 // RTree ...
@@ -50,74 +52,13 @@ func (r *rect) area() float64 {
 	return (r.max[0] - r.min[0]) * (r.max[1] - r.min[1])
 }
 
-func (r *rect) overlapArea(b *rect) float64 {
-	area := 1.0
-	var max, min float64
-	if r.max[0] < b.max[0] {
-		max = r.max[0]
-	} else {
-		max = b.max[0]
-	}
-	if r.min[0] > b.min[0] {
-		min = r.min[0]
-	} else {
-		min = b.min[0]
-	}
-	if max > min {
-		area *= max - min
-	} else {
-		return 0
-	}
-	if r.max[1] < b.max[1] {
-		max = r.max[1]
-	} else {
-		max = b.max[1]
-	}
-	if r.min[1] > b.min[1] {
-		min = r.min[1]
-	} else {
-		min = b.min[1]
-	}
-	if max > min {
-		area *= max - min
-	} else {
-		return 0
-	}
-	return area
+// unionedArea returns the area of two rects expanded
+func (r *rect) unionedArea(b *rect) float64 {
+	return (math.Max(r.max[0], b.max[0]) - math.Min(r.min[0], b.min[0])) *
+		(math.Max(r.max[1], b.max[1]) - math.Min(r.min[1], b.min[1]))
 }
 
-func (r *rect) enlargedArea(b *rect) float64 {
-	area := 1.0
-	if b.max[0] > r.max[0] {
-		if b.min[0] < r.min[0] {
-			area *= b.max[0] - b.min[0]
-		} else {
-			area *= b.max[0] - r.min[0]
-		}
-	} else {
-		if b.min[0] < r.min[0] {
-			area *= r.max[0] - b.min[0]
-		} else {
-			area *= r.max[0] - r.min[0]
-		}
-	}
-	if b.max[1] > r.max[1] {
-		if b.min[1] < r.min[1] {
-			area *= b.max[1] - b.min[1]
-		} else {
-			area *= b.max[1] - r.min[1]
-		}
-	} else {
-		if b.min[1] < r.min[1] {
-			area *= r.max[1] - b.min[1]
-		} else {
-			area *= r.max[1] - r.min[1]
-		}
-	}
-	return area
-}
-
-// Insert inserts an item into the RTree
+// Insert data into tree
 func (tr *RTree) Insert(min, max [2]float64, value interface{}) {
 	var item rect
 	fit(min, max, value, &item)
@@ -132,7 +73,7 @@ func (tr *RTree) insert(item *rect) {
 	if grown {
 		tr.root.expand(item)
 	}
-	if tr.root.data.(*node).count == maxEntries+1 {
+	if tr.root.data.(*node).count == maxEntries {
 		newRoot := new(node)
 		tr.root.splitLargestAxisEdgeSnap(&newRoot.rects[1])
 		newRoot.rects[0] = tr.root
@@ -144,46 +85,14 @@ func (tr *RTree) insert(item *rect) {
 	tr.count++
 }
 
-const inlineEnlargedArea = true
-
 func (r *rect) chooseLeastEnlargement(b *rect) (index int) {
 	n := r.data.(*node)
 	j, jenlargement, jarea := -1, 0.0, 0.0
 	for i := 0; i < n.count; i++ {
-		var earea float64
-		if inlineEnlargedArea {
-			earea = 1.0
-			if b.max[0] > n.rects[i].max[0] {
-				if b.min[0] < n.rects[i].min[0] {
-					earea *= b.max[0] - b.min[0]
-				} else {
-					earea *= b.max[0] - n.rects[i].min[0]
-				}
-			} else {
-				if b.min[0] < n.rects[i].min[0] {
-					earea *= n.rects[i].max[0] - b.min[0]
-				} else {
-					earea *= n.rects[i].max[0] - n.rects[i].min[0]
-				}
-			}
-			if b.max[1] > n.rects[i].max[1] {
-				if b.min[1] < n.rects[i].min[1] {
-					earea *= b.max[1] - b.min[1]
-				} else {
-					earea *= b.max[1] - n.rects[i].min[1]
-				}
-			} else {
-				if b.min[1] < n.rects[i].min[1] {
-					earea *= n.rects[i].max[1] - b.min[1]
-				} else {
-					earea *= n.rects[i].max[1] - n.rects[i].min[1]
-				}
-			}
-		} else {
-			earea = n.rects[i].enlargedArea(b)
-		}
+		// calculate the enlarged area
+		uarea := n.rects[i].unionedArea(b)
 		area := n.rects[i].area()
-		enlargement := earea - area
+		enlargement := uarea - area
 		if j == -1 || enlargement < jenlargement ||
 			(enlargement == jenlargement && area < jarea) {
 			j, jenlargement, jarea = i, enlargement, area
@@ -293,7 +202,7 @@ func (r *rect) insert(item *rect, height int) (grown bool) {
 		child.expand(item)
 		grown = !r.contains(item)
 	}
-	if child.data.(*node).count == maxEntries+1 {
+	if child.data.(*node).count == maxEntries {
 		child.splitLargestAxisEdgeSnap(&n.rects[n.count])
 		n.count++
 	}
@@ -394,15 +303,18 @@ func (tr *RTree) Scan(iter func(min, max [2]float64, data interface{}) bool) {
 
 // Delete data from tree
 func (tr *RTree) Delete(min, max [2]float64, data interface{}) {
+	tr.deleteWithResult(min, max, data)
+}
+func (tr *RTree) deleteWithResult(min, max [2]float64, data interface{}) bool {
 	var item rect
 	fit(min, max, data, &item)
 	if tr.root.data == nil || !tr.root.contains(&item) {
-		return
+		return false
 	}
 	var removed, recalced bool
 	removed, recalced = tr.root.delete(tr, &item, tr.height)
 	if !removed {
-		return
+		return false
 	}
 	tr.count -= len(tr.reinsert) + 1
 	if tr.count == 0 {
@@ -425,6 +337,7 @@ func (tr *RTree) Delete(min, max [2]float64, data interface{}) {
 		}
 		tr.reinsert = tr.reinsert[:0]
 	}
+	return true
 }
 
 func (r *rect) delete(tr *RTree, item *rect, height int,
@@ -553,12 +466,12 @@ func (tr *RTree) Children(
 }
 
 // Replace an item.
-// This is effectively just a Delete followed by an Insert. Which means the
-// new item will always be inserted, whether or not the old item was deleted.
+// If the old item does not exist then the new item is not inserted.
 func (tr *RTree) Replace(
 	oldMin, oldMax [2]float64, oldData interface{},
 	newMin, newMax [2]float64, newData interface{},
 ) {
-	tr.Delete(oldMin, oldMax, oldData)
-	tr.Insert(newMin, newMax, newData)
+	if tr.deleteWithResult(oldMin, oldMax, oldData) {
+		tr.Insert(newMin, newMax, newData)
+	}
 }
