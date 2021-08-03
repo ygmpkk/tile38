@@ -66,10 +66,10 @@ type Endpoint struct {
 		Host       string
 		Port       int
 		TopicName  string
-		SASL       bool
+		Auth       string
+		SSL        bool
 		SASLSHA256 bool
 		SASLSHA512 bool
-		TLS        bool
 		CACertFile string
 		CertFile   string
 		KeyFile    string
@@ -422,16 +422,16 @@ func parseEndpoint(s string) (Endpoint, error) {
 					continue
 				}
 				switch key {
-				case "tls":
-					endpoint.Kafka.TLS, _ = strconv.ParseBool(val[0])
+				case "auth":
+					endpoint.Kafka.Auth = val[0]
+				case "ssl":
+					endpoint.Kafka.SSL, _ = strconv.ParseBool(val[0])
 				case "cacert":
 					endpoint.Kafka.CACertFile = val[0]
 				case "cert":
 					endpoint.Kafka.CertFile = val[0]
 				case "key":
 					endpoint.Kafka.KeyFile = val[0]
-				case "sasl":
-					endpoint.Kafka.SASL, _ = strconv.ParseBool(val[0])
 				case "sha256":
 					endpoint.Kafka.SASLSHA256, _ = strconv.ParseBool(val[0])
 				case "sha512":
