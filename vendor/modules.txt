@@ -165,7 +165,7 @@ github.com/streadway/amqp
 # github.com/tidwall/btree v0.6.0
 ## explicit
 github.com/tidwall/btree
-# github.com/tidwall/buntdb v1.2.5
+# github.com/tidwall/buntdb v1.2.6
 ## explicit
 github.com/tidwall/buntdb
 # github.com/tidwall/cities v0.1.0

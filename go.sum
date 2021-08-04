@@ -412,8 +412,8 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/tidwall/btree v0.4.2/go.mod h1:huei1BkDWJ3/sLXmO+bsCNELL+Bp2Kks9OLyQFkzvA8=
 github.com/tidwall/btree v0.6.0 h1:JLYAFGV+1gjyFi3iQbO/fupBin+Ooh7dxqVV0twJ1Bo=
 github.com/tidwall/btree v0.6.0/go.mod h1:TzIRzen6yHbibdSfK6t8QimqbUnoxUSrZfeW7Uob0q4=
-github.com/tidwall/buntdb v1.2.5 h1:eRLLh0pJkoSu/6bALIzGH7VPxhFcrWNId6FSHgi8yfc=
-github.com/tidwall/buntdb v1.2.5/go.mod h1:zpXqlA5D2772I4cTqV3ifr2AZihDgi8FV7xAQu6edfc=
+github.com/tidwall/buntdb v1.2.6 h1:eS0QSmzHfCKjxxYGh8eH6wnK5VLsJ7UjyyIr29JmnEg=
+github.com/tidwall/buntdb v1.2.6/go.mod h1:zpXqlA5D2772I4cTqV3ifr2AZihDgi8FV7xAQu6edfc=
 github.com/tidwall/cities v0.1.0 h1:CVNkmMf7NEC9Bvokf5GoSsArHCKRMTgLuubRTHnH0mE=
 github.com/tidwall/cities v0.1.0/go.mod h1:lV/HDp2gCcRcHJWqgt6Di54GiDrTZwh1aG2ZUPNbqa4=
 github.com/tidwall/geoindex v1.4.3/go.mod h1:NQJQszWCH4+KlD0wY+mgQ2hK/GdSH+9+ZRknDY8bOHc=
