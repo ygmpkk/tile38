@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.2] = 2021-08-10
+### Fixed
+- #620: Fixed kafka authentication methods
+
+### Updated
+- Upgraded various dependencies
+
 ## [1.25.1] = 2021-07-22
 ### Fixed
 - #618: Fixed NEARBY with SPARSE returning too many results. (@nesjett)
