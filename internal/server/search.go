@@ -20,10 +20,9 @@ const defaultCircleSteps = 64
 
 type liveFenceSwitches struct {
 	searchScanBaseTokens
-	obj    geojson.Object
-	cmd    string
-	roam   roamSwitches
-	groups map[string]string
+	obj  geojson.Object
+	cmd  string
+	roam roamSwitches
 }
 
 type roamSwitches struct {

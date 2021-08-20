@@ -195,23 +195,16 @@ func fenceMatch(
 	}
 	sw.mu.Unlock()
 
-	if fence.groups == nil {
-		fence.groups = make(map[string]string)
-	}
-	groupkey := details.key + ":" + details.id
 	var group string
-	var ok bool
 	if detect == "enter" {
-		group = bsonID()
-		fence.groups[groupkey] = group
+		group = sw.s.groupConnect(hookName, details.key, details.id)
 	} else if detect == "cross" {
-		group = bsonID()
-		delete(fence.groups, groupkey)
+		sw.s.groupDisconnect(hookName, details.key, details.id)
+		group = sw.s.groupConnect(hookName, details.key, details.id)
 	} else {
-		group, ok = fence.groups[groupkey]
-		if !ok {
-			group = bsonID()
-			fence.groups[groupkey] = group
+		group = sw.s.groupGet(hookName, details.key, details.id)
+		if group == "" {
+			group = sw.s.groupConnect(hookName, details.key, details.id)
 		}
 	}
 	var msgs []string

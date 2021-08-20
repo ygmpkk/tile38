@@ -182,6 +182,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		prevHook.Close()
 		delete(s.hooks, name)
 		delete(s.hooksOut, name)
+		s.groupDisconnectHook(name)
 	}
 
 	d.updated = true
@@ -253,6 +254,8 @@ func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
 		// remove hook from maps
 		delete(s.hooks, hook.Name)
 		delete(s.hooksOut, hook.Name)
+		// remove any hook / object connections
+		s.groupDisconnectHook(hook.Name)
 		// remove hook from spatial index
 		if hook.Fence != nil && hook.Fence.obj != nil {
 			rect := hook.Fence.obj.Rect()
@@ -311,6 +314,8 @@ func (s *Server) cmdPDelHook(msg *Message, channel bool) (
 		// remove hook from maps
 		delete(s.hooks, hook.Name)
 		delete(s.hooksOut, hook.Name)
+		// remove any hook / object connections
+		s.groupDisconnectHook(hook.Name)
 		// remove hook from spatial index
 		if hook.Fence != nil && hook.Fence.obj != nil {
 			rect := hook.Fence.obj.Rect()

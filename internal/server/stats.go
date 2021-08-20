@@ -338,6 +338,10 @@ func (s *Server) extStats(m map[string]interface{}) {
 	m["tile38_num_collections"] = s.cols.Len()
 	// Number of hooks in the database
 	m["tile38_num_hooks"] = len(s.hooks)
+	// Number of hook groups in the database
+	m["tile38_num_hook_groups"] = s.groupHooks.Len()
+	// Number of object groups in the database
+	m["tile38_num_object_groups"] = s.groupObjects.Len()
 
 	avgsz := 0
 	if points != 0 {

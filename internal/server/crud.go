@@ -308,6 +308,7 @@ func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, er
 			found = true
 		}
 	}
+	server.groupDisconnectObject(d.key, d.id)
 	d.command = "del"
 	d.updated = found
 	d.timestamp = time.Now()
@@ -372,6 +373,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 			} else {
 				d.children[i] = dc
 			}
+			server.groupDisconnectObject(dc.key, dc.id)
 		}
 		if atLeastOneNotDeleted {
 			var nchildren []*commandDetails
@@ -423,6 +425,7 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, e
 		d.key = "" // ignore the details
 		d.updated = false
 	}
+	server.groupDisconnectCollection(d.key)
 	d.command = "drop"
 	d.timestamp = time.Now()
 	switch msg.OutputType {
@@ -503,10 +506,12 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		return
 	}
 	server.cols = btree.NewNonConcurrent(byCollectionKey)
+	server.groupHooks = btree.NewNonConcurrent(byGroupHook)
+	server.groupObjects = btree.NewNonConcurrent(byGroupObject)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
-	server.hookTree = rtree.RTree{}
-	server.hookCross = rtree.RTree{}
+	server.hookTree = &rtree.RTree{}
+	server.hookCross = &rtree.RTree{}
 	d.command = "flushdb"
 	d.updated = true
 	d.timestamp = time.Now()

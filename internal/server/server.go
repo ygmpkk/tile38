@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tidwall/btree"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/geojson"
@@ -37,8 +38,6 @@ import (
 	"github.com/tidwall/tile38/internal/endpoint"
 	"github.com/tidwall/tile38/internal/expire"
 	"github.com/tidwall/tile38/internal/log"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var errOOM = errors.New("OOM command not allowed when used memory > 'maxmemory'")
@@ -108,19 +107,22 @@ type Server struct {
 	qidx     uint64       // hook queue log last idx
 	cols     *btree.BTree // data collections
 
-	follows    map[*bytes.Buffer]bool
-	fcond      *sync.Cond
-	lstack     []*commandDetails
-	lives      map[*liveBuffer]bool
-	lcond      *sync.Cond
-	fcup       bool             // follow caught up
-	fcuponce   bool             // follow caught up once
-	shrinking  bool             // aof shrinking flag
-	shrinklog  [][]string       // aof shrinking log
-	hooks      map[string]*Hook // hook name
-	hookCross  rtree.RTree      // hook spatial tree for "cross" geofences
-	hookTree   rtree.RTree      // hook spatial tree for all
-	hooksOut   map[string]*Hook // hooks with "outside" detection
+	follows      map[*bytes.Buffer]bool
+	fcond        *sync.Cond
+	lstack       []*commandDetails
+	lives        map[*liveBuffer]bool
+	lcond        *sync.Cond
+	fcup         bool             // follow caught up
+	fcuponce     bool             // follow caught up once
+	shrinking    bool             // aof shrinking flag
+	shrinklog    [][]string       // aof shrinking log
+	hooks        map[string]*Hook // hook name
+	hookCross    *rtree.RTree     // hook spatial tree for "cross" geofences
+	hookTree     *rtree.RTree     // hook spatial tree for all
+	hooksOut     map[string]*Hook // hooks with "outside" detection
+	groupHooks   *btree.BTree     // hooks that are connected to objects
+	groupObjects *btree.BTree     // objects that are connected to hooks
+
 	aofconnM   map[net.Conn]io.Closer
 	luascripts *lScriptMap
 	luapool    *lStatePool
@@ -144,22 +146,27 @@ func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) 
 
 	// Initialize the server
 	server := &Server{
-		host:     host,
-		port:     port,
-		dir:      dir,
-		follows:  make(map[*bytes.Buffer]bool),
-		fcond:    sync.NewCond(&sync.Mutex{}),
-		lives:    make(map[*liveBuffer]bool),
-		lcond:    sync.NewCond(&sync.Mutex{}),
-		hooks:    make(map[string]*Hook),
-		hooksOut: make(map[string]*Hook),
-		aofconnM: make(map[net.Conn]io.Closer),
-		started:  time.Now(),
-		conns:    make(map[int]*Client),
-		http:     useHTTP,
-		pubsub:   newPubsub(),
-		monconns: make(map[net.Conn]bool),
-		cols:     btree.NewNonConcurrent(byCollectionKey),
+		host:      host,
+		port:      port,
+		dir:       dir,
+		follows:   make(map[*bytes.Buffer]bool),
+		fcond:     sync.NewCond(&sync.Mutex{}),
+		lives:     make(map[*liveBuffer]bool),
+		lcond:     sync.NewCond(&sync.Mutex{}),
+		hooks:     make(map[string]*Hook),
+		hooksOut:  make(map[string]*Hook),
+		hookCross: &rtree.RTree{},
+		hookTree:  &rtree.RTree{},
+		aofconnM:  make(map[net.Conn]io.Closer),
+		started:   time.Now(),
+		conns:     make(map[int]*Client),
+		http:      useHTTP,
+		pubsub:    newPubsub(),
+		monconns:  make(map[net.Conn]bool),
+		cols:      btree.NewNonConcurrent(byCollectionKey),
+
+		groupHooks:   btree.NewNonConcurrent(byGroupHook),
+		groupObjects: btree.NewNonConcurrent(byGroupObject),
 	}
 
 	server.hookex.Expired = func(item expire.Item) {
