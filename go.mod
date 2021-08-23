@@ -15,7 +15,7 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
-	github.com/tidwall/btree v0.6.0
+	github.com/tidwall/btree v0.6.1
 	github.com/tidwall/buntdb v1.2.6
 	github.com/tidwall/geoindex v1.4.4
 	github.com/tidwall/geojson v1.3.0
