@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.3] = 2021-08-23
+### Fixed
+- #621: Fixed a memory leak (@Morgiflute)
+
+### Updated
+- Update B-tree library
+- Upgrade to Go 1.17
+
+
 ## [1.25.2] = 2021-08-10
 ### Fixed
 - #620: Fixed kafka authentication methods
