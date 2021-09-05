@@ -40,10 +40,12 @@ func testcmd_WITHIN_test(mc *mockServer) error {
 		{"SET", "mykey", "poly8", "OBJECT", poly8}, {"OK"},
 
 		{"TEST", "GET", "mykey", "point1", "WITHIN", "OBJECT", poly}, {"1"},
+		{"TEST", "GET", "mykey", "point1", "WITHIN", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {"1"},
 		{"TEST", "GET", "mykey", "line3", "WITHIN", "OBJECT", poly}, {"1"},
 		{"TEST", "GET", "mykey", "poly4", "WITHIN", "OBJECT", poly}, {"1"},
 		{"TEST", "GET", "mykey", "multipoly5", "WITHIN", "OBJECT", poly}, {"1"},
 		{"TEST", "GET", "mykey", "poly8", "WITHIN", "OBJECT", poly}, {"1"},
+		{"TEST", "GET", "mykey", "poly8", "WITHIN", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {"1"},
 
 		{"TEST", "GET", "mykey", "point6", "WITHIN", "OBJECT", poly}, {"0"},
 		{"TEST", "GET", "mykey", "point7", "WITHIN", "OBJECT", poly}, {"0"},

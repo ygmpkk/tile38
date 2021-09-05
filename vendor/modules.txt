@@ -103,6 +103,9 @@ github.com/googleapis/gax-go/v2
 github.com/gorilla/websocket
 # github.com/hashicorp/go-uuid v1.0.2
 github.com/hashicorp/go-uuid
+# github.com/iwpnd/sectr v0.1.2
+## explicit
+github.com/iwpnd/sectr
 # github.com/jcmturner/gofork v1.0.0
 github.com/jcmturner/gofork/encoding/asn1
 github.com/jcmturner/gofork/x/crypto/pbkdf2
