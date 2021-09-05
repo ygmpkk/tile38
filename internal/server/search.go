@@ -216,67 +216,6 @@ func (server *Server) cmdSearchArgs(
 	switch ltyp {
 	case "point":
 		fallthrough
-	case "sector":
-		if s.clip {
-			err = errInvalidArgument("cannot clip with " + ltyp)
-			return
-		}
-		var slat, slon, smeters, sb1, sb2 string
-		if vs, slat, ok = tokenval(vs); !ok || slat == "" {
-			err = errInvalidNumberOfArguments
-			return
-		}
-		if vs, slon, ok = tokenval(vs); !ok || slon == "" {
-			err = errInvalidNumberOfArguments
-			return
-		}
-		if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
-			err = errInvalidNumberOfArguments
-			return
-		}
-		if vs, sb1, ok = tokenval(vs); !ok || sb1 == "" {
-			err = errInvalidNumberOfArguments
-			return
-		}
-		if vs, sb2, ok = tokenval(vs); !ok || sb2 == "" {
-			err = errInvalidNumberOfArguments
-			return
-		}
-		var lat, lon, meters, b1, b2 float64
-		if lat, err = strconv.ParseFloat(slat, 64); err != nil {
-			err = errInvalidArgument(slat)
-			return
-		}
-		if lon, err = strconv.ParseFloat(slon, 64); err != nil {
-			err = errInvalidArgument(slon)
-			return
-		}
-		if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
-			err = errInvalidArgument(smeters)
-			return
-		}
-		if b1, err = strconv.ParseFloat(sb1, 64); err != nil {
-			err = errInvalidArgument(sb1)
-			return
-		}
-		if b2, err = strconv.ParseFloat(sb2, 64); err != nil {
-			err = errInvalidArgument(sb2)
-			return
-		}
-
-		if b1 == b2 {
-			err = fmt.Errorf("equal bearings (%s == %s), use CIRCLE instead", sb1, sb2)
-			return
-		}
-
-		origin := sectr.Point{Lng: lon, Lat: lat}
-		sector := sectr.NewSector(origin, meters, b1, b2)
-
-		s.obj, err = geojson.Parse(string(sector.JSON()), &server.geomParseOpts)
-		if err != nil {
-			return
-		}
-
 	case "circle":
 		if s.clip {
 			err = errInvalidArgument("cannot clip with " + ltyp)
@@ -340,6 +279,66 @@ func (server *Server) cmdSearchArgs(
 			return
 		}
 		s.obj, err = geojson.Parse(obj, &server.geomParseOpts)
+		if err != nil {
+			return
+		}
+	case "sector":
+		if s.clip {
+			err = errInvalidArgument("cannot clip with " + ltyp)
+			return
+		}
+		var slat, slon, smeters, sb1, sb2 string
+		if vs, slat, ok = tokenval(vs); !ok || slat == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, slon, ok = tokenval(vs); !ok || slon == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, sb1, ok = tokenval(vs); !ok || sb1 == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, sb2, ok = tokenval(vs); !ok || sb2 == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		var lat, lon, meters, b1, b2 float64
+		if lat, err = strconv.ParseFloat(slat, 64); err != nil {
+			err = errInvalidArgument(slat)
+			return
+		}
+		if lon, err = strconv.ParseFloat(slon, 64); err != nil {
+			err = errInvalidArgument(slon)
+			return
+		}
+		if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
+			err = errInvalidArgument(smeters)
+			return
+		}
+		if b1, err = strconv.ParseFloat(sb1, 64); err != nil {
+			err = errInvalidArgument(sb1)
+			return
+		}
+		if b2, err = strconv.ParseFloat(sb2, 64); err != nil {
+			err = errInvalidArgument(sb2)
+			return
+		}
+
+		if b1 == b2 {
+			err = fmt.Errorf("equal bearings (%s == %s), use CIRCLE instead", sb1, sb2)
+			return
+		}
+
+		origin := sectr.Point{Lng: lon, Lat: lat}
+		sector := sectr.NewSector(origin, meters, b1, b2)
+
+		s.obj, err = geojson.Parse(string(sector.JSON()), &server.geomParseOpts)
 		if err != nil {
 			return
 		}
@@ -442,8 +441,7 @@ func (server *Server) cmdSearchArgs(
 
 var nearbyTypes = []string{"point"}
 var withinOrIntersectsTypes = []string{
-	"geo", "bounds", "hash", "tile", "quadkey", "get", "object", "circle", "sector",
-}
+	"geo", "bounds", "hash", "tile", "quadkey", "get", "object", "circle", "sector"}
 
 func (server *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
