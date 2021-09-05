@@ -19,7 +19,9 @@ func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "KNN_CURSOR", keys_KNN_cursor_test)
 	runStep(t, mc, "NEARBY_SPARSE", keys_NEARBY_SPARSE_test)
 	runStep(t, mc, "WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
+	runStep(t, mc, "WITHIN_SECTOR", keys_WITHIN_SECTOR_test)
 	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
+	runStep(t, mc, "INTERSECTS_SECTOR", keys_INTERSECTS_SECTOR_test)
 	runStep(t, mc, "WITHIN", keys_WITHIN_test)
 	runStep(t, mc, "WITHIN_CURSOR", keys_WITHIN_CURSOR_test)
 	runStep(t, mc, "WITHIN_CLIPBY", keys_WITHIN_CLIPBY_test)
@@ -131,7 +133,6 @@ func keys_WITHIN_test(mc *mockServer) error {
 		{"SET", "mykey", "point6", "POINT", -5, 5}, {"OK"},
 		{"SET", "mykey", "point7", "POINT", 33, 21}, {"OK"},
 		{"SET", "mykey", "poly8", "OBJECT", `{"type":"Polygon","coordinates":[[[-122.4408378,37.7341129],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.7341129],[-122.4408378,37.7341129]],[[-122.44060993194579,37.73345766902749],[-122.44044363498686,37.73345766902749],[-122.44044363498686,37.73355524732416],[-122.44060993194579,37.73355524732416],[-122.44060993194579,37.73345766902749]],[[-122.44060724973677,37.7336888869566],[-122.4402102828026,37.7336888869566],[-122.4402102828026,37.7339752567853],[-122.44060724973677,37.7339752567853],[-122.44060724973677,37.7336888869566]]]}`}, {"OK"},
-		{"WITHIN", "mykey", "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {"[0 [point1 point2 line3 poly4 multipoly5 poly8]]"},
 		{"WITHIN", "mykey", "IDS", "OBJECT",
 			`{
 				"type": "Polygon",
@@ -145,6 +146,8 @@ func keys_WITHIN_test(mc *mockServer) error {
 					]
 				]
 			}`}, {"[0 [point1 point2 line3 poly4 multipoly5 poly8]]"},
+		{"WITHIN", "mykey", "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {"[0 [point1 point2 line3 poly4 multipoly5 poly8]]"},
+		{"WITHIN", "mykey", "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "0"}, {"ERR equal bearings (0 == 0), use CIRCLE instead"},
 
 		{"SET", "key2", "poly9", "OBJECT", `{"type":"Polygon","coordinates":[[[-122.44037926197052,37.73313523548048],[-122.44017541408539,37.73313523548048],[-122.44017541408539,37.73336857568778],[-122.44037926197052,37.73336857568778],[-122.44037926197052,37.73313523548048]]]}`}, {"OK"},
 		{"SET", "key2", "poly10", "OBJECT", `{"type":"Polygon","coordinates":[[[-122.44040071964262,37.73359343010089],[-122.4402666091919,37.73359343010089],[-122.4402666091919,37.73373767596864],[-122.44040071964262,37.73373767596864],[-122.44040071964262,37.73359343010089]]]}`}, {"OK"},
@@ -203,6 +206,8 @@ func keys_WITHIN_CURSOR_test(mc *mockServer) error {
 		{"WITHIN", "mykey", "CURSOR", 3, "LIMIT", 1, "WHERE", "foo", 8, 9, "IDS", "OBJECT", testArea}, {
 			"[6 [poly8]]"},
 		{"WITHIN", "mykey", "CURSOR", 6, "LIMIT", 1, "WHERE", "foo", 8, 9, "IDS", "OBJECT", testArea}, {
+			"[7 [point9]]"},
+		{"WITHIN", "mykey", "CURSOR", 6, "LIMIT", 1, "WHERE", "foo", 8, 9, "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {
 			"[7 [point9]]"},
 	})
 }
@@ -274,6 +279,8 @@ func keys_INTERSECTS_test(mc *mockServer) error {
 					]
 				]
 			}`}, {"[0 [point1 point2 line3 poly4 multipoly5 poly8]]"},
+		{"INTERSECTS", "mykey", "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {"[0 [point1 point2 line3 poly4 multipoly5 poly8]]"},
+		{"INTERSECTS", "mykey", "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "0"}, {"ERR equal bearings (0 == 0), use CIRCLE instead"},
 
 		{"SET", "key2", "poly9", "OBJECT", `{"type": "Polygon","coordinates": [[[-122.44037926197052,37.73313523548048],[-122.44017541408539,37.73313523548048],[-122.44017541408539,37.73336857568778],[-122.44037926197052,37.73336857568778],[-122.44037926197052,37.73313523548048]]]}`}, {"OK"},
 		{"SET", "key2", "poly10", "OBJECT", `{"type": "Polygon","coordinates": [[[-122.44040071964262,37.73359343010089],[-122.4402666091919,37.73359343010089],[-122.4402666091919,37.73373767596864],[-122.44040071964262,37.73373767596864],[-122.44040071964262,37.73359343010089]]]}`}, {"OK"},
@@ -380,6 +387,8 @@ func keys_INTERSECTS_CURSOR_test(mc *mockServer) error {
 			"[6 [poly8]]"},
 		{"INTERSECTS", "mykey", "CURSOR", 6, "LIMIT", 1, "WHERE", "foo", 8, 9, "IDS", "OBJECT", testArea}, {
 			"[7 [point9]]"},
+		{"INTERSECTS", "mykey", "CURSOR", 6, "LIMIT", 1, "WHERE", "foo", 8, 9, "IDS", "SECTOR", "37.72999", "-122.44760", "1000", "0", "90"}, {
+			"[7 [point9]]"},
 	})
 }
 
@@ -395,6 +404,22 @@ func keys_WITHIN_CIRCLE_test(mc *mockServer) error {
 		{"WITHIN", "mykey", "IDS", "CIRCLE", 37.7335, -122.4412, 1000}, {
 			"[0 [1 2 3 4 5]]"},
 		{"WITHIN", "mykey", "IDS", "CIRCLE", 37.7335, -122.4412, 10}, {
+			"[0 [1 2]]"},
+	})
+}
+
+func keys_WITHIN_SECTOR_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "1", "POINT", 37.7324, -122.4424}, {"OK"},
+		{"SET", "mykey", "2", "POINT", 37.73241, -122.44241}, {"OK"},
+		{"SET", "mykey", "3", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
+		{"SET", "mykey", "4", "OBJECT", `{"type":"Polygon","coordinates":[[[-122.4408378,37.7341129],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.7341129],[-122.4408378,37.7341129]]]}`}, {"OK"},
+		{"SET", "mykey", "5", "OBJECT", `{"type":"MultiPolygon","coordinates":[[[[-122.4408378,37.7341129],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.7341129],[-122.4408378,37.7341129]]]]}`}, {"OK"},
+		{"SET", "mykey", "6", "POINT", -5, 5}, {"OK"},
+		{"SET", "mykey", "7", "POINT", 33, 21}, {"OK"},
+		{"WITHIN", "mykey", "IDS", "SECTOR", 37.731930, -122.443270, 1000, 0, 90}, {
+			"[0 [1 2 3 4 5]]"},
+		{"WITHIN", "mykey", "IDS", "SECTOR", 37.731930, -122.443270, 100, 0, 90}, {
 			"[0 [1 2]]"},
 	})
 }
@@ -494,6 +519,22 @@ func keys_INTERSECTS_CIRCLE_test(mc *mockServer) error {
 		{"INTERSECTS", "mykey", "IDS", "CIRCLE", 37.7335, -122.4412, 70}, {
 			"[0 [1 2 3 4 5]]"},
 		{"INTERSECTS", "mykey", "IDS", "CIRCLE", 37.7335, -122.4412, 10}, {
+			"[0 [1 2]]"},
+	})
+}
+
+func keys_INTERSECTS_SECTOR_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"SET", "mykey", "1", "POINT", 37.7324, -122.4424}, {"OK"},
+		{"SET", "mykey", "2", "POINT", 37.73241, -122.44241}, {"OK"},
+		{"SET", "mykey", "3", "OBJECT", `{"type":"LineString","coordinates":[[-122.4408378,37.7341129],[-122.4408378,37.733]]}`}, {"OK"},
+		{"SET", "mykey", "4", "OBJECT", `{"type":"Polygon","coordinates":[[[-122.4408378,37.7341129],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.7341129],[-122.4408378,37.7341129]]]}`}, {"OK"},
+		{"SET", "mykey", "5", "OBJECT", `{"type":"MultiPolygon","coordinates":[[[[-122.4408378,37.7341129],[-122.4408378,37.733],[-122.44,37.733],[-122.44,37.7341129],[-122.4408378,37.7341129]]]]}`}, {"OK"},
+		{"SET", "mykey", "6", "POINT", -5, 5}, {"OK"},
+		{"SET", "mykey", "7", "POINT", 33, 21}, {"OK"},
+		{"INTERSECTS", "mykey", "IDS", "SECTOR", 37.731930, -122.443270, 1000, 0, 90}, {
+			"[0 [1 2 3 4 5]]"},
+		{"INTERSECTS", "mykey", "IDS", "SECTOR", 37.731930, -122.443270, 100, 0, 90}, {
 			"[0 [1 2]]"},
 	})
 }
