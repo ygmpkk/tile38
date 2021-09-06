@@ -134,21 +134,29 @@ type Server struct {
 	monconns   map[net.Conn]bool // monitor connections
 }
 
+type Options struct {
+	Host        string
+	Port        int
+	Dir         string
+	UseHTTP     bool
+	MetricsAddr string
+}
+
 // Serve starts a new tile38 server
-func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) error {
+func Serve(opts Options) error {
 	if core.AppendFileName == "" {
-		core.AppendFileName = path.Join(dir, "appendonly.aof")
+		core.AppendFileName = path.Join(opts.Dir, "appendonly.aof")
 	}
 	if core.QueueFileName == "" {
-		core.QueueFileName = path.Join(dir, "queue.db")
+		core.QueueFileName = path.Join(opts.Dir, "queue.db")
 	}
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 
 	// Initialize the server
 	server := &Server{
-		host:      host,
-		port:      port,
-		dir:       dir,
+		host:      opts.Host,
+		port:      opts.Port,
+		dir:       opts.Dir,
 		follows:   make(map[*bytes.Buffer]bool),
 		fcond:     sync.NewCond(&sync.Mutex{}),
 		lives:     make(map[*liveBuffer]bool),
@@ -160,7 +168,7 @@ func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) 
 		aofconnM:  make(map[net.Conn]io.Closer),
 		started:   time.Now(),
 		conns:     make(map[int]*Client),
-		http:      useHTTP,
+		http:      opts.UseHTTP,
 		pubsub:    newPubsub(),
 		monconns:  make(map[net.Conn]bool),
 		cols:      btree.NewNonConcurrent(byCollectionKey),
@@ -180,11 +188,11 @@ func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) 
 	server.luapool = server.newPool()
 	defer server.luapool.Shutdown()
 
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(opts.Dir, 0700); err != nil {
 		return err
 	}
 	var err error
-	server.config, err = loadConfig(filepath.Join(dir, "config"))
+	server.config, err = loadConfig(filepath.Join(opts.Dir, "config"))
 	if err != nil {
 		return err
 	}
@@ -290,12 +298,12 @@ func Serve(host string, port int, dir string, useHTTP bool, metricsAddr string) 
 			server.followc.get())
 	}
 
-	if metricsAddr != "" {
-		log.Infof("Listening for metrics at: %s", metricsAddr)
+	if opts.MetricsAddr != "" {
+		log.Infof("Listening for metrics at: %s", opts.MetricsAddr)
 		go func() {
 			http.HandleFunc("/", server.MetricsIndexHandler)
 			http.HandleFunc("/metrics", server.MetricsHandler)
-			log.Fatal(http.ListenAndServe(metricsAddr, nil))
+			log.Fatal(http.ListenAndServe(opts.MetricsAddr, nil))
 		}()
 	}
 
