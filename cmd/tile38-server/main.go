@@ -419,7 +419,14 @@ Developer Options:
 	if showThreadsDisabled {
 		log.Warnf("thread flag is deprecated use GOMAXPROCS to set number of threads instead")
 	}
-	if err := server.Serve(host, port, dir, httpTransport, *metricsAddr); err != nil {
+	opts := server.Options{
+		Host:        host,
+		Port:        port,
+		Dir:         dir,
+		UseHTTP:     httpTransport,
+		MetricsAddr: *metricsAddr,
+	}
+	if err := server.Serve(opts); err != nil {
 		log.Fatal(err)
 	}
 }
