@@ -72,6 +72,7 @@ type commandDetails struct {
 // Server is a tile38 controller
 type Server struct {
 	// static values
+	unix    string
 	host    string
 	port    int
 	http    bool
@@ -134,12 +135,14 @@ type Server struct {
 	monconns   map[net.Conn]bool // monitor connections
 }
 
+// Options for Serve()
 type Options struct {
-	Host        string
-	Port        int
-	Dir         string
-	UseHTTP     bool
-	MetricsAddr string
+	Host           string
+	Port           int
+	Dir            string
+	UseHTTP        bool
+	MetricsAddr    string
+	UnixSocketPath string // path for unix socket
 }
 
 // Serve starts a new tile38 server
@@ -154,6 +157,7 @@ func Serve(opts Options) error {
 
 	// Initialize the server
 	server := &Server{
+		unix:      opts.UnixSocketPath,
 		host:      opts.Host,
 		port:      opts.Port,
 		dir:       opts.Dir,
@@ -343,7 +347,15 @@ func (server *Server) isProtected() bool {
 }
 
 func (server *Server) netServe() error {
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", server.host, server.port))
+	var ln net.Listener
+	var err error
+	if server.unix != "" {
+		os.RemoveAll(server.unix)
+		ln, err = net.Listen("unix", server.unix)
+	} else {
+		tcpAddr := fmt.Sprintf("%s:%d", server.host, server.port)
+		ln, err = net.Listen("tcp", tcpAddr)
+	}
 	if err != nil {
 		return err
 	}
