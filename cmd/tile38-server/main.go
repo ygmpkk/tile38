@@ -75,6 +75,7 @@ Basic Options:
   -h hostname : listening host
   -p port     : listening port (default: 9851)
   -d path     : data directory (default: data)
+  -s socket   : listen on unix socket file
   -q          : no logging. totally silent output
   -v          : enable verbose logging
   -vv         : enable very verbose logging
