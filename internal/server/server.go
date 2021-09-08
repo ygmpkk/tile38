@@ -965,7 +965,11 @@ func (server *Server) handleInputCommand(client *Client, msg *Message) error {
 				}
 			}()
 		}
-		return server.command(msg, client)
+		res, d, err = server.command(msg, client)
+		if msg.Deadline != nil {
+			msg.Deadline.Check()
+		}
+		return res, d, err
 	}()
 	if res.Type() == resp.Error {
 		return writeErr(res.String())
