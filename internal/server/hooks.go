@@ -411,12 +411,20 @@ func (s *Server) cmdHooks(msg *Message, channel bool) (
 			buf.WriteString(`"hooks":[`)
 		}
 		for i, hook := range hooks {
+			var ttl = -1
+			if !hook.expires.IsZero() {
+				ttl = int(hook.expires.Sub(start).Seconds())
+				if ttl < 0 {
+					ttl = 0
+				}
+			}
 			if i > 0 {
 				buf.WriteByte(',')
 			}
 			buf.WriteString(`{`)
 			buf.WriteString(`"name":` + jsonString(hook.Name))
 			buf.WriteString(`,"key":` + jsonString(hook.Key))
+			buf.WriteString(`,"ttl":` + strconv.Itoa(ttl))
 			if !channel {
 				buf.WriteString(`,"endpoints":[`)
 				for i, endpoint := range hook.Endpoints {
