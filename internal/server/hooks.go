@@ -170,7 +170,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 			// for good measure.
 			prevHook.Signal()
 			if !hook.expires.IsZero() {
-				s.hookex.Push(hook)
+				s.hookExpires.Set(hook)
 			}
 			switch msg.OutputType {
 			case JSON:
@@ -182,6 +182,9 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		prevHook.Close()
 		delete(s.hooks, name)
 		delete(s.hooksOut, name)
+		if !prevHook.expires.IsZero() {
+			s.hookExpires.Delete(prevHook)
+		}
 		s.groupDisconnectHook(name)
 	}
 
@@ -224,7 +227,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 
 	hook.Open() // Opens a goroutine to notify the hook
 	if !hook.expires.IsZero() {
-		s.hookex.Push(hook)
+		s.hookExpires.Set(hook)
 	}
 	switch msg.OutputType {
 	case JSON:
@@ -233,6 +236,18 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		return resp.IntegerValue(1), d, nil
 	}
 	return NOMessage, d, nil
+}
+
+func byHookExpires(a, b interface{}) bool {
+	ha := a.(*Hook)
+	hb := b.(*Hook)
+	if ha.expires.Before(hb.expires) {
+		return true
+	}
+	if ha.expires.After(hb.expires) {
+		return false
+	}
+	return ha.Name < hb.Name
 }
 
 func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
@@ -254,6 +269,9 @@ func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
 		// remove hook from maps
 		delete(s.hooks, hook.Name)
 		delete(s.hooksOut, hook.Name)
+		if !hook.expires.IsZero() {
+			s.hookExpires.Delete(hook)
+		}
 		// remove any hook / object connections
 		s.groupDisconnectHook(hook.Name)
 		// remove hook from spatial index
@@ -314,6 +332,9 @@ func (s *Server) cmdPDelHook(msg *Message, channel bool) (
 		// remove hook from maps
 		delete(s.hooks, hook.Name)
 		delete(s.hooksOut, hook.Name)
+		if !hook.expires.IsZero() {
+			s.hookExpires.Delete(hook)
+		}
 		// remove any hook / object connections
 		s.groupDisconnectHook(hook.Name)
 		// remove hook from spatial index
@@ -342,35 +363,6 @@ func (s *Server) cmdPDelHook(msg *Message, channel bool) (
 		return resp.IntegerValue(count), d, nil
 	}
 	return
-}
-
-// possiblyExpireHook will evaluate a hook by it's name for expiration and
-// purge it from the database if needed. This operation is called from an
-// independent goroutine
-func (s *Server) possiblyExpireHook(name string) {
-	s.mu.Lock()
-	if h, ok := s.hooks[name]; ok {
-		if !h.expires.IsZero() && time.Now().After(h.expires) {
-			// purge from database
-			msg := &Message{}
-			if h.channel {
-				msg.Args = []string{"delchan", h.Name}
-			} else {
-				msg.Args = []string{"delhook", h.Name}
-			}
-			_, d, err := s.cmdDelHook(msg, h.channel)
-			if err != nil {
-				s.mu.Unlock()
-				panic(err)
-			}
-			if err := s.writeAOF(msg.Args, &d); err != nil {
-				s.mu.Unlock()
-				panic(err)
-			}
-			log.Debugf("purged hook %v", h.Name)
-		}
-	}
-	s.mu.Unlock()
 }
 
 func (s *Server) cmdHooks(msg *Message, channel bool) (

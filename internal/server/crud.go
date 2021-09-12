@@ -508,6 +508,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 	server.cols = btree.NewNonConcurrent(byCollectionKey)
 	server.groupHooks = btree.NewNonConcurrent(byGroupHook)
 	server.groupObjects = btree.NewNonConcurrent(byGroupObject)
+	server.hookExpires = btree.NewNonConcurrent(byHookExpires)
 	server.hooks = make(map[string]*Hook)
 	server.hooksOut = make(map[string]*Hook)
 	server.hookTree = &rtree.RTree{}
