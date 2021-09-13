@@ -441,7 +441,8 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, e
 	return
 }
 
-func (server *Server) cmdRename(msg *Message, nx bool) (res resp.Value, d commandDetails, err error) {
+func (server *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err error) {
+	nx := msg.Command() == "renamenx"
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool

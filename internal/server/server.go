@@ -1036,25 +1036,25 @@ func (server *Server) command(msg *Message, client *Client) (
 	case "flushdb":
 		res, d, err = server.cmdFlushDB(msg)
 	case "rename":
-		res, d, err = server.cmdRename(msg, false)
+		res, d, err = server.cmdRename(msg)
 	case "renamenx":
-		res, d, err = server.cmdRename(msg, true)
+		res, d, err = server.cmdRename(msg)
 	case "sethook":
-		res, d, err = server.cmdSetHook(msg, false)
+		res, d, err = server.cmdSetHook(msg)
 	case "delhook":
-		res, d, err = server.cmdDelHook(msg, false)
+		res, d, err = server.cmdDelHook(msg)
 	case "pdelhook":
-		res, d, err = server.cmdPDelHook(msg, false)
+		res, d, err = server.cmdPDelHook(msg)
 	case "hooks":
-		res, err = server.cmdHooks(msg, false)
+		res, err = server.cmdHooks(msg)
 	case "setchan":
-		res, d, err = server.cmdSetHook(msg, true)
+		res, d, err = server.cmdSetHook(msg)
 	case "delchan":
-		res, d, err = server.cmdDelHook(msg, true)
+		res, d, err = server.cmdDelHook(msg)
 	case "pdelchan":
-		res, d, err = server.cmdPDelHook(msg, true)
+		res, d, err = server.cmdPDelHook(msg)
 	case "chans":
-		res, err = server.cmdHooks(msg, true)
+		res, err = server.cmdHooks(msg)
 	case "expire":
 		res, d, err = server.cmdExpire(msg)
 	case "persist":
