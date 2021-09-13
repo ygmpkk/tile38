@@ -73,7 +73,7 @@ func (s *Server) backgroundExpireHooks(now time.Time) {
 	})
 
 	for _, msg := range msgs {
-		_, d, err := s.cmdDelHook(msg, msg.Args[0] == "delchan")
+		_, d, err := s.cmdDelHook(msg)
 		if err != nil {
 			log.Fatal(err)
 		}

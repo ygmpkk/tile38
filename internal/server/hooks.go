@@ -26,9 +26,10 @@ func byHookName(a, b interface{}) bool {
 	return a.(*Hook).Name < b.(*Hook).Name
 }
 
-func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
+func (s *Server) cmdSetHook(msg *Message) (
 	res resp.Value, d commandDetails, err error,
 ) {
+	channel := msg.Command() == "setchan"
 	start := time.Now()
 	vs := msg.Args[1:]
 	var name, urls, cmd string
@@ -37,7 +38,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		return NOMessage, d, errInvalidNumberOfArguments
 	}
 	var endpoints []string
-	if chanCmd {
+	if channel {
 		endpoints = []string{"local://" + name}
 	} else {
 		if vs, urls, ok = tokenval(vs); !ok || urls == "" {
@@ -129,7 +130,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		Message:   cmsg,
 		epm:       s.epc,
 		Metas:     metas,
-		channel:   chanCmd,
+		channel:   channel,
 		cond:      sync.NewCond(&sync.Mutex{}),
 		counter:   &s.statsTotalMsgsSent,
 	}
@@ -137,7 +138,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 		hook.expires =
 			time.Now().Add(time.Duration(expires * float64(time.Second)))
 	}
-	if !chanCmd {
+	if !channel {
 		hook.db = s.qdb
 	}
 	var wr bytes.Buffer
@@ -151,7 +152,7 @@ func (s *Server) cmdSetHook(msg *Message, chanCmd bool) (
 	}
 	prevHook, _ := s.hooks.Get(&Hook{Name: name}).(*Hook)
 	if prevHook != nil {
-		if prevHook.channel != chanCmd {
+		if prevHook.channel != channel {
 			return NOMessage, d,
 				errors.New("hooks and channels cannot share the same name")
 		}
@@ -240,9 +241,10 @@ func byHookExpires(a, b interface{}) bool {
 	return ha.Name < hb.Name
 }
 
-func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
+func (s *Server) cmdDelHook(msg *Message) (
 	res resp.Value, d commandDetails, err error,
 ) {
+	channel := msg.Command() == "delchan"
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -255,7 +257,7 @@ func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
 		return NOMessage, d, errInvalidNumberOfArguments
 	}
 	hook, _ := s.hooks.Get(&Hook{Name: name}).(*Hook)
-	if hook != nil && hook.channel == chanCmd {
+	if hook != nil && hook.channel == channel {
 		hook.Close()
 		// remove hook from maps
 		s.hooks.Delete(hook)
@@ -295,9 +297,10 @@ func (s *Server) cmdDelHook(msg *Message, chanCmd bool) (
 	return
 }
 
-func (s *Server) cmdPDelHook(msg *Message, channel bool) (
+func (s *Server) cmdPDelHook(msg *Message) (
 	res resp.Value, d commandDetails, err error,
 ) {
+	channel := msg.Command() == "pdelchan"
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -378,9 +381,10 @@ func (s *Server) forEachHookByPattern(
 	})
 }
 
-func (s *Server) cmdHooks(msg *Message, channel bool) (
+func (s *Server) cmdHooks(msg *Message) (
 	res resp.Value, err error,
 ) {
+	channel := msg.Command() == "chans"
 	start := time.Now()
 	vs := msg.Args[1:]
 
