@@ -157,7 +157,7 @@ func (s *Server) basicStats(m map[string]interface{}) {
 	m["pid"] = os.Getpid()
 	m["aof_size"] = s.aofsz
 	m["num_collections"] = s.cols.Len()
-	m["num_hooks"] = len(s.hooks)
+	m["num_hooks"] = s.hooks.Len()
 	sz := 0
 	s.cols.Ascend(nil, func(v interface{}) bool {
 		col := v.(*collectionKeyContainer).col
@@ -337,7 +337,7 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Number of collections in the database
 	m["tile38_num_collections"] = s.cols.Len()
 	// Number of hooks in the database
-	m["tile38_num_hooks"] = len(s.hooks)
+	m["tile38_num_hooks"] = s.hooks.Len()
 	// Number of hook groups in the database
 	m["tile38_num_hook_groups"] = s.groupHooks.Len()
 	// Number of object groups in the database

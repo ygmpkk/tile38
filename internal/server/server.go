@@ -112,17 +112,17 @@ type Server struct {
 	lstack       []*commandDetails
 	lives        map[*liveBuffer]bool
 	lcond        *sync.Cond
-	fcup         bool             // follow caught up
-	fcuponce     bool             // follow caught up once
-	shrinking    bool             // aof shrinking flag
-	shrinklog    [][]string       // aof shrinking log
-	hooks        map[string]*Hook // hook name
-	hookCross    *rtree.RTree     // hook spatial tree for "cross" geofences
-	hookTree     *rtree.RTree     // hook spatial tree for all
-	hooksOut     map[string]*Hook // hooks with "outside" detection
-	groupHooks   *btree.BTree     // hooks that are connected to objects
-	groupObjects *btree.BTree     // objects that are connected to hooks
-	hookExpires  *btree.BTree     // queue of all hooks marked for expiration
+	fcup         bool         // follow caught up
+	fcuponce     bool         // follow caught up once
+	shrinking    bool         // aof shrinking flag
+	shrinklog    [][]string   // aof shrinking log
+	hooks        *btree.BTree // hook name -- [string]*Hook
+	hookCross    *rtree.RTree // hook spatial tree for "cross" geofences
+	hookTree     *rtree.RTree // hook spatial tree for all
+	hooksOut     *btree.BTree // hooks with "outside" detection -- [string]*Hook
+	groupHooks   *btree.BTree // hooks that are connected to objects
+	groupObjects *btree.BTree // objects that are connected to hooks
+	hookExpires  *btree.BTree // queue of all hooks marked for expiration
 
 	aofconnM   map[net.Conn]io.Closer
 	luascripts *lScriptMap
@@ -164,8 +164,8 @@ func Serve(opts Options) error {
 		fcond:     sync.NewCond(&sync.Mutex{}),
 		lives:     make(map[*liveBuffer]bool),
 		lcond:     sync.NewCond(&sync.Mutex{}),
-		hooks:     make(map[string]*Hook),
-		hooksOut:  make(map[string]*Hook),
+		hooks:     btree.NewNonConcurrent(byHookName),
+		hooksOut:  btree.NewNonConcurrent(byHookName),
 		hookCross: &rtree.RTree{},
 		hookTree:  &rtree.RTree{},
 		aofconnM:  make(map[net.Conn]io.Closer),

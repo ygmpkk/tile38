@@ -462,12 +462,14 @@ func (server *Server) cmdRename(msg *Message, nx bool) (res resp.Value, d comman
 		err = errKeyNotFound
 		return
 	}
-	for _, h := range server.hooks {
+	server.hooks.Ascend(nil, func(v interface{}) bool {
+		h := v.(*Hook)
 		if h.Key == d.key || h.Key == d.newKey {
 			err = errKeyHasHooksSet
-			return
+			return false
 		}
-	}
+		return true
+	})
 	d.command = "rename"
 	newCol := server.getCol(d.newKey)
 	if newCol == nil {
@@ -505,14 +507,17 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 		err = errInvalidNumberOfArguments
 		return
 	}
+
+	// clear the entire database
 	server.cols = btree.NewNonConcurrent(byCollectionKey)
 	server.groupHooks = btree.NewNonConcurrent(byGroupHook)
 	server.groupObjects = btree.NewNonConcurrent(byGroupObject)
 	server.hookExpires = btree.NewNonConcurrent(byHookExpires)
-	server.hooks = make(map[string]*Hook)
-	server.hooksOut = make(map[string]*Hook)
+	server.hooks = btree.NewNonConcurrent(byHookName)
+	server.hooksOut = btree.NewNonConcurrent(byHookName)
 	server.hookTree = &rtree.RTree{}
 	server.hookCross = &rtree.RTree{}
+
 	d.command = "flushdb"
 	d.updated = true
 	d.timestamp = time.Now()
