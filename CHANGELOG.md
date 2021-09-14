@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.4] = 2021-09-14
+### Added
+- a737a78: Add unix socket support
+
+### Updated
+- 8829b8f: Change hooks collection type from hashmap to btree
+- 83094b2: Update hook expiration logic
+- c686b87: Return hook ttl with HOOKS request
+- 06a92d8: Increase the precision of TIMEOUT
+- Upgrade to Go 1.17.1
+
 ## [1.25.3] = 2021-08-23
 ### Fixed
 - #621: Fixed a memory leak (@Morgiflute)
@@ -9,7 +20,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Updated
 - Update B-tree library
 - Upgrade to Go 1.17
-
 
 ## [1.25.2] = 2021-08-10
 ### Fixed
