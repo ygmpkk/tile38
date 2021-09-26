@@ -133,10 +133,7 @@ func appendJSONSimpleBounds(dst []byte, o geojson.Object) []byte {
 
 func appendJSONSimplePoint(dst []byte, o geojson.Object) []byte {
 	point := o.Center()
-	var z float64
-	if gPoint, ok := o.(*geojson.Point); ok {
-		z = gPoint.Z()
-	}
+	z := extractZCoordinate(o)
 	dst = append(dst, `{"lat":`...)
 	dst = strconv.AppendFloat(dst, point.Y, 'f', -1, 64)
 	dst = append(dst, `,"lon":`...)
