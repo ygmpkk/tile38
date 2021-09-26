@@ -214,6 +214,19 @@ func (sw *scanWriter) writeFoot() {
 	}
 }
 
+func extractZCoordinate(o geojson.Object) float64 {
+	for {
+		switch g := o.(type) {
+		case *geojson.Point:
+			return g.Z()
+		case *geojson.Feature:
+			o = g.Base()
+		default:
+			return 0
+		}
+	}
+}
+
 func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []float64, match bool) {
 	var z float64
 	var gotz bool
@@ -222,9 +235,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 		for _, where := range sw.wheres {
 			if where.field == "z" {
 				if !gotz {
-					if point, ok := o.(*geojson.Point); ok {
-						z = point.Z()
-					}
+					z = extractZCoordinate(o)
 				}
 				if !where.match(z) {
 					return
@@ -270,9 +281,7 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 		for _, where := range sw.wheres {
 			if where.field == "z" {
 				if !gotz {
-					if point, ok := o.(*geojson.Point); ok {
-						z = point.Z()
-					}
+					z = extractZCoordinate(o)
 				}
 				if !where.match(z) {
 					return
@@ -455,10 +464,7 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 				vals = append(vals, resp.StringValue(opts.o.String()))
 			case outputPoints:
 				point := opts.o.Center()
-				var z float64
-				if point, ok := opts.o.(*geojson.Point); ok {
-					z = point.Z()
-				}
+				z := extractZCoordinate(opts.o)
 				if z != 0 {
 					vals = append(vals, resp.ArrayValue([]resp.Value{
 						resp.FloatValue(point.Y),

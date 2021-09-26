@@ -183,10 +183,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 			buf.Write(appendJSONSimplePoint(nil, o))
 		} else {
 			point := o.Center()
-			var z float64
-			if gPoint, ok := o.(*geojson.Point); ok {
-				z = gPoint.Z()
-			}
+			z := extractZCoordinate(o)
 			if z != 0 {
 				vals = append(vals, resp.ArrayValue([]resp.Value{
 					resp.StringValue(strconv.FormatFloat(point.Y, 'f', -1, 64)),
