@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.25.5] = 2021-09-26
+### Fixed
+- 8ebcbeb: Fixed Z not matching on where clause for Feature/Point. (@tomquas)
+
 ## [1.25.4] = 2021-09-14
 ### Added
 - a737a78: Add unix socket support
