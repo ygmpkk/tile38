@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.26.0] = 2021-09-29
+### Added
+- #623: Added SECTOR type to spatial searches (@iwpnd, @gmonk)
+
+### Fixed
+- #624: AOFSHRINK causes panic on server (@saques)
+
 ## [1.25.5] = 2021-09-26
 ### Fixed
 - 8ebcbeb: Fixed Z not matching on where clause for Feature/Point. (@tomquas)
