@@ -181,7 +181,7 @@ func (server *Server) aofshrink() {
 			func() {
 				server.mu.Lock()
 				defer server.mu.Unlock()
-				hook, _ := server.hooks.GetHint(name, &hookHint).(*Hook)
+				hook, _ := server.hooks.GetHint(&Hook{Name: name}, &hookHint).(*Hook)
 				if hook == nil {
 					return
 				}
