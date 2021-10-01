@@ -112,14 +112,14 @@ func Error(args ...interface{}) {
 
 // Warnf ...
 func Warnf(format string, args ...interface{}) {
-	if Level >= 2 {
+	if Level >= 1 {
 		log(2, "WARN", "\x1b[33m", true, format, args...)
 	}
 }
 
 // Warn ...
 func Warn(args ...interface{}) {
-	if Level >= 2 {
+	if Level >= 1 {
 		log(2, "WARN", "\x1b[33m", false, emptyFormat, args...)
 	}
 }
