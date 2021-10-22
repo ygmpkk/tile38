@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.26.2] = 2021-10-22
+### Added
+- #625: Azure EventHub hook support
+
+### Changed
+- 11cea4d: Removed vendor directory
+
 ## [1.26.1] = 2021-10-01
 ### Updated
 - 9e552c3: Allow some basic client commands before AOF data loads
