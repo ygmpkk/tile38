@@ -39,6 +39,8 @@ const (
 	PubSub = Protocol("pubsub")
 	// NATS protocol
 	NATS = Protocol("nats")
+	// EventHub protocol
+	EventHub = Protocol("sb")
 )
 
 // Endpoint represents an endpoint.
@@ -123,6 +125,9 @@ type Endpoint struct {
 		TLS     bool
 		TLSCert string
 		TLSKey  string
+	}
+	EventHub struct {
+		ConnectionString string
 	}
 	Local struct {
 		Channel string
@@ -210,6 +215,8 @@ func (epc *Manager) Send(endpoint, msg string) error {
 				conn = newNATSConn(ep)
 			case Local:
 				conn = newLocalConn(ep, epc.publisher)
+			case EventHub:
+				conn = newEventHubConn(ep)
 			}
 			epc.conns[endpoint] = conn
 		}
@@ -265,6 +272,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.Protocol = SQS
 	case strings.HasPrefix(s, "nats:"):
 		endpoint.Protocol = NATS
+	case strings.HasPrefix(s, "Endpoint="):
+		endpoint.Protocol = EventHub
 	}
 
 	s = s[strings.Index(s, ":")+1:]
@@ -752,6 +761,30 @@ func parseEndpoint(s string) (Endpoint, error) {
 				}
 			}
 		}
+	}
+
+	if endpoint.Protocol == EventHub {
+		dp := strings.Split(endpoint.Original, ";")
+		if len(dp) != 4 {
+			return endpoint, errors.New("malformed EventHub connection string")
+		}
+
+		sakn := strings.Split(dp[1], "=")
+		if sakn[0] != "SharedAccessKeyName" {
+			return endpoint, errors.New("missing SharedAccessKeyName")
+		}
+
+		sak := strings.Split(dp[2], "=")
+		if sak[0] != "SharedAccessKey" {
+			return endpoint, errors.New("missing SharedAccessKey")
+		}
+
+		ep := strings.Split(dp[3], "=")
+		if ep[0] != "EntityPath" {
+			return endpoint, errors.New("missing EntityPath")
+		}
+
+		endpoint.EventHub.ConnectionString = endpoint.Original
 	}
 
 	return endpoint, nil
