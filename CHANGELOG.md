@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.26.4] = 2021-10-25
+### Hotfix
+- a7592f7: Bump version to match changelog
+
+## [1.26.3] = 2021-10-25
+### Updated
+- a47443a: Upgrade tidwall modules
+
 ## [1.26.2] = 2021-10-22
 ### Added
 - #625: Azure EventHub hook support
