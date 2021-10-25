@@ -18,17 +18,17 @@ require (
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/btree v0.6.1
-	github.com/tidwall/buntdb v1.2.6
+	github.com/tidwall/buntdb v1.2.7
 	github.com/tidwall/geoindex v1.4.4
-	github.com/tidwall/geojson v1.3.0
-	github.com/tidwall/gjson v1.9.3
+	github.com/tidwall/geojson v1.3.2
+	github.com/tidwall/gjson v1.10.2
 	github.com/tidwall/match v1.1.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/tidwall/redbench v0.1.0
-	github.com/tidwall/redcon v1.4.1
+	github.com/tidwall/redcon v1.4.2
 	github.com/tidwall/resp v0.1.0
 	github.com/tidwall/rtree v1.3.1
-	github.com/tidwall/sjson v1.1.7
+	github.com/tidwall/sjson v1.2.3
 	github.com/xdg/scram v1.0.3
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
