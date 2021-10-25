@@ -21,8 +21,8 @@ require (
 	github.com/tidwall/buntdb v1.2.6
 	github.com/tidwall/geoindex v1.4.4
 	github.com/tidwall/geojson v1.3.0
-	github.com/tidwall/gjson v1.8.1
-	github.com/tidwall/match v1.0.3
+	github.com/tidwall/gjson v1.9.3
+	github.com/tidwall/match v1.1.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.1
