@@ -153,7 +153,6 @@ func Serve(opts Options) error {
 	if core.QueueFileName == "" {
 		core.QueueFileName = path.Join(opts.Dir, "queue.db")
 	}
-	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 
 	// Initialize the s
 	s := &Server{
@@ -195,6 +194,14 @@ func Serve(opts Options) error {
 	if err != nil {
 		return err
 	}
+
+	lcfg := s.config.logConfig()
+	if lcfg != "" {
+		log.LogJSON = true
+		log.Build(lcfg)
+	}
+
+	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 
 	// Send "500 Internal Server" error instead of "200 OK" for json responses
 	// with `"ok":false`. T38HTTP500ERRORS=1

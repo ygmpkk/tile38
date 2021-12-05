@@ -31,6 +31,7 @@ require (
 	github.com/tidwall/sjson v1.2.4
 	github.com/xdg/scram v1.0.3
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
+	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 	google.golang.org/api v0.20.0

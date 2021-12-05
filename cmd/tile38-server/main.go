@@ -88,6 +88,7 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --nohup                 : do not exit on SIGHUP
+  --logjson               : log json (default: text)
 
 Developer Options:
   --dev                             : enable developer mode
@@ -175,6 +176,10 @@ Developer Options:
 			continue
 		case "--nohup", "-nohup":
 			nohup = true
+			continue
+		case "--logjson", "-logjson":
+			log.LogJSON = true
+			log.Build("")
 			continue
 		case "--appendonly", "-appendonly":
 			i++
@@ -292,6 +297,7 @@ Developer Options:
 	} else {
 		log.Level = 1
 	}
+
 	core.DevMode = devMode
 	core.ShowDebugMessages = veryVerbose
 
@@ -409,17 +415,22 @@ Developer Options:
 		saddr = fmt.Sprintf("Port: %d", port)
 	}
 
-	fmt.Fprintf(logw, `
-   _____ _ _     ___ ___
-  |_   _|_| |___|_  | . |  Tile38 %s%s %d bit (%s/%s)
-    | | | | | -_|_  | . |  %s%s, PID: %d
-    |_| |_|_|___|___|___|  tile38.com
-
-Please consider sponsoring Tile38 development, especially if your company
-benefits from this software. Visit tile38.com/sponsor today to learn more.
-
-`, core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd,
-		saddr, os.Getpid())
+	if log.LogJSON {
+		log.Printf(`Tile38 %s%s %d bit (%s/%s) %s%s, PID: %d. Visit tile38.com/sponsor to support the project`,
+			core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, saddr, os.Getpid())
+	} else {
+		fmt.Fprintf(logw, `
+		_____ _ _     ___ ___
+		|_  _|_| |___|_  | . |	Tile38 %s%s %d bit (%s/%s)
+		 | | | | | -_|_  | . |  %s%s, PID: %d
+		 |_| |_|_|___|___|___|  tile38.com
+	 
+	 Please consider sponsoring Tile38 development, especially if your company
+	 benefits from this software. Visit tile38.com/sponsor today to learn more.
+	  
+	 `, core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd,
+			saddr, os.Getpid())
+	}
 
 	if pidferr != nil {
 		log.Warnf("pidfile: %v", pidferr)
