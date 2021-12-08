@@ -726,12 +726,6 @@ var commandsJSON = `{
         "optional": true
       },
       {
-        "command": "SPARSE",
-        "name": "spread",
-        "type": "integer",
-        "optional": true
-      },
-      {
         "command": "MATCH",
         "name": "pattern",
         "type": "pattern",
@@ -888,12 +882,6 @@ var commandsJSON = `{
       {
         "command": "LIMIT",
         "name": "count",
-        "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "SPARSE",
-        "name": "spread",
         "type": "integer",
         "optional": true
       },
@@ -1134,12 +1122,6 @@ var commandsJSON = `{
       {
         "command": "LIMIT",
         "name": "count",
-        "type": "integer",
-        "optional": true
-      },
-      {
-        "command": "SPARSE",
-        "name": "spread",
         "type": "integer",
         "optional": true
       },
