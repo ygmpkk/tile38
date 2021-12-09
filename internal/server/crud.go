@@ -37,7 +37,7 @@ func orderFields(fmap map[string]int, farr []string, fields []float64) []fvt {
 	}
 	return fvs
 }
-func (server *Server) cmdBounds(msg *Message) (resp.Value, error) {
+func (s *Server) cmdBounds(msg *Message) (resp.Value, error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -50,7 +50,7 @@ func (server *Server) cmdBounds(msg *Message) (resp.Value, error) {
 		return NOMessage, errInvalidNumberOfArguments
 	}
 
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
@@ -94,7 +94,7 @@ func (server *Server) cmdBounds(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (server *Server) cmdType(msg *Message) (resp.Value, error) {
+func (s *Server) cmdType(msg *Message) (resp.Value, error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -104,7 +104,7 @@ func (server *Server) cmdType(msg *Message) (resp.Value, error) {
 		return NOMessage, errInvalidNumberOfArguments
 	}
 
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.SimpleStringValue("none"), nil
@@ -123,7 +123,7 @@ func (server *Server) cmdType(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
+func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 
@@ -142,7 +142,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 		vs = vs[1:]
 	}
 
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
@@ -278,7 +278,7 @@ func (server *Server) cmdGet(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -295,17 +295,17 @@ func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, er
 		return
 	}
 	found := false
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col != nil {
 		d.obj, d.fields, ok = col.Delete(d.id)
 		if ok {
 			if col.Count() == 0 {
-				server.deleteCol(d.key)
+				s.deleteCol(d.key)
 			}
 			found = true
 		}
 	}
-	server.groupDisconnectObject(d.key, d.id)
+	s.groupDisconnectObject(d.key, d.id)
 	d.command = "del"
 	d.updated = found
 	d.timestamp = time.Now()
@@ -322,7 +322,7 @@ func (server *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, er
 	return
 }
 
-func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -353,7 +353,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 	}
 
 	var expired int
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col != nil {
 		g := glob.Parse(d.pattern, false)
 		if g.Limits[0] == "" && g.Limits[1] == "" {
@@ -370,7 +370,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 			} else {
 				d.children[i] = dc
 			}
-			server.groupDisconnectObject(dc.key, dc.id)
+			s.groupDisconnectObject(dc.key, dc.id)
 		}
 		if atLeastOneNotDeleted {
 			var nchildren []*commandDetails
@@ -382,7 +382,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 			d.children = nchildren
 		}
 		if col.Count() == 0 {
-			server.deleteCol(d.key)
+			s.deleteCol(d.key)
 		}
 	}
 	d.command = "pdel"
@@ -402,7 +402,7 @@ func (server *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, e
 	return
 }
 
-func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var ok bool
@@ -414,15 +414,15 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, e
 		err = errInvalidNumberOfArguments
 		return
 	}
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col != nil {
-		server.deleteCol(d.key)
+		s.deleteCol(d.key)
 		d.updated = true
 	} else {
 		d.key = "" // ignore the details
 		d.updated = false
 	}
-	server.groupDisconnectCollection(d.key)
+	s.groupDisconnectCollection(d.key)
 	d.command = "drop"
 	d.timestamp = time.Now()
 	switch msg.OutputType {
@@ -438,7 +438,7 @@ func (server *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, e
 	return
 }
 
-func (server *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err error) {
 	nx := msg.Command() == "renamenx"
 	start := time.Now()
 	vs := msg.Args[1:]
@@ -455,12 +455,12 @@ func (server *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails,
 		err = errInvalidNumberOfArguments
 		return
 	}
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col == nil {
 		err = errKeyNotFound
 		return
 	}
-	server.hooks.Ascend(nil, func(v interface{}) bool {
+	s.hooks.Ascend(nil, func(v interface{}) bool {
 		h := v.(*Hook)
 		if h.Key == d.key || h.Key == d.newKey {
 			err = errKeyHasHooksSet
@@ -469,18 +469,18 @@ func (server *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails,
 		return true
 	})
 	d.command = "rename"
-	newCol := server.getCol(d.newKey)
+	newCol := s.getCol(d.newKey)
 	if newCol == nil {
 		d.updated = true
 	} else if nx {
 		d.updated = false
 	} else {
-		server.deleteCol(d.newKey)
+		s.deleteCol(d.newKey)
 		d.updated = true
 	}
 	if d.updated {
-		server.deleteCol(d.key)
-		server.setCol(d.newKey, col)
+		s.deleteCol(d.key)
+		s.setCol(d.newKey, col)
 	}
 	d.timestamp = time.Now()
 	switch msg.OutputType {
@@ -498,7 +498,7 @@ func (server *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails,
 	return
 }
 
-func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	if len(vs) != 0 {
@@ -507,14 +507,14 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 	}
 
 	// clear the entire database
-	server.cols = btree.NewNonConcurrent(byCollectionKey)
-	server.groupHooks = btree.NewNonConcurrent(byGroupHook)
-	server.groupObjects = btree.NewNonConcurrent(byGroupObject)
-	server.hookExpires = btree.NewNonConcurrent(byHookExpires)
-	server.hooks = btree.NewNonConcurrent(byHookName)
-	server.hooksOut = btree.NewNonConcurrent(byHookName)
-	server.hookTree = &rtree.RTree{}
-	server.hookCross = &rtree.RTree{}
+	s.cols = btree.NewNonConcurrent(byCollectionKey)
+	s.groupHooks = btree.NewNonConcurrent(byGroupHook)
+	s.groupObjects = btree.NewNonConcurrent(byGroupObject)
+	s.hookExpires = btree.NewNonConcurrent(byHookExpires)
+	s.hooks = btree.NewNonConcurrent(byHookName)
+	s.hooksOut = btree.NewNonConcurrent(byHookName)
+	s.hookTree = &rtree.RTree{}
+	s.hookCross = &rtree.RTree{}
 
 	d.command = "flushdb"
 	d.updated = true
@@ -528,7 +528,7 @@ func (server *Server) cmdFlushDB(msg *Message) (res resp.Value, d commandDetails
 	return
 }
 
-func (server *Server) parseSetArgs(vs []string) (
+func (s *Server) parseSetArgs(vs []string) (
 	d commandDetails, fields []string, values []float64,
 	xx, nx bool,
 	ex int64, etype []byte, evs []string, err error,
@@ -737,7 +737,7 @@ func (server *Server) parseSetArgs(vs []string) (
 			err = errInvalidNumberOfArguments
 			return
 		}
-		d.obj, err = geojson.Parse(object, &server.geomParseOpts)
+		d.obj, err = geojson.Parse(object, &s.geomParseOpts)
 		if err != nil {
 			return
 		}
@@ -748,8 +748,8 @@ func (server *Server) parseSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, err error) {
-	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
+func (s *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, err error) {
+	if s.config.maxMemory() > 0 && s.outOfMemory.on() {
 		err = errOOM
 		return
 	}
@@ -760,17 +760,17 @@ func (server *Server) cmdSet(msg *Message) (res resp.Value, d commandDetails, er
 	var values []float64
 	var xx, nx bool
 	var ex int64
-	d, fields, values, xx, nx, ex, _, _, err = server.parseSetArgs(vs)
+	d, fields, values, xx, nx, ex, _, _, err = s.parseSetArgs(vs)
 	if err != nil {
 		return
 	}
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col == nil {
 		if xx {
 			goto notok
 		}
 		col = collection.New()
-		server.setCol(d.key, col)
+		s.setCol(d.key, col)
 	}
 	if xx || nx {
 		_, _, _, ok := col.Get(d.id)
@@ -817,7 +817,7 @@ notok:
 	return
 }
 
-func (server *Server) parseFSetArgs(vs []string) (
+func (s *Server) parseFSetArgs(vs []string) (
 	d commandDetails, fields []string, values []float64, xx bool, err error,
 ) {
 	var ok bool
@@ -860,8 +860,8 @@ func (server *Server) parseFSetArgs(vs []string) (
 	return
 }
 
-func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetails, err error) {
-	if server.config.maxMemory() > 0 && server.outOfMemory.on() {
+func (s *Server) cmdFset(msg *Message) (res resp.Value, d commandDetails, err error) {
+	if s.config.maxMemory() > 0 && s.outOfMemory.on() {
 		err = errOOM
 		return
 	}
@@ -871,9 +871,9 @@ func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetails, e
 	var values []float64
 	var xx bool
 	var updateCount int
-	d, fields, values, xx, err = server.parseFSetArgs(vs)
+	d, fields, values, xx, err = s.parseFSetArgs(vs)
 
-	col := server.getCol(d.key)
+	col := s.getCol(d.key)
 	if col == nil {
 		err = errKeyNotFound
 		return
@@ -904,7 +904,7 @@ func (server *Server) cmdFset(msg *Message) (res resp.Value, d commandDetails, e
 	return
 }
 
-func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var key, id, svalue string
@@ -932,7 +932,7 @@ func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails,
 		return
 	}
 	ok = false
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col != nil {
 		ex := time.Now().Add(time.Duration(float64(time.Second) * value)).UnixNano()
 		ok = col.SetExpires(id, ex)
@@ -957,7 +957,7 @@ func (server *Server) cmdExpire(msg *Message) (res resp.Value, d commandDetails,
 	return
 }
 
-func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails, err error) {
+func (s *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var key, id string
@@ -976,7 +976,7 @@ func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails
 	}
 	var cleared bool
 	ok = false
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col != nil {
 		var ex int64
 		_, _, ex, ok = col.Get(id)
@@ -1009,7 +1009,7 @@ func (server *Server) cmdPersist(msg *Message) (res resp.Value, d commandDetails
 	return
 }
 
-func (server *Server) cmdTTL(msg *Message) (res resp.Value, err error) {
+func (s *Server) cmdTTL(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
 	var key, id string
@@ -1029,7 +1029,7 @@ func (server *Server) cmdTTL(msg *Message) (res resp.Value, err error) {
 	var v float64
 	ok = false
 	var ok2 bool
-	col := server.getCol(key)
+	col := s.getCol(key)
 	if col != nil {
 		var ex int64
 		_, _, ex, ok = col.Get(id)

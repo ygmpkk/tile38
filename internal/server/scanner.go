@@ -76,7 +76,8 @@ type ScanWriterParams struct {
 func (s *Server) newScanWriter(
 	wr *bytes.Buffer, msg *Message, key string, output outputT,
 	precision uint64, globPattern string, matchValues bool,
-	cursor, limit uint64, wheres []whereT, whereins []whereinT, whereevals []whereevalT, nofields bool,
+	cursor, limit uint64, wheres []whereT, whereins []whereinT,
+	whereevals []whereevalT, nofields bool,
 ) (
 	*scanWriter, error,
 ) {
@@ -96,12 +97,12 @@ func (s *Server) newScanWriter(
 		s:           s,
 		wr:          wr,
 		msg:         msg,
-		cursor:      cursor,
 		limit:       limit,
-		whereevals:  whereevals,
+		cursor:      cursor,
 		output:      output,
 		nofields:    nofields,
 		precision:   precision,
+		whereevals:  whereevals,
 		globPattern: globPattern,
 		matchValues: matchValues,
 	}

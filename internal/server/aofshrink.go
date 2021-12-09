@@ -18,25 +18,25 @@ const maxkeys = 8
 const maxids = 32
 const maxchunk = 4 * 1024 * 1024
 
-func (server *Server) aofshrink() {
-	if server.aof == nil {
+func (s *Server) aofshrink() {
+	if s.aof == nil {
 		return
 	}
 	start := time.Now()
-	server.mu.Lock()
-	if server.shrinking {
-		server.mu.Unlock()
+	s.mu.Lock()
+	if s.shrinking {
+		s.mu.Unlock()
 		return
 	}
-	server.shrinking = true
-	server.shrinklog = nil
-	server.mu.Unlock()
+	s.shrinking = true
+	s.shrinklog = nil
+	s.mu.Unlock()
 
 	defer func() {
-		server.mu.Lock()
-		server.shrinking = false
-		server.shrinklog = nil
-		server.mu.Unlock()
+		s.mu.Lock()
+		s.shrinking = false
+		s.shrinklog = nil
+		s.mu.Unlock()
 		log.Infof("aof shrink ended %v", time.Since(start))
 	}()
 
@@ -59,9 +59,9 @@ func (server *Server) aofshrink() {
 				}
 				keysdone = true
 				func() {
-					server.mu.Lock()
-					defer server.mu.Unlock()
-					server.scanGreaterOrEqual(nextkey, func(key string, col *collection.Collection) bool {
+					s.mu.Lock()
+					defer s.mu.Unlock()
+					s.scanGreaterOrEqual(nextkey, func(key string, col *collection.Collection) bool {
 						if len(keys) == maxkeys {
 							keysdone = false
 							nextkey = key
@@ -85,9 +85,9 @@ func (server *Server) aofshrink() {
 				// load more objects
 				func() {
 					idsdone = true
-					server.mu.Lock()
-					defer server.mu.Unlock()
-					col := server.getCol(keys[0])
+					s.mu.Lock()
+					defer s.mu.Unlock()
+					col := s.getCol(keys[0])
 					if col == nil {
 						return
 					}
@@ -167,10 +167,10 @@ func (server *Server) aofshrink() {
 		// first load the names of the hooks
 		var hnames []string
 		func() {
-			server.mu.Lock()
-			defer server.mu.Unlock()
-			hnames = make([]string, 0, server.hooks.Len())
-			server.hooks.Walk(func(v []interface{}) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			hnames = make([]string, 0, s.hooks.Len())
+			s.hooks.Walk(func(v []interface{}) {
 				for _, v := range v {
 					hnames = append(hnames, v.(*Hook).Name)
 				}
@@ -179,9 +179,9 @@ func (server *Server) aofshrink() {
 		var hookHint btree.PathHint
 		for _, name := range hnames {
 			func() {
-				server.mu.Lock()
-				defer server.mu.Unlock()
-				hook, _ := server.hooks.GetHint(&Hook{Name: name}, &hookHint).(*Hook)
+				s.mu.Lock()
+				defer s.mu.Unlock()
+				hook, _ := s.hooks.GetHint(&Hook{Name: name}, &hookHint).(*Hook)
 				if hook == nil {
 					return
 				}
@@ -230,26 +230,26 @@ func (server *Server) aofshrink() {
 		// finally grab any new data that may have been written since
 		// the aofshrink has started and swap out the files.
 		return func() error {
-			server.mu.Lock()
-			defer server.mu.Unlock()
+			s.mu.Lock()
+			defer s.mu.Unlock()
 
 			// kill all followers connections and close their files. This
 			// ensures that there is only one opened AOF at a time which is
 			// what Windows requires in order to perform the Rename function
 			// below.
-			for conn, f := range server.aofconnM {
+			for conn, f := range s.aofconnM {
 				conn.Close()
 				f.Close()
 			}
 
 			// send a broadcast to all sleeping followers
-			server.fcond.Broadcast()
+			s.fcond.Broadcast()
 
 			// flush the aof buffer
-			server.flushAOF(false)
+			s.flushAOF(false)
 
 			aofbuf = aofbuf[:0]
-			for _, values := range server.shrinklog {
+			for _, values := range s.shrinklog {
 				// append the values to the aof buffer
 				aofbuf = append(aofbuf, '*')
 				aofbuf = append(aofbuf, strconv.FormatInt(int64(len(values)), 10)...)
@@ -274,7 +274,7 @@ func (server *Server) aofshrink() {
 
 			// anything below this point is unrecoverable. just log and exit process
 			// back up the live aof, just in case of fatal error
-			if err := server.aof.Close(); err != nil {
+			if err := s.aof.Close(); err != nil {
 				log.Fatalf("shrink live aof close fatal operation: %v", err)
 			}
 			if err := f.Close(); err != nil {
@@ -286,16 +286,16 @@ func (server *Server) aofshrink() {
 			if err := os.Rename(core.AppendFileName+"-shrink", core.AppendFileName); err != nil {
 				log.Fatalf("shrink rename fatal operation: %v", err)
 			}
-			server.aof, err = os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
+			s.aof, err = os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 			if err != nil {
 				log.Fatalf("shrink openfile fatal operation: %v", err)
 			}
 			var n int64
-			n, err = server.aof.Seek(0, 2)
+			n, err = s.aof.Seek(0, 2)
 			if err != nil {
 				log.Fatalf("shrink seek end fatal operation: %v", err)
 			}
-			server.aofsz = int(n)
+			s.aofsz = int(n)
 
 			os.Remove(core.AppendFileName + "-bak") // ignore error
 
