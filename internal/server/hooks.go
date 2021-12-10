@@ -56,7 +56,7 @@ func (s *Server) cmdSetHook(msg *Message) (
 	}
 	var commandvs []string
 	var cmdlc string
-	var types []string
+	var types map[string]bool
 	var expires float64
 	var expiresSet bool
 	metaMap := make(map[string]string)

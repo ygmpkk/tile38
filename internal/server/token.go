@@ -211,6 +211,8 @@ type searchScanBaseTokens struct {
 	sparse     uint8
 	desc       bool
 	clip       bool
+	buffer     float64
+	hasbuffer  bool
 }
 
 func (s *Server) parseSearchScanBaseTokens(
@@ -234,6 +236,22 @@ func (s *Server) parseSearchScanBaseTokens(
 		nvs, wtok, ok := tokenval(vs)
 		if ok && len(wtok) > 0 {
 			switch strings.ToLower(wtok) {
+			case "buffer":
+				vs = nvs
+				var sbuf string
+				if vs, sbuf, ok = tokenval(vs); !ok || sbuf == "" {
+					err = errInvalidNumberOfArguments
+					return
+				}
+				var buf float64
+				buf, err = strconv.ParseFloat(sbuf, 64)
+				if err != nil || buf < 0 || math.IsInf(buf, 0) || math.IsNaN(buf) {
+					err = errInvalidArgument(sbuf)
+					return
+				}
+				t.buffer = buf
+				t.hasbuffer = true
+				continue
 			case "cursor":
 				vs = nvs
 				if scursor != "" {

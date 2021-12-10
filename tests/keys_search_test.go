@@ -32,6 +32,7 @@ func subTestSearch(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "SEARCH_CURSOR", keys_SEARCH_CURSOR_test)
 	runStep(t, mc, "MATCH", keys_MATCH_test)
 	runStep(t, mc, "FIELDS", keys_FIELDS_search_test)
+	runStep(t, mc, "BUFFER", keys_BUFFER_search_test)
 }
 
 func keys_KNN_basic_test(mc *mockServer) error {
@@ -693,6 +694,37 @@ func keys_FIELDS_search_test(mc *mockServer) error {
 				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[0,0,29]},` +
 				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0,0,0]}` +
 				`],"count":2,"cursor":0}`},
+	})
+}
+
+func keys_BUFFER_search_test(mc *mockServer) error {
+	const lineString = `{"type":"LineString","coordinates":[
+		[-116.40289306640624,34.125447565116126],
+		[-116.36444091796875,34.14818102254435],
+		[-116.0980224609375,34.15045403191448],
+		[-115.74920654296874,34.127721186043985],
+		[-115.54870605468749,34.075412438417395],
+		[-115.5267333984375,34.11407854333859],
+		[-115.21911621093749,34.048108084909835],
+		[-115.25207519531249,33.8339199536547],
+		[-115.40588378906249,33.71748624018193]
+	]}`
+
+	return mc.DoBatch([][]interface{}{
+		// points in
+		{"SET", "fleet", "truck01", "POINT", "34.10825132729329", "-115.6436347961428"}, {"OK"},
+		{"SET", "fleet", "truck02", "POINT", "34.07199987534163", "-115.5435562133782"}, {"OK"},
+		{"SET", "fleet", "truck03", "POINT", "34.05123715497616", "-115.2148246765137"}, {"OK"},
+		{"SET", "fleet", "truck04", "POINT", "33.71520164474084", "-115.4110336303711"}, {"OK"},
+		{"SET", "fleet", "truck05", "POINT", "34.12345809664606", "-116.4070129394531"}, {"OK"},
+		// points out
+		{"SET", "fleet", "truck06", "POINT", "35.10825132729329", "-115.6436347961428"}, {"OK"},
+		{"SET", "fleet", "truck07", "POINT", "35.07199987534163", "-115.5435562133782"}, {"OK"},
+		{"SET", "fleet", "truck08", "POINT", "35.05123715497616", "-115.2148246765137"}, {"OK"},
+		{"SET", "fleet", "truck09", "POINT", "35.71520164474084", "-115.4110336303711"}, {"OK"},
+		{"SET", "fleet", "truck10", "POINT", "35.12345809664606", "-116.4070129394531"}, {"OK"},
+		// buffered intersects
+		{"INTERSECTS", "fleet", "BUFFER", "1000", "COUNT", "OBJECT", lineString}, {"5"},
 	})
 }
 

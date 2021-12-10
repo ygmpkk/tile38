@@ -14,6 +14,7 @@ import (
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/bing"
+	"github.com/tidwall/tile38/internal/buffer"
 	"github.com/tidwall/tile38/internal/clip"
 	"github.com/tidwall/tile38/internal/glob"
 )
@@ -170,7 +171,7 @@ func parseRectArea(ltyp string, vs []string) (nvs []string, rect *geojson.Rect, 
 }
 
 func (s *Server) cmdSearchArgs(
-	fromFenceCmd bool, cmd string, vs []string, types []string,
+	fromFenceCmd bool, cmd string, vs []string, types map[string]bool,
 ) (lfs liveFenceSwitches, err error) {
 	var t searchScanBaseTokens
 	if fromFenceCmd {
@@ -198,13 +199,7 @@ func (s *Server) cmdSearchArgs(
 		}
 	}
 	ltyp := strings.ToLower(typ)
-	var found bool
-	for _, t := range types {
-		if ltyp == t {
-			found = true
-			break
-		}
-	}
+	found := types[ltyp]
 	if !found && lfs.searchScanBaseTokens.fence && ltyp == "roam" && cmd == "nearby" {
 		// allow roaming for nearby fence searches.
 		found = true
@@ -215,7 +210,41 @@ func (s *Server) cmdSearchArgs(
 	}
 	switch ltyp {
 	case "point":
-		fallthrough
+		var slat, slon, smeters string
+		if vs, slat, ok = tokenval(vs); !ok || slat == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		if vs, slon, ok = tokenval(vs); !ok || slon == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		var lat, lon, meters float64
+		if lat, err = strconv.ParseFloat(slat, 64); err != nil {
+			err = errInvalidArgument(slat)
+			return
+		}
+		if lon, err = strconv.ParseFloat(slon, 64); err != nil {
+			err = errInvalidArgument(slon)
+			return
+		}
+		// radius is optional for nearby, but mandatory for others
+		if cmd == "nearby" {
+			if vs, smeters, ok = tokenval(vs); ok && smeters != "" {
+				meters, err = strconv.ParseFloat(smeters, 64)
+				if err != nil || meters < 0 {
+					err = errInvalidArgument(smeters)
+					return
+				}
+			} else {
+				meters = -1
+			}
+			// Nearby used the Circle type
+			lfs.obj = geojson.NewCircle(geometry.Point{X: lon, Y: lat}, meters, defaultCircleSteps)
+		} else {
+			// Intersects and Within use the Point type
+			lfs.obj = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
+		}
 	case "circle":
 		if lfs.clip {
 			err = errInvalidArgument("cannot clip with " + ltyp)
@@ -239,33 +268,14 @@ func (s *Server) cmdSearchArgs(
 			err = errInvalidArgument(slon)
 			return
 		}
-		// radius is optional for nearby, but mandatory for others
-		if cmd == "nearby" {
-			if vs, smeters, ok = tokenval(vs); ok && smeters != "" {
-				if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
-					err = errInvalidArgument(smeters)
-					return
-				}
-				if meters < 0 {
-					err = errInvalidArgument(smeters)
-					return
-				}
-			} else {
-				meters = -1
-			}
-		} else {
-			if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
-				err = errInvalidNumberOfArguments
-				return
-			}
-			if meters, err = strconv.ParseFloat(smeters, 64); err != nil {
-				err = errInvalidArgument(smeters)
-				return
-			}
-			if meters < 0 {
-				err = errInvalidArgument(smeters)
-				return
-			}
+		if vs, smeters, ok = tokenval(vs); !ok || smeters == "" {
+			err = errInvalidNumberOfArguments
+			return
+		}
+		meters, err = strconv.ParseFloat(smeters, 64)
+		if err != nil || meters < 0 {
+			err = errInvalidArgument(smeters)
+			return
 		}
 		lfs.obj = geojson.NewCircle(geometry.Point{X: lon, Y: lat}, meters, defaultCircleSteps)
 	case "object":
@@ -436,12 +446,24 @@ func (s *Server) cmdSearchArgs(
 			return
 		}
 	}
+
+	if lfs.hasbuffer {
+		lfs.obj, err = buffer.Simple(lfs.obj, lfs.buffer)
+		if err != nil {
+			return
+		}
+
+	}
 	return
 }
 
-var nearbyTypes = []string{"point"}
-var withinOrIntersectsTypes = []string{
-	"geo", "bounds", "hash", "tile", "quadkey", "get", "object", "circle", "sector"}
+var nearbyTypes = map[string]bool{
+	"point": true,
+}
+var withinOrIntersectsTypes = map[string]bool{
+	"geo": true, "bounds": true, "hash": true, "tile": true, "quadkey": true,
+	"get": true, "object": true, "circle": true, "point": true, "sector": true,
+}
 
 func (s *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
