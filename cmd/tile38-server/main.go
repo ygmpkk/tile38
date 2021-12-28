@@ -432,15 +432,15 @@ Developer Options:
 			core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, saddr, os.Getpid())
 	} else {
 		fmt.Fprintf(logw, `
-		_____ _ _     ___ ___
-		|_  _|_| |___|_  | . |	Tile38 %s%s %d bit (%s/%s)
-		 | | | | | -_|_  | . |  %s%s, PID: %d
-		 |_| |_|_|___|___|___|  tile38.com
+	_____ _ _     ___ ___
+	|_  _|_| |___|_  | . |	Tile38 %s%s %d bit (%s/%s)
+	 | | | | | -_|_  | . |  %s%s, PID: %d
+	 |_| |_|_|___|___|___|  tile38.com
 	 
-	 Please consider sponsoring Tile38 development, especially if your company
-	 benefits from this software. Visit tile38.com/sponsor today to learn more.
-	  
-	 `, core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd,
+Please consider sponsoring Tile38 development, especially if your company
+benefits from this software. Visit tile38.com/sponsor today to learn more.
+
+`, core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd,
 			saddr, os.Getpid())
 	}
 
