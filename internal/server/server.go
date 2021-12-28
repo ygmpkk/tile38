@@ -153,6 +153,7 @@ func Serve(opts Options) error {
 	if core.QueueFileName == "" {
 		core.QueueFileName = path.Join(opts.Dir, "queue.db")
 	}
+
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
 
 	// Initialize the s

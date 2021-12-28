@@ -33,9 +33,10 @@ const (
 	MaxMemory     = "maxmemory"
 	AutoGC        = "autogc"
 	KeepAlive     = "keepalive"
+	LogConfig     = "logconfig"
 )
 
-var validProperties = []string{RequirePass, LeaderAuth, ProtectedMode, MaxMemory, AutoGC, KeepAlive}
+var validProperties = []string{RequirePass, LeaderAuth, ProtectedMode, MaxMemory, AutoGC, KeepAlive, LogConfig}
 
 // Config is a tile38 config
 type Config struct {
@@ -62,6 +63,8 @@ type Config struct {
 	_autoGC         uint64
 	_keepAliveP     string
 	_keepAlive      int64
+	_logConfigP     interface{}
+	_logConfig      string
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -90,7 +93,9 @@ func loadConfig(path string) (*Config, error) {
 		_maxMemoryP:     gjson.Get(json, MaxMemory).String(),
 		_autoGCP:        gjson.Get(json, AutoGC).String(),
 		_keepAliveP:     gjson.Get(json, KeepAlive).String(),
+		_logConfig:      gjson.Get(json, LogConfig).String(),
 	}
+
 	// load properties
 	if err := config.setProperty(RequirePass, config._requirePassP, true); err != nil {
 		return nil, err
@@ -108,6 +113,9 @@ func loadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	if err := config.setProperty(KeepAlive, config._keepAliveP, true); err != nil {
+		return nil, err
+	}
+	if err := config.setProperty(LogConfig, config._logConfig, true); err != nil {
 		return nil, err
 	}
 	config.write(false)
@@ -137,6 +145,9 @@ func (config *Config) write(writeProperties bool) {
 			config._keepAliveP = ""
 		} else {
 			config._keepAliveP = strconv.FormatUint(uint64(config._keepAlive), 10)
+		}
+		if config._logConfig != "" {
+			config._logConfigP = config._logConfig
 		}
 	}
 
@@ -176,6 +187,11 @@ func (config *Config) write(writeProperties bool) {
 	}
 	if config._keepAliveP != "" {
 		m[KeepAlive] = config._keepAliveP
+	}
+	if config._logConfigP != "" {
+		var lcfg map[string]interface{}
+		json.Unmarshal([]byte(config._logConfig), &lcfg)
+		m[LogConfig] = lcfg
 	}
 	data, err := json.MarshalIndent(m, "", "\t")
 	if err != nil {
@@ -285,6 +301,12 @@ func (config *Config) setProperty(name, value string, fromLoad bool) error {
 				config._keepAlive = int64(keepalive)
 			}
 		}
+	case LogConfig:
+		if value == "" {
+			config._logConfig = ""
+		} else {
+			config._logConfig = value
+		}
 	}
 
 	if invalid {
@@ -322,6 +344,8 @@ func (config *Config) getProperty(name string) string {
 		return formatMemSize(config._maxMemory)
 	case KeepAlive:
 		return strconv.FormatUint(uint64(config._keepAlive), 10)
+	case LogConfig:
+		return config._logConfig
 	}
 }
 
@@ -459,4 +483,10 @@ func (config *Config) setReadOnly(v bool) {
 	config.mu.Lock()
 	config._readOnly = v
 	config.mu.Unlock()
+}
+func (config *Config) logConfig() string {
+	config.mu.RLock()
+	v := config._logConfig
+	config.mu.RUnlock()
+	return v
 }

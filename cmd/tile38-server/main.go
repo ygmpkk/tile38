@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/hservice"
 	"github.com/tidwall/tile38/internal/log"
@@ -76,6 +78,7 @@ Basic Options:
   -p port     : listening port (default: 9851)
   -d path     : data directory (default: data)
   -s socket   : listen on unix socket file
+  -l encoding : set log encoding to json or text (default: text) 
   -q          : no logging. totally silent output
   -v          : enable verbose logging
   -vv         : enable very verbose logging
@@ -88,6 +91,7 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --nohup                 : do not exit on SIGHUP
+  --logjson               : log json (default: text)
 
 Developer Options:
   --dev                             : enable developer mode
@@ -256,6 +260,7 @@ Developer Options:
 		unixSocket  string
 		verbose     bool
 		veryVerbose bool
+		logEncoding string
 		quiet       bool
 		pidfile     string
 		cpuprofile  string
@@ -268,6 +273,7 @@ Developer Options:
 	flag.StringVar(&host, "h", "", "The listening host")
 	flag.StringVar(&unixSocket, "s", "", "Listen on a unix socket")
 	flag.StringVar(&dir, "d", "data", "The data directory")
+	flag.StringVar(&logEncoding, "l", "text", "The log encoding json or text (default: text)")
 	flag.BoolVar(&verbose, "v", false, "Enable verbose logging")
 	flag.BoolVar(&quiet, "q", false, "Quiet logging. Totally silent")
 	flag.BoolVar(&veryVerbose, "vv", false, "Enable very verbose logging")
@@ -275,6 +281,17 @@ Developer Options:
 	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to `file`")
 	flag.StringVar(&memprofile, "memprofile", "", "write memory profile to `file`")
 	flag.Parse()
+
+	if logEncoding == "json" {
+		log.LogJSON = true
+		data, _ := os.ReadFile(filepath.Join(dir, "config"))
+		if gjson.GetBytes(data, "logconfig.encoding").String() == "json" {
+			c := gjson.GetBytes(data, "logconfig").String()
+			log.Build(c)
+		} else {
+			log.Build("")
+		}
+	}
 
 	var logw io.Writer = os.Stderr
 	if quiet {
@@ -292,6 +309,7 @@ Developer Options:
 	} else {
 		log.Level = 1
 	}
+
 	core.DevMode = devMode
 	core.ShowDebugMessages = veryVerbose
 
@@ -409,17 +427,22 @@ Developer Options:
 		saddr = fmt.Sprintf("Port: %d", port)
 	}
 
-	fmt.Fprintf(logw, `
-   _____ _ _     ___ ___
-  |_   _|_| |___|_  | . |  Tile38 %s%s %d bit (%s/%s)
-    | | | | | -_|_  | . |  %s%s, PID: %d
-    |_| |_|_|___|___|___|  tile38.com
-
+	if log.LogJSON {
+		log.Printf(`Tile38 %s%s %d bit (%s/%s) %s%s, PID: %d. Visit tile38.com/sponsor to support the project`,
+			core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, saddr, os.Getpid())
+	} else {
+		fmt.Fprintf(logw, `
+	_____ _ _     ___ ___
+	|_  _|_| |___|_  | . |	Tile38 %s%s %d bit (%s/%s)
+	 | | | | | -_|_  | . |  %s%s, PID: %d
+	 |_| |_|_|___|___|___|  tile38.com
+	 
 Please consider sponsoring Tile38 development, especially if your company
 benefits from this software. Visit tile38.com/sponsor today to learn more.
 
 `, core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd,
-		saddr, os.Getpid())
+			saddr, os.Getpid())
+	}
 
 	if pidferr != nil {
 		log.Warnf("pidfile: %v", pidferr)
