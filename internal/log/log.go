@@ -36,8 +36,12 @@ func SetOutput(w io.Writer) {
 func Build(c string) error {
 	if c == "" {
 		zcfg := zap.NewProductionConfig()
+
 		// to be able to filter with Tile38 levels
 		zcfg.Level.SetLevel(zap.DebugLevel)
+		// disable caller because caller is always log.go
+		zcfg.DisableCaller = true
+
 		core, err := zcfg.Build()
 		if err != nil {
 			return err
@@ -50,8 +54,12 @@ func Build(c string) error {
 		if err != nil {
 			return err
 		}
+
 		// to be able to filter with Tile38 levels
 		zcfg.Level.SetLevel(zap.DebugLevel)
+		// disable caller because caller is always log.go
+		zcfg.DisableCaller = true
+
 		core, err := zcfg.Build()
 		if err != nil {
 			return err
