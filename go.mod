@@ -17,15 +17,15 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
-	github.com/tidwall/btree v0.7.1
-	github.com/tidwall/buntdb v1.2.8
+	github.com/tidwall/btree v1.1.0
+	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/geoindex v1.4.4
-	github.com/tidwall/geojson v1.3.3
+	github.com/tidwall/geojson v1.3.4
 	github.com/tidwall/gjson v1.12.1
 	github.com/tidwall/match v1.1.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/tidwall/redbench v0.1.0
-	github.com/tidwall/redcon v1.4.3
+	github.com/tidwall/redcon v1.4.4
 	github.com/tidwall/resp v0.1.0
 	github.com/tidwall/rtree v1.3.1
 	github.com/tidwall/sjson v1.2.4
