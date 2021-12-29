@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.27.0] = 2021-12-28
+### Added
+- #629: JSON logging (@iwpnd)
+- 241117c: BUFFER option for WITHIN and INTERSECTS, see #79
+
 ## [1.26.4] = 2021-10-25
 ### Hotfix
 - a7592f7: Bump version to match changelog
