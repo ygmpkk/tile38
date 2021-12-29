@@ -91,7 +91,6 @@ Advanced Options:
   --http-transport yes/no : HTTP transport (default: yes)
   --protected-mode yes/no : protected mode (default: yes)
   --nohup                 : do not exit on SIGHUP
-  --logjson               : log json (default: text)
 
 Developer Options:
   --dev                             : enable developer mode
