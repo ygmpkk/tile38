@@ -71,14 +71,13 @@ func loadConfig(path string) (*Config, error) {
 	var json string
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			json = `{"` + ServerID + `":"` + randomKey(16) + `"}`
-		} else {
+		if !os.IsNotExist(err) {
 			return nil, err
 		}
 	} else {
 		json = string(data)
 	}
+
 	config := &Config{
 		path:            path,
 		_followHost:     gjson.Get(json, FollowHost).String(),
@@ -94,6 +93,10 @@ func loadConfig(path string) (*Config, error) {
 		_autoGCP:        gjson.Get(json, AutoGC).String(),
 		_keepAliveP:     gjson.Get(json, KeepAlive).String(),
 		_logConfig:      gjson.Get(json, LogConfig).String(),
+	}
+
+	if config._serverID == "" {
+		config._serverID = randomKey(16)
 	}
 
 	// load properties
@@ -191,7 +194,9 @@ func (config *Config) write(writeProperties bool) {
 	if config._logConfigP != "" {
 		var lcfg map[string]interface{}
 		json.Unmarshal([]byte(config._logConfig), &lcfg)
-		m[LogConfig] = lcfg
+		if len(lcfg) > 0 {
+			m[LogConfig] = lcfg
+		}
 	}
 	data, err := json.MarshalIndent(m, "", "\t")
 	if err != nil {
