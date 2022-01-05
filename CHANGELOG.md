@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.27.1] = 2021-12-28
+## [1.27.1] = 2021-01-04
 ### Fix
 - b6833a2: Auto assign server_id for bootstrapped config files
 
