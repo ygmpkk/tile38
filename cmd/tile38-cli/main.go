@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -145,7 +146,7 @@ func main() {
 		return
 	}
 
-	if len(oneCommand) > 0 && (oneCommand[0] == 'h' || oneCommand[0] == 'H') && strings.Split(strings.ToLower(oneCommand), " ")[0] == "help" {
+	if len(oneCommand) > 0 && strings.Split(strings.ToLower(oneCommand), " ")[0] == "help" {
 		showHelp()
 		return
 	}
@@ -305,20 +306,24 @@ func main() {
 				if !nohist {
 					line.AppendHistory(command)
 				}
-				if (command[0] == 'e' || command[0] == 'E') && strings.ToLower(command) == "exit" {
+				if strings.ToLower(command) == "exit" {
 					return
 				}
-				if (command[0] == 'q' || command[0] == 'Q') && strings.ToLower(command) == "quit" {
+				if strings.ToLower(command) == "quit" {
 					return
 				}
-				if (command[0] == 'h' || command[0] == 'H') && (strings.ToLower(command) == "help" || strings.HasPrefix(strings.ToLower(command), "help")) {
+				if strings.ToLower(command) == "clear" {
+					clearScreen()
+					continue
+				}
+				if strings.ToLower(command) == "help" || strings.HasPrefix(strings.ToLower(command), "help") {
 					err = help(strings.TrimSpace(command[4:]))
 					if err != nil {
 						return
 					}
 					continue
 				}
-				aof = (command[0] == 'a' || command[0] == 'A') && strings.HasPrefix(strings.ToLower(command), "aof ")
+				aof = strings.HasPrefix(strings.ToLower(command), "aof ")
 			tryAgain:
 				if conn == nil {
 					connDial()
@@ -664,4 +669,15 @@ func plainToCompat(message string) []byte {
 		}
 	}
 	return []byte(strings.Join(args, " ") + "\r\n")
+}
+
+func clearScreen() {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", "cls")
+	} else {
+		cmd = exec.Command("clear")
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 }
