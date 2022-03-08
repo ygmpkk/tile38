@@ -12,8 +12,7 @@ require (
 	github.com/gomodule/redigo v1.8.3
 	github.com/iwpnd/sectr v0.1.2
 	github.com/mmcloughlin/geohash v0.10.0
-	github.com/nats-io/nats-server/v2 v2.7.2 // indirect
-	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
+	github.com/nats-io/nats.go v1.9.1
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/streadway/amqp v1.0.0
