@@ -8,13 +8,14 @@ require (
 	github.com/Shopify/sarama v1.27.2
 	github.com/aws/aws-sdk-go v1.37.3
 	github.com/eclipse/paho.mqtt.golang v1.3.1
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.3
 	github.com/iwpnd/sectr v0.1.2
 	github.com/mmcloughlin/geohash v0.10.0
-	github.com/nats-io/nats.go v1.9.1
+	github.com/nats-io/nats-server/v2 v2.7.3 // indirect
+	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
 	github.com/peterh/liner v1.2.1
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/btree v1.1.0
 	github.com/tidwall/buntdb v1.2.9
@@ -33,7 +34,7 @@ require (
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
-	google.golang.org/api v0.20.0
+	google.golang.org/api v0.30.0
 	google.golang.org/grpc v1.35.0
 	layeh.com/gopher-json v0.0.0-20201124131017-552bb3c4c3bf
 )
