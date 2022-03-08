@@ -431,6 +431,12 @@ var commandsJSON = `{
       {
         "name": "id",
         "type": "string"
+      },
+      {
+        "command": "ERRON404",
+        "name": [],
+        "type": [],
+        "optional": true
       }
     ],
     "since": "1.0.0",

@@ -290,6 +290,17 @@ func (s *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err err
 		err = errInvalidNumberOfArguments
 		return
 	}
+	erron404 := false
+	if len(vs) > 0 {
+		_, arg, ok := tokenval(vs)
+		if ok && strings.ToLower(arg) == "erron404" {
+			erron404 = true
+			vs = vs[1:]
+		} else {
+			err = errInvalidArgument(arg)
+			return
+		}
+	}
 	if len(vs) != 0 {
 		err = errInvalidNumberOfArguments
 		return
@@ -303,7 +314,13 @@ func (s *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err err
 				s.deleteCol(d.key)
 			}
 			found = true
+		} else if erron404 {
+			err = errIDNotFound
+			return
 		}
+	} else if erron404 {
+		err = errKeyNotFound
+		return
 	}
 	s.groupDisconnectObject(d.key, d.id)
 	d.command = "del"
