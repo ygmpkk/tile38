@@ -862,6 +862,11 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 		}
 	}
 
+	if cmd == "hello" {
+		// Not Supporting RESP3+, returns an ERR instead.
+		return writeErr("unknown command '" + msg.Args[0] + "'")
+	}
+
 	if cmd == "timeout" {
 		if err := rewriteTimeoutMsg(msg); err != nil {
 			return writeErr(err.Error())
