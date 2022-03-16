@@ -12,7 +12,7 @@ require (
 	github.com/gomodule/redigo v1.8.3
 	github.com/iwpnd/sectr v0.1.2
 	github.com/mmcloughlin/geohash v0.10.0
-	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
+	github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.12.1
 	github.com/streadway/amqp v1.0.0
@@ -28,7 +28,7 @@ require (
 	github.com/tidwall/resp v0.1.0
 	github.com/tidwall/rtree v1.3.1
 	github.com/tidwall/sjson v1.2.4
-	github.com/xdg/scram v1.0.3
+	github.com/xdg/scram v1.0.5
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
@@ -74,7 +74,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/nats-io/nats-server/v2 v2.7.3 // indirect
+	github.com/nats-io/nats-server/v2 v2.7.4 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/tidwall/lotsa v1.0.2 // indirect
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
-	github.com/xdg/stringprep v1.0.0 // indirect
+	github.com/xdg/stringprep v1.0.3 // indirect
 	go.opencensus.io v0.22.4 // indirect
 	go.uber.org/atomic v1.5.0 // indirect
 	go.uber.org/multierr v1.3.0 // indirect
@@ -98,7 +98,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.0.0-20200825202427-b303f430e36d // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
@@ -110,3 +110,5 @@ require (
 	gopkg.in/jcmturner/rpc.v1 v1.1.0 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 )
+
+replace golang.org/x/text => golang.org/x/text v0.3.7 // CVE-2021-38561
