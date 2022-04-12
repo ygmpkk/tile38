@@ -50,6 +50,7 @@ var (
 	raw        bool
 	noprompt   bool
 	tty        bool
+	stdin      bool
 )
 
 func showHelp() bool {
@@ -68,6 +69,7 @@ func showHelp() bool {
 	fmt.Fprintf(os.Stdout, " --json             Use JSON output formatting (default is JSON output)\n")
 	fmt.Fprintf(os.Stdout, " -h <hostname>      Server hostname (default: %s)\n", hostname)
 	fmt.Fprintf(os.Stdout, " -p <port>          Server port (default: %d)\n", port)
+	fmt.Fprintf(os.Stdout, " -x                 Read last argument from STDIN.\n")
 	fmt.Fprintf(os.Stdout, "\n")
 	return false
 }
@@ -117,6 +119,8 @@ func parseArgs() bool {
 			output = "resp"
 		case "--json":
 			output = "json"
+		case "-x":
+			stdin = true
 		case "-h":
 			hostname = readArg(arg)
 		case "-p":
@@ -128,6 +132,20 @@ func parseArgs() bool {
 		}
 	}
 	oneCommand = strings.Join(args, " ")
+	if stdin {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			println(err)
+		}
+		if !gjson.ValidBytes(data) {
+			fmt.Fprintf(os.Stderr, "Invalid STDIN: Not JSON\n")
+			return false
+		}
+		arg := strings.Replace(string(data), "\r", "", -1)
+		arg = strings.Replace(arg, "\n", "", -1)
+		arg = strings.Replace(arg, "'", "\\'", -1)
+		oneCommand += " '" + arg + "'"
+	}
 	return true
 }
 
