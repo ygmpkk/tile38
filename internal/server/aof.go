@@ -55,29 +55,27 @@ func (s *Server) loadAOF() (err error) {
 	var buf []byte
 	var args [][]byte
 	var packet [0xFFFF]byte
-	var zeros int
 	for {
 		n, err := s.aof.Read(packet[:])
 		if err != nil {
-			if err == io.EOF {
-				if len(buf) > 0 {
-					return io.ErrUnexpectedEOF
-				}
-				if zeros > 0 {
-					// Trailing zeros in AOF. Truncate the file so it's sane.
-					// See issue #230 for more information. Force a warning.
-					log.Infof("Truncating %d zeros from AOF (issue #230)", zeros)
-					s.aofsz -= zeros
-					if err := s.aof.Truncate(int64(s.aofsz)); err != nil {
-						return err
-					}
-					if _, err := s.aof.Seek(int64(s.aofsz), 0); err != nil {
-						return err
-					}
-				}
-				return nil
+			if err != io.EOF {
+				return err
 			}
-			return err
+			if len(buf) > 0 {
+				// There was an incomplete command or other data at the end of
+				// the AOF file. Attempt to recover the file by truncating the
+				// file at the end position of the last complete command.
+				log.Warnf("Truncating %d bytes due to an incomplete command\n",
+					len(buf))
+				s.aofsz -= len(buf)
+				if err := s.aof.Truncate(int64(s.aofsz)); err != nil {
+					return err
+				}
+				if _, err := s.aof.Seek(int64(s.aofsz), 0); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
 		s.aofsz += n
 		data := packet[:n]
@@ -86,15 +84,11 @@ func (s *Server) loadAOF() (err error) {
 		}
 		var complete bool
 		for {
-			if len(data) > 0 {
-				if data[0] == 0 {
-					zeros++
-					data = data[1:]
-					continue
-				}
-				if zeros > 0 {
-					return clientErrorf("Zeros found in AOF file (issue #230)")
-				}
+			if len(data) > 0 && data[0] == 0 {
+				// Zeros found in AOF file (issue #230).
+				// Just ignore it and move the next byte.
+				data = data[1:]
+				continue
 			}
 			complete, args, _, data, err = redcon.ReadNextCommand(data, args[:0])
 			if err != nil {
