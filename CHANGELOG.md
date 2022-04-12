@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.28.0] = 2022-04-12
+### Added
+- 10f8564: Added option to "not found" for DEL
+- #633: Added "clear" command in the tile38-cli (@CaioDallaqua)
+- #634: Added -x flag to tile38-cli (@sign0)
+
+### Fixed
+- #636: Workaround for the RESP3 Java lettuce client (@rave-eserating)
+- a1cc8e6: Fix eof error for incomplete commands (Theresa D)
+
+### Updated
+- fcdb469: Security updates
+- #638: Upgrade alpine in Dockerfile (@bb)
+- a124738: Upgrade to Go 1.18
+- 38ea913: Upgrade prometheous client
+- 45fde6a: Upgraded nats dependencies
+
 ## [1.27.1] = 2021-01-04
 ### Fix
 - b6833a2: Auto assign server_id for bootstrapped config files
