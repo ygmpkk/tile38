@@ -9,7 +9,8 @@
 </p>
 
 
-Tile38 is an open source (MIT licensed), in-memory geolocation data store, spatial index, and realtime geofence. It supports a variety of object types including lat/lon points, bounding boxes, XYZ tiles, Geohashes, and GeoJSON. 
+Tile38 is an open source (MIT licensed), in-memory geolocation data store, spatial index, and realtime geofencing server.
+It supports a variety of object types including lat/lon points, bounding boxes, XYZ tiles, Geohashes, and GeoJSON. 
 
 <p align="center">
 <i>This README is quick start document. You can find detailed documentation at <a href="https://tile38.com">https://tile38.com</a>.</i><br><br>
