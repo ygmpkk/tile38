@@ -25,6 +25,7 @@ const (
 	FollowPort    = "follow_port"
 	FollowID      = "follow_id"
 	FollowPos     = "follow_pos"
+	SlavePriority = "slave_priority"
 	ServerID      = "server_id"
 	ReadOnly      = "read_only"
 	RequirePass   = "requirepass"
@@ -44,12 +45,13 @@ type Config struct {
 
 	mu sync.RWMutex
 
-	_followHost string
-	_followPort int64
-	_followID   string
-	_followPos  int64
-	_serverID   string
-	_readOnly   bool
+	_followHost    string
+	_followPort    int64
+	_followID      string
+	_followPos     int64
+	_slavePriority int64
+	_serverID      string
+	_readOnly      bool
 
 	_requirePassP   string
 	_requirePass    string
@@ -97,6 +99,15 @@ func loadConfig(path string) (*Config, error) {
 
 	if config._serverID == "" {
 		config._serverID = randomKey(16)
+	}
+
+	// Need to be sure we look for existence vs not zero because zero is an intentional setting
+	// anything less than zero will be considered default and will result in no slave_priority
+	// being output when INFO is called.
+	if gjson.Get(json, SlavePriority).Exists() {
+		config._slavePriority = gjson.Get(json, SlavePriority).Int()
+	} else {
+		config._slavePriority = -1
 	}
 
 	// load properties
@@ -166,6 +177,9 @@ func (config *Config) write(writeProperties bool) {
 	}
 	if config._followPos != 0 {
 		m[FollowPos] = config._followPos
+	}
+	if config._slavePriority >= 0 {
+		m[SlavePriority] = config._slavePriority
 	}
 	if config._serverID != "" {
 		m[ServerID] = config._serverID
@@ -423,6 +437,12 @@ func (config *Config) followHost() string {
 func (config *Config) followPort() int {
 	config.mu.RLock()
 	v := config._followPort
+	config.mu.RUnlock()
+	return int(v)
+}
+func (config *Config) slavePriority() int {
+	config.mu.RLock()
+	v := config._slavePriority
 	config.mu.RUnlock()
 	return int(v)
 }
