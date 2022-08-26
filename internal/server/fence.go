@@ -105,9 +105,18 @@ func fenceMatch(
 			}
 			detect = "roam"
 		} else {
+			var nocross bool
 			// not using roaming
 			match1 := fenceMatchObject(fence, details.oldObj)
+			if match1 {
+				match1, _, _ = sw.testObject(details.id, details.oldObj, details.oldFields)
+				nocross = !match1
+			}
 			match2 := fenceMatchObject(fence, details.obj)
+			if match2 {
+				match2, _, _ = sw.testObject(details.id, details.obj, details.fields)
+				nocross = !match2
+			}
 			if match1 && match2 {
 				detect = "inside"
 			} else if match1 && !match2 {
@@ -121,7 +130,7 @@ func fenceMatch(
 				if details.command != "fset" {
 					// Maybe the old object and new object create a line that crosses the fence.
 					// Must detect for that possibility.
-					if details.oldObj != nil {
+					if !nocross && details.oldObj != nil {
 						ls := geojson.NewLineString(geometry.NewLine(
 							[]geometry.Point{
 								details.oldObj.Center(),
@@ -176,6 +185,7 @@ func fenceMatch(
 		o:          details.obj,
 		fields:     details.fields,
 		noLock:     true,
+		noTest:     true,
 		distance:   distance,
 		distOutput: fence.distance,
 	})

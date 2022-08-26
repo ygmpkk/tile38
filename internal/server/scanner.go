@@ -68,6 +68,7 @@ type ScanWriterParams struct {
 	distance        float64
 	distOutput      bool // query or fence requested distance output
 	noLock          bool
+	noTest          bool
 	ignoreGlobMatch bool
 	clip            geojson.Object
 	skipTesting     bool
@@ -373,9 +374,14 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 		sw.mu.Lock()
 		defer sw.mu.Unlock()
 	}
-	ok, keepGoing, _ := sw.testObject(opts.id, opts.o, opts.fields)
-	if !ok {
-		return keepGoing
+
+	keepGoing := true
+	if !opts.noTest {
+		var ok bool
+		ok, keepGoing, _ = sw.testObject(opts.id, opts.o, opts.fields)
+		if !ok {
+			return keepGoing
+		}
 	}
 	sw.count++
 	if sw.output == outputCount {
