@@ -191,8 +191,10 @@ func (c *Collection) Set(
 		oldFieldValues = c.fieldValues.get(oldItem.fieldValuesSlot)
 		newFieldValues = oldFieldValues
 		newItem.fieldValuesSlot = oldItem.fieldValuesSlot
+		if len(oldFieldValues) > 0 {
+			oldFieldValues = append([]float64{}, oldFieldValues...)
+		}
 	}
-
 	if fields == nil {
 		if len(values) > 0 {
 			newFieldValues = values
