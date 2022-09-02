@@ -488,7 +488,7 @@ func (s *Server) cmdNearby(msg *Message) (res resp.Value, err error) {
 		return NOMessage, sargs
 	}
 	sw, err := s.newScanWriter(
-		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.glob, false,
+		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.globs, false,
 		sargs.cursor, sargs.limit, sargs.wheres, sargs.whereins, sargs.whereevals, sargs.nofields)
 	if err != nil {
 		return NOMessage, err
@@ -580,7 +580,7 @@ func (s *Server) cmdWithinOrIntersects(cmd string, msg *Message) (res resp.Value
 		return NOMessage, sargs
 	}
 	sw, err := s.newScanWriter(
-		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.glob, false,
+		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.globs, false,
 		sargs.cursor, sargs.limit, sargs.wheres, sargs.whereins, sargs.whereevals, sargs.nofields)
 	if err != nil {
 		return NOMessage, err
@@ -644,6 +644,35 @@ func (s *Server) cmdSeachValuesArgs(vs []string) (
 	return
 }
 
+func multiGlobParse(globs []string, desc bool) [2]string {
+	var limits [2]string
+	for i, pattern := range globs {
+		g := glob.Parse(pattern, desc)
+		if g.Limits[0] == "" && g.Limits[1] == "" {
+			limits[0], limits[1] = "", ""
+			break
+		}
+		if i == 0 {
+			limits[0], limits[1] = g.Limits[0], g.Limits[1]
+		} else if desc {
+			if g.Limits[0] > limits[0] {
+				limits[0] = g.Limits[0]
+			}
+			if g.Limits[1] < limits[1] {
+				limits[1] = g.Limits[1]
+			}
+		} else {
+			if g.Limits[0] < limits[0] {
+				limits[0] = g.Limits[0]
+			}
+			if g.Limits[1] > limits[1] {
+				limits[1] = g.Limits[1]
+			}
+		}
+	}
+	return limits
+}
+
 func (s *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
 	vs := msg.Args[1:]
@@ -664,7 +693,7 @@ func (s *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 		return NOMessage, err
 	}
 	sw, err := s.newScanWriter(
-		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.glob, true,
+		wr, msg, sargs.key, sargs.output, sargs.precision, sargs.globs, true,
 		sargs.cursor, sargs.limit, sargs.wheres, sargs.whereins, sargs.whereevals, sargs.nofields)
 	if err != nil {
 		return NOMessage, err
@@ -681,8 +710,8 @@ func (s *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 			}
 			sw.count = uint64(count)
 		} else {
-			g := glob.Parse(sw.globPattern, sargs.desc)
-			if g.Limits[0] == "" && g.Limits[1] == "" {
+			limits := multiGlobParse(sw.globs, sargs.desc)
+			if limits[0] == "" && limits[1] == "" {
 				sw.col.SearchValues(sargs.desc, sw, msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{
@@ -696,8 +725,7 @@ func (s *Server) cmdSearch(msg *Message) (res resp.Value, err error) {
 			} else {
 				// must disable globSingle for string value type matching because
 				// globSingle is only for ID matches, not values.
-				sw.globSingle = false
-				sw.col.SearchValuesRange(g.Limits[0], g.Limits[1], sargs.desc, sw,
+				sw.col.SearchValuesRange(limits[0], limits[1], sargs.desc, sw,
 					msg.Deadline,
 					func(id string, o geojson.Object, fields []float64) bool {
 						return sw.writeObject(ScanWriterParams{

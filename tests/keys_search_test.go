@@ -591,23 +591,28 @@ func keys_MATCH_test(mc *mockServer) error {
 		{"SET", "fleet", "truck2", "POINT", "33.0002", "-112.0002"}, {"OK"},
 		{"SET", "fleet", "luck1", "POINT", "33.0003", "-112.0003"}, {"OK"},
 		{"SET", "fleet", "luck2", "POINT", "33.0004", "-112.0004"}, {"OK"},
+		{"SET", "fleet", "train1", "POINT", "33.0005", "-112.0005"}, {"OK"},
 
-		{"SCAN", "fleet", "IDS"}, {"[0 [luck1 luck2 truck1 truck2]]"},
-		{"SCAN", "fleet", "MATCH", "*", "IDS"}, {"[0 [luck1 luck2 truck1 truck2]]"},
+		{"SCAN", "fleet", "IDS"}, {"[0 [luck1 luck2 train1 truck1 truck2]]"},
+		{"SCAN", "fleet", "MATCH", "*", "IDS"}, {"[0 [luck1 luck2 train1 truck1 truck2]]"},
 		{"SCAN", "fleet", "MATCH", "truck*", "IDS"}, {"[0 [truck1 truck2]]"},
 		{"SCAN", "fleet", "MATCH", "luck*", "IDS"}, {"[0 [luck1 luck2]]"},
 		{"SCAN", "fleet", "MATCH", "*2", "IDS"}, {"[0 [luck2 truck2]]"},
 		{"SCAN", "fleet", "MATCH", "*2*", "IDS"}, {"[0 [luck2 truck2]]"},
 		{"SCAN", "fleet", "MATCH", "*u*", "IDS"}, {"[0 [luck1 luck2 truck1 truck2]]"},
+		{"SCAN", "fleet", "MATCH", "*u*", "MATCH", "*u*", "IDS"}, {"[0 [luck1 luck2 truck1 truck2]]"},
+		{"SCAN", "fleet", "MATCH", "*u*", "MATCH", "*a*", "IDS"}, {"[0 [luck1 luck2 train1 truck1 truck2]]"},
+		{"SCAN", "fleet", "MATCH", "train*", "MATCH", "truck*", "IDS"}, {"[0 [train1 truck1 truck2]]"},
+		{"SCAN", "fleet", "MATCH", "train*", "MATCH", "truck*", "MATCH", "luck1", "IDS"}, {"[0 [luck1 train1 truck1 truck2]]"},
 
 		{"NEARBY", "fleet", "IDS", "POINT", 33.00005, -112.00005, 100000}, {
-			match("[0 [luck1 luck2 truck1 truck2]]"),
+			match("[0 [luck1 luck2 train1 truck1 truck2]]"),
 		},
 		{"NEARBY", "fleet", "MATCH", "*", "IDS", "POINT", 33.00005, -112.00005, 100000}, {
-			match("[0 [luck1 luck2 truck1 truck2]]"),
+			match("[0 [luck1 luck2 train1 truck1 truck2]]"),
 		},
 		{"NEARBY", "fleet", "MATCH", "t*", "IDS", "POINT", 33.00005, -112.00005, 100000}, {
-			match("[0 [truck1 truck2]]"),
+			match("[0 [train1 truck1 truck2]]"),
 		},
 		{"NEARBY", "fleet", "MATCH", "t*2", "IDS", "POINT", 33.00005, -112.00005, 100000}, {
 			match("[0 [truck2]]"),
@@ -617,13 +622,13 @@ func keys_MATCH_test(mc *mockServer) error {
 		},
 
 		{"INTERSECTS", "fleet", "IDS", "BOUNDS", 33, -113, 34, -112}, {
-			match("[0 [luck1 luck2 truck1 truck2]]"),
+			match("[0 [luck1 luck2 train1 truck1 truck2]]"),
 		},
 		{"INTERSECTS", "fleet", "MATCH", "*", "IDS", "BOUNDS", 33, -113, 34, -112}, {
-			match("[0 [luck1 luck2 truck1 truck2]]"),
+			match("[0 [luck1 luck2 train1 truck1 truck2]]"),
 		},
 		{"INTERSECTS", "fleet", "MATCH", "t*", "IDS", "BOUNDS", 33, -113, 34, -112}, {
-			match("[0 [truck1 truck2]]"),
+			match("[0 [train1 truck1 truck2]]"),
 		},
 		{"INTERSECTS", "fleet", "MATCH", "t*2", "IDS", "BOUNDS", 33, -113, 34, -112}, {
 			match("[0 [truck2]]"),

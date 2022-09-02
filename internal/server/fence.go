@@ -55,6 +55,20 @@ func objIsSpatial(obj geojson.Object) bool {
 func hookJSONString(hookName string, metas []FenceMeta) string {
 	return string(appendHookDetails(nil, hookName, metas))
 }
+
+func multiGlobMatch(globs []string, s string) bool {
+	if len(globs) == 0 || (len(globs) == 1 && globs[0] == "*") {
+		return true
+	}
+	for _, pattern := range globs {
+		match, _ := glob.Match(pattern, s)
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
 func fenceMatch(
 	hookName string, sw *scanWriter, fence *liveFenceSwitches,
 	metas []FenceMeta, details *commandDetails,
@@ -66,11 +80,8 @@ func fenceMatch(
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
 	}
-	if len(fence.glob) > 0 && !(len(fence.glob) == 1 && fence.glob[0] == '*') {
-		match, _ := glob.Match(fence.glob, details.id)
-		if !match {
-			return nil
-		}
+	if !multiGlobMatch(fence.globs, details.id) {
+		return nil
 	}
 	if details.obj == nil || !objIsSpatial(details.obj) {
 		return nil

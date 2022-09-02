@@ -52,9 +52,8 @@ type scanWriter struct {
 	once           bool
 	count          uint64
 	precision      uint64
-	globPattern    string
+	globs          []string
 	globEverything bool
-	globSingle     bool
 	fullFields     bool
 	values         []resp.Value
 	matchValues    bool
@@ -79,7 +78,7 @@ type ScanWriterParams struct {
 
 func (s *Server) newScanWriter(
 	wr *bytes.Buffer, msg *Message, key string, output outputT,
-	precision uint64, globPattern string, matchValues bool,
+	precision uint64, globs []string, matchValues bool,
 	cursor, limit uint64, wheres []whereT, whereins []whereinT,
 	whereevals []whereevalT, nofields bool,
 ) (
@@ -102,21 +101,18 @@ func (s *Server) newScanWriter(
 		wr:          wr,
 		key:         key,
 		msg:         msg,
+		globs:       globs,
 		limit:       limit,
 		cursor:      cursor,
 		output:      output,
 		nofields:    nofields,
 		precision:   precision,
 		whereevals:  whereevals,
-		globPattern: globPattern,
 		matchValues: matchValues,
 	}
-	if globPattern == "*" || globPattern == "" {
+
+	if len(globs) == 0 || (len(globs) == 1 && globs[0] == "*") {
 		sw.globEverything = true
-	} else {
-		if !glob.IsGlob(globPattern) {
-			sw.globSingle = true
-		}
 	}
 	sw.orgWheres = wheres
 	sw.orgWhereins = whereins
@@ -344,25 +340,23 @@ func (sw *scanWriter) fieldMatch(fields []float64, o geojson.Object) (fvals []fl
 }
 
 func (sw *scanWriter) globMatch(id string, o geojson.Object) (ok, keepGoing bool) {
-	if !sw.globEverything {
-		if sw.globSingle {
-			if sw.globPattern != id {
-				return false, true
-			}
-			return true, false
-		}
-		var val string
-		if sw.matchValues {
-			val = o.String()
-		} else {
-			val = id
-		}
-		ok, _ := glob.Match(sw.globPattern, val)
-		if !ok {
-			return false, true
+	if sw.globEverything {
+		return true, true
+	}
+	var val string
+	if sw.matchValues {
+		val = o.String()
+	} else {
+		val = id
+	}
+	for _, pattern := range sw.globs {
+		ok, _ := glob.Match(pattern, val)
+		if ok {
+			return true, true
 		}
 	}
-	return true, true
+	return false, true
+
 }
 
 // Increment cursor
