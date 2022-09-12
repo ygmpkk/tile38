@@ -357,8 +357,8 @@ github.com/tidwall/buntdb v1.2.9/go.mod h1:IwyGSvvDg6hnKSIhtdZ0AqhCZGH8ukdtCAzaP
 github.com/tidwall/cities v0.1.0 h1:CVNkmMf7NEC9Bvokf5GoSsArHCKRMTgLuubRTHnH0mE=
 github.com/tidwall/cities v0.1.0/go.mod h1:lV/HDp2gCcRcHJWqgt6Di54GiDrTZwh1aG2ZUPNbqa4=
 github.com/tidwall/geoindex v1.4.4/go.mod h1:rvVVNEFfkJVWGUdEfU8QaoOg/9zFX0h9ofWzA60mz1I=
-github.com/tidwall/geoindex v1.6.2 h1:cWbqC9HFXMxc2p6KMWbs9VG6/gnrfC53EIPQEMcXO1g=
-github.com/tidwall/geoindex v1.6.2/go.mod h1:rvVVNEFfkJVWGUdEfU8QaoOg/9zFX0h9ofWzA60mz1I=
+github.com/tidwall/geoindex v1.7.0 h1:jtk41sfgwIt8MEDyC3xyKSj75iXXf6rjReJGDNPtR5o=
+github.com/tidwall/geoindex v1.7.0/go.mod h1:rvVVNEFfkJVWGUdEfU8QaoOg/9zFX0h9ofWzA60mz1I=
 github.com/tidwall/geojson v1.3.4 h1:mHB2yGK7HPgf4vFkLdPeIzguFpqkmCT2yTgGhXbrqBo=
 github.com/tidwall/geojson v1.3.4/go.mod h1:1cn3UWfSYCJOq53NZoQ9rirdw89+DM0vw+ZOAVvuReg=
 github.com/tidwall/gjson v1.12.1 h1:ikuZsLdhr8Ws0IdROXUS1Gi4v9Z4pGqpX/CvJkxvfpo=
@@ -380,8 +380,8 @@ github.com/tidwall/resp v0.1.0/go.mod h1:18xEj855iMY2bK6tNF2A4x+nZy5gWO1iO7OOl3j
 github.com/tidwall/rtred v0.1.2 h1:exmoQtOLvDoO8ud++6LwVsAMTu0KPzLTUrMln8u1yu8=
 github.com/tidwall/rtred v0.1.2/go.mod h1:hd69WNXQ5RP9vHd7dqekAz+RIdtfBogmglkZSRxCHFQ=
 github.com/tidwall/rtree v1.3.1/go.mod h1:S+JSsqPTI8LfWA4xHBo5eXzie8WJLVFeppAutSegl6M=
-github.com/tidwall/rtree v1.7.1 h1:rv3Q8RBKH2HbJ6DsqpfrXfV9l+dCT1jupTpDiceHN3I=
-github.com/tidwall/rtree v1.7.1/go.mod h1:39+jGCj9hYqhflezmsTBOlysIk09ytm+8EQsC/E/2X0=
+github.com/tidwall/rtree v1.8.0 h1:nYVLh9UKJrd4CZCNawD3WbHNxmI9LYR4j3E2hqO3tjQ=
+github.com/tidwall/rtree v1.8.0/go.mod h1:iDJQ9NBRtbfKkzZu02za+mIlaP+bjYPnunbSNidpbCQ=
 github.com/tidwall/sjson v1.2.4 h1:cuiLzLnaMeBhRmEv00Lpk3tkYrcxpmbU81tAY4Dw0tc=
 github.com/tidwall/sjson v1.2.4/go.mod h1:098SZ494YoMWPmMO6ct4dcFnqxwj9r/gF0Etp19pSNM=
 github.com/tidwall/tinyqueue v0.1.1 h1:SpNEvEggbpyN5DIReaJ2/1ndroY8iyEGxPYxoSaymYE=
