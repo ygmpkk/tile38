@@ -380,7 +380,7 @@ func (sw *scanWriter) testObject(id string, o geojson.Object, fields []float64) 
 	return ok, true, nf
 }
 
-//id string, o geojson.Object, fields []float64, noLock bool
+// id string, o geojson.Object, fields []float64, noLock bool
 func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 	if !opts.noLock {
 		sw.mu.Lock()
