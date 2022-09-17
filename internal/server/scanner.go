@@ -447,7 +447,12 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 			}
 		}
 		if sw.output == outputIDs {
-			wr.WriteString(jsonString(opts.id))
+			if opts.distOutput || opts.distance > 0 {
+				wr.WriteString(`{"id":` + jsonString(opts.id) +
+					`,"distance":` + strconv.FormatFloat(opts.distance, 'f', -1, 64) + "}")
+			} else {
+				wr.WriteString(jsonString(opts.id))
+			}
 		} else {
 			wr.WriteString(`{"id":` + jsonString(opts.id))
 			switch sw.output {
@@ -476,7 +481,12 @@ func (sw *scanWriter) writeObject(opts ScanWriterParams) bool {
 		vals := make([]resp.Value, 1, 3)
 		vals[0] = resp.StringValue(opts.id)
 		if sw.output == outputIDs {
-			sw.values = append(sw.values, vals[0])
+			if opts.distOutput || opts.distance > 0 {
+				vals = append(vals, resp.FloatValue(opts.distance))
+				sw.values = append(sw.values, resp.ArrayValue(vals))
+			} else {
+				sw.values = append(sw.values, vals[0])
+			}
 		} else {
 			switch sw.output {
 			case outputObjects:
