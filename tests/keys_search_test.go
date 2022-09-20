@@ -46,7 +46,7 @@ func keys_KNN_basic_test(mc *mockServer) error {
 		{"NEARBY", "mykey", "LIMIT", 10, "POINTS", "POINT", 20, 20}, {
 			"[0 [[2 [19 19]] [3 [12 19]] [5 [33 21]] [1 [5 5]] [4 [-5 5]] [6 [52 13]]]]"},
 		{"NEARBY", "mykey", "LIMIT", 10, "IDS", "POINT", 20, 20, 4000000}, {"[0 [2 3 5 1 4 6]]"},
-		{"NEARBY", "mykey", "LIMIT", 10, "DISTANCE", "IDS", "POINT", 20, 20, 1500000}, {"[0 [[2 152808.67164037024] [3 895945.1409106688] [5 1448929.5916252395]]]"},
+		{"NEARBY", "mykey", "LIMIT", 10, "DISTANCE", "IDS", "POINT", 20, 20, 1500000}, {"[0 [[2 152808.671875] [3 895945.125] [5 1448929.625]]]"},
 		{"NEARBY", "mykey", "LIMIT", 10, "DISTANCE", "POINT", 52, 13, 100}, {`[0 [[6 {"type":"Point","coordinates":[13,52]} 0]]]`},
 		{"NEARBY", "mykey", "LIMIT", 10, "POINT", 52.1, 13.1, 100000}, {`[0 [[6 {"type":"Point","coordinates":[13,52]}]]]`},
 		{"OUTPUT", "json"}, {func(res string) bool { return gjson.Get(res, "ok").Bool() }},

@@ -56,12 +56,19 @@ func byExpires(a, b *itemT) bool {
 	return byID(a, b)
 }
 
+func (item *itemT) Rect() geometry.Rect {
+	if item.obj != nil {
+		return item.obj.Rect()
+	}
+	return geometry.Rect{}
+}
+
 // Collection represents a collection of geojson objects.
 type Collection struct {
-	items    *btree.BTreeG[*itemT] // items sorted by id
-	spatial  *rtree.RTreeG[*itemT] // items geospatially indexed
-	values   *btree.BTreeG[*itemT] // items sorted by value+id
-	expires  *btree.BTreeG[*itemT] // items sorted by ex+id
+	items    *btree.BTreeG[*itemT]           // items sorted by id
+	spatial  *rtree.RTreeGN[float32, *itemT] // items geospatially indexed
+	values   *btree.BTreeG[*itemT]           // items sorted by value+id
+	expires  *btree.BTreeG[*itemT]           // items sorted by ex+id
 	weight   int
 	points   int
 	objects  int // geometry count
@@ -76,7 +83,7 @@ func New() *Collection {
 		items:   btree.NewBTreeGOptions(byID, optsNoLock),
 		values:  btree.NewBTreeGOptions(byValue, optsNoLock),
 		expires: btree.NewBTreeGOptions(byExpires, optsNoLock),
-		spatial: &rtree.RTreeG[*itemT]{},
+		spatial: &rtree.RTreeGN[float32, *itemT]{},
 	}
 	return col
 }
@@ -103,11 +110,15 @@ func (c *Collection) TotalWeight() int {
 
 // Bounds returns the bounds of all the items in the collection.
 func (c *Collection) Bounds() (minX, minY, maxX, maxY float64) {
-	min, max := c.spatial.Bounds()
-	if len(min) >= 2 && len(max) >= 2 {
-		return min[0], min[1], max[0], max[1]
+	_, _, left := c.spatial.LeftMost()
+	_, _, bottom := c.spatial.BottomMost()
+	_, _, right := c.spatial.RightMost()
+	_, _, top := c.spatial.TopMost()
+	if left == nil {
+		return
 	}
-	return
+	return left.Rect().Min.X, bottom.Rect().Min.Y,
+		right.Rect().Max.X, top.Rect().Max.Y
 }
 
 func objIsSpatial(obj geojson.Object) bool {
@@ -129,22 +140,55 @@ func (c *Collection) objWeight(item *itemT) int {
 
 func (c *Collection) indexDelete(item *itemT) {
 	if !item.obj.Empty() {
-		rect := item.obj.Rect()
-		c.spatial.Delete(
-			[2]float64{rect.Min.X, rect.Min.Y},
-			[2]float64{rect.Max.X, rect.Max.Y},
-			item)
+		c.spatial.Delete(rtreeItem(item))
 	}
 }
 
 func (c *Collection) indexInsert(item *itemT) {
 	if !item.obj.Empty() {
-		rect := item.obj.Rect()
-		c.spatial.Insert(
-			[2]float64{rect.Min.X, rect.Min.Y},
-			[2]float64{rect.Max.X, rect.Max.Y},
-			item)
+		c.spatial.Insert(rtreeItem(item))
 	}
+}
+
+const dRNDTOWARDS = (1.0 - 1.0/8388608.0) /* Round towards zero */
+const dRNDAWAY = (1.0 + 1.0/8388608.0)    /* Round away from zero */
+
+func rtreeValueDown(d float64) float32 {
+	f := float32(d)
+	if float64(f) > d {
+		if d < 0 {
+			f = float32(d * dRNDAWAY)
+		} else {
+			f = float32(d * dRNDTOWARDS)
+		}
+	}
+	return f
+}
+func rtreeValueUp(d float64) float32 {
+	f := float32(d)
+	if float64(f) < d {
+		if d < 0 {
+			f = float32(d * dRNDTOWARDS)
+		} else {
+			f = float32(d * dRNDAWAY)
+		}
+	}
+	return f
+}
+
+func rtreeItem(item *itemT) (min, max [2]float32, data *itemT) {
+	min, max = rtreeRect(item.Rect())
+	return min, max, item
+}
+
+func rtreeRect(rect geometry.Rect) (min, max [2]float32) {
+	return [2]float32{
+			rtreeValueDown(rect.Min.X),
+			rtreeValueDown(rect.Min.Y),
+		}, [2]float32{
+			rtreeValueUp(rect.Max.X),
+			rtreeValueUp(rect.Max.Y),
+		}
 }
 
 // Set adds or replaces an object in the collection and returns the fields
@@ -429,10 +473,10 @@ func (c *Collection) geoSearch(
 	iter func(id string, obj geojson.Object, fields field.List) bool,
 ) bool {
 	alive := true
+	min, max := rtreeRect(rect)
 	c.spatial.Search(
-		[2]float64{rect.Min.X, rect.Min.Y},
-		[2]float64{rect.Max.X, rect.Max.Y},
-		func(_, _ [2]float64, item *itemT) bool {
+		min, max,
+		func(_, _ [2]float32, item *itemT) bool {
 			alive = iter(item.id, item.obj, item.fields)
 			return alive
 		},
@@ -618,10 +662,19 @@ func (c *Collection) Nearby(
 			minLat, minLon, maxLat, maxLon :=
 				geo.RectFromCenter(center.Y, center.X, meters)
 			var exists bool
+			min, max := rtreeRect(geometry.Rect{
+				Min: geometry.Point{
+					X: minLon,
+					Y: minLat,
+				},
+				Max: geometry.Point{
+					X: maxLon,
+					Y: maxLat,
+				},
+			})
 			c.spatial.Search(
-				[2]float64{minLon, minLat},
-				[2]float64{maxLon, maxLat},
-				func(_, _ [2]float64, item *itemT) bool {
+				min, max,
+				func(_, _ [2]float32, item *itemT) bool {
 					exists = true
 					return false
 				},
@@ -641,15 +694,22 @@ func (c *Collection) Nearby(
 		offset = cursor.Offset()
 		cursor.Step(offset)
 	}
+	distFn := geodeticDistAlgo[*itemT]([2]float64{center.X, center.Y})
 	c.spatial.Nearby(
-		geodeticDistAlgo[*itemT]([2]float64{center.X, center.Y}),
-		func(_, _ [2]float64, item *itemT, dist float64) bool {
+		func(min, max [2]float32, data *itemT, item bool) float32 {
+			return float32(distFn(
+				[2]float64{float64(min[0]), float64(min[1])},
+				[2]float64{float64(max[0]), float64(max[1])},
+				data, item,
+			))
+		},
+		func(_, _ [2]float32, item *itemT, dist float32) bool {
 			count++
 			if count <= offset {
 				return true
 			}
 			nextStep(count, cursor, deadline)
-			alive = iter(item.id, item.obj, item.fields, dist)
+			alive = iter(item.id, item.obj, item.fields, float64(dist))
 			return alive
 		},
 	)
