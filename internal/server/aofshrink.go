@@ -11,6 +11,7 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
+	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/log"
 )
 
@@ -93,12 +94,10 @@ func (s *Server) aofshrink() {
 					if !ok {
 						return
 					}
-					var fnames = col.FieldArr()     // reload an array of field names to match each object
-					var fmap = col.FieldMap()       //
 					var now = time.Now().UnixNano() // used for expiration
 					var count = 0                   // the object count
 					col.ScanGreaterOrEqual(nextid, false, nil, nil,
-						func(id string, obj geojson.Object, fields []float64, ex int64) bool {
+						func(id string, obj geojson.Object, fields field.List, ex int64) bool {
 							if count == maxids {
 								// we reached the max number of ids for one batch
 								nextid = id
@@ -110,16 +109,14 @@ func (s *Server) aofshrink() {
 							values = append(values, "set")
 							values = append(values, keys[0])
 							values = append(values, id)
-							if len(fields) > 0 {
-								fvs := orderFields(fmap, fnames, fields)
-								for _, fv := range fvs {
-									if fv.value != 0 {
-										values = append(values, "field")
-										values = append(values, fv.field)
-										values = append(values, strconv.FormatFloat(fv.value, 'f', -1, 64))
-									}
+							fields.Scan(func(f field.Field) bool {
+								if !f.Value().IsZero() {
+									values = append(values, "field")
+									values = append(values, f.Name())
+									values = append(values, f.Value().JSON())
 								}
-							}
+								return true
+							})
 							if ex != 0 {
 								ttl := math.Floor(float64(ex-now)/float64(time.Second)*10) / 10
 								if ttl < 0.1 {

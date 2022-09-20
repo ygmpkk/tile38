@@ -16,15 +16,17 @@ require (
 	github.com/peterh/liner v1.2.1
 	github.com/prometheus/client_golang v1.12.1
 	github.com/streadway/amqp v1.0.0
+	github.com/tidwall/assert v0.1.0
 	github.com/tidwall/btree v1.4.3
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/geojson v1.3.6
-	github.com/tidwall/gjson v1.12.1
+	github.com/tidwall/gjson v1.14.3
+	github.com/tidwall/hashmap v1.6.1
 	github.com/tidwall/match v1.1.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.4
-	github.com/tidwall/resp v0.1.0
+	github.com/tidwall/resp v0.1.1
 	github.com/tidwall/rtree v1.8.1
 	github.com/tidwall/sjson v1.2.4
 	github.com/xdg/scram v1.0.5
@@ -101,7 +103,7 @@ require (
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.0.0-20200825202427-b303f430e36d // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

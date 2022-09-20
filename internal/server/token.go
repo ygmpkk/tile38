@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tidwall/tile38/internal/field"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -44,31 +45,6 @@ func tokenval(vs []string) (nvs []string, token string, ok bool) {
 	return
 }
 
-func tokenvalbytes(vs []string) (nvs []string, token []byte, ok bool) {
-	if len(vs) > 0 {
-		token = []byte(vs[0])
-		nvs = vs[1:]
-		ok = true
-	}
-	return
-}
-
-func lcb(s1 []byte, s2 string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i := 0; i < len(s1); i++ {
-		ch := s1[i]
-		if ch >= 'A' && ch <= 'Z' {
-			if ch+32 != s2[i] {
-				return false
-			}
-		} else if ch != s2[i] {
-			return false
-		}
-	}
-	return true
-}
 func lc(s1, s2 string) bool {
 	if len(s1) != len(s2) {
 		return false
@@ -87,30 +63,35 @@ func lc(s1, s2 string) bool {
 }
 
 type whereT struct {
-	field string
-	index int
-	minx  bool
-	min   float64
-	maxx  bool
-	max   float64
+	name string
+	minx bool
+	min  field.Value
+	maxx bool
+	max  field.Value
 }
 
-func (where whereT) match(value float64) bool {
+func mLT(a, b field.Value) bool  { return a.Less(b) }
+func mLTE(a, b field.Value) bool { return !mLT(b, a) }
+func mGT(a, b field.Value) bool  { return mLT(b, a) }
+func mGTE(a, b field.Value) bool { return !mLT(a, b) }
+func mEQ(a, b field.Value) bool  { return a.Equals(b) }
+
+func (where whereT) match(value field.Value) bool {
 	if !where.minx {
-		if value < where.min {
+		if mLT(value, where.min) { // if value < where.min {
 			return false
 		}
 	} else {
-		if value <= where.min {
+		if mLTE(value, where.min) { // if value <= where.min {
 			return false
 		}
 	}
 	if !where.maxx {
-		if value > where.max {
+		if mGT(value, where.max) { // if value > where.max {
 			return false
 		}
 	} else {
-		if value >= where.max {
+		if mGTE(value, where.max) { // if value >= where.max {
 			return false
 		}
 	}
@@ -118,14 +99,13 @@ func (where whereT) match(value float64) bool {
 }
 
 type whereinT struct {
-	field  string
-	index  int
-	valArr []float64
+	name   string
+	valArr []field.Value
 }
 
-func (wherein whereinT) match(value float64) bool {
+func (wherein whereinT) match(value field.Value) bool {
 	for _, val := range wherein.valArr {
-		if val == value {
+		if mEQ(val, value) {
 			return true
 		}
 	}
@@ -146,12 +126,28 @@ func (whereeval whereevalT) Close() {
 	whereeval.c.luapool.Put(whereeval.luaState)
 }
 
-func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
-	fieldsTbl := whereeval.luaState.CreateTable(0, len(fieldsWithNames))
-	for field, val := range fieldsWithNames {
-		fieldsTbl.RawSetString(field, lua.LNumber(val))
+func luaSetField(tbl *lua.LTable, name string, val field.Value) {
+	var lval lua.LValue
+	switch val.Kind() {
+	case field.Null:
+		lval = lua.LNil
+	case field.False:
+		lval = lua.LFalse
+	case field.True:
+		lval = lua.LTrue
+	case field.Number:
+		lval = lua.LNumber(val.Num())
+	default:
+		lval = lua.LString(val.Data())
 	}
+	tbl.RawSetString(name, lval)
+}
 
+func (whereeval whereevalT) match(fieldsWithNames map[string]field.Value) (bool, error) {
+	fieldsTbl := whereeval.luaState.CreateTable(0, len(fieldsWithNames))
+	for name, val := range fieldsWithNames {
+		luaSetField(fieldsTbl, name, val)
+	}
 	luaSetRawGlobals(
 		whereeval.luaState, map[string]lua.LValue{
 			"FIELDS": fieldsTbl,
@@ -163,7 +159,7 @@ func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
 
 	whereeval.luaState.Push(whereeval.fn)
 	if err := whereeval.luaState.PCall(0, 1, nil); err != nil {
-		panic(err.Error())
+		return false, err
 	}
 	ret := whereeval.luaState.Get(-1)
 	whereeval.luaState.Pop(1)
@@ -171,23 +167,23 @@ func (whereeval whereevalT) match(fieldsWithNames map[string]float64) bool {
 	// Make bool out of returned lua value
 	switch ret.Type() {
 	case lua.LTNil:
-		return false
+		return false, nil
 	case lua.LTBool:
-		return ret == lua.LTrue
+		return ret == lua.LTrue, nil
 	case lua.LTNumber:
-		return float64(ret.(lua.LNumber)) != 0
+		return float64(ret.(lua.LNumber)) != 0, nil
 	case lua.LTString:
-		return ret.String() != ""
+		return ret.String() != "", nil
 	case lua.LTTable:
 		tbl := ret.(*lua.LTable)
 		if tbl.Len() != 0 {
-			return true
+			return true, nil
 		}
 		var match bool
 		tbl.ForEach(func(lk lua.LValue, lv lua.LValue) { match = true })
-		return match
+		return match, nil
 	}
-	panic(fmt.Sprintf("Script returned value of type %s", ret.Type()))
+	return false, fmt.Errorf("script returned value of type %s", ret.Type())
 }
 
 type searchScanBaseTokens struct {
@@ -265,57 +261,54 @@ func (s *Server) parseSearchScanBaseTokens(
 				continue
 			case "where":
 				vs = nvs
-				var field, smin, smax string
-				if vs, field, ok = tokenval(vs); !ok || field == "" {
+				var name, smin, smax string
+				if vs, name, ok = tokenval(vs); !ok {
 					err = errInvalidNumberOfArguments
 					return
 				}
-				if vs, smin, ok = tokenval(vs); !ok || smin == "" {
+				if vs, smin, ok = tokenval(vs); !ok {
 					err = errInvalidNumberOfArguments
 					return
 				}
-				if vs, smax, ok = tokenval(vs); !ok || smax == "" {
+				if vs, smax, ok = tokenval(vs); !ok {
 					err = errInvalidNumberOfArguments
 					return
 				}
 				var minx, maxx bool
-				var min, max float64
-				if strings.ToLower(smin) == "-inf" {
-					min = math.Inf(-1)
+				smin = strings.ToLower(smin)
+				if smin == "-inf" {
+					smin = "-inf"
 				} else {
 					if strings.HasPrefix(smin, "(") {
 						minx = true
 						smin = smin[1:]
 					}
-					min, err = strconv.ParseFloat(smin, 64)
-					if err != nil {
-						err = errInvalidArgument(smin)
-						return
-					}
 				}
-				if strings.ToLower(smax) == "+inf" {
-					max = math.Inf(+1)
+				smax = strings.ToLower(smax)
+				if smax == "+inf" || smax == "inf" {
+					smax = "inf"
 				} else {
 					if strings.HasPrefix(smax, "(") {
 						maxx = true
 						smax = smax[1:]
 					}
-					max, err = strconv.ParseFloat(smax, 64)
-					if err != nil {
-						err = errInvalidArgument(smax)
-						return
-					}
 				}
-				t.wheres = append(t.wheres, whereT{field, -1, minx, min, maxx, max})
+				t.wheres = append(t.wheres, whereT{
+					name: strings.ToLower(name),
+					minx: minx,
+					min:  field.ValueOf(smin),
+					maxx: maxx,
+					max:  field.ValueOf(smax),
+				})
 				continue
 			case "wherein":
 				vs = nvs
-				var field, nvalsStr, valStr string
-				if vs, field, ok = tokenval(vs); !ok || field == "" {
+				var name, nvalsStr, valStr string
+				if vs, name, ok = tokenval(vs); !ok {
 					err = errInvalidNumberOfArguments
 					return
 				}
-				if vs, nvalsStr, ok = tokenval(vs); !ok || nvalsStr == "" {
+				if vs, nvalsStr, ok = tokenval(vs); !ok {
 					err = errInvalidNumberOfArguments
 					return
 				}
@@ -324,20 +317,18 @@ func (s *Server) parseSearchScanBaseTokens(
 					err = errInvalidArgument(nvalsStr)
 					return
 				}
-				valArr := make([]float64, nvals)
-				var val float64
+				valArr := make([]field.Value, nvals)
 				for i = 0; i < nvals; i++ {
-					if vs, valStr, ok = tokenval(vs); !ok || valStr == "" {
+					if vs, valStr, ok = tokenval(vs); !ok {
 						err = errInvalidNumberOfArguments
 						return
 					}
-					if val, err = strconv.ParseFloat(valStr, 64); err != nil {
-						err = errInvalidArgument(valStr)
-						return
-					}
-					valArr[i] = val
+					valArr[i] = field.ValueOf(valStr)
 				}
-				t.whereins = append(t.whereins, whereinT{field, -1, valArr})
+				t.whereins = append(t.whereins, whereinT{
+					name:   strings.ToLower(name),
+					valArr: valArr,
+				})
 				continue
 			case "whereevalsha":
 				fallthrough
@@ -409,7 +400,9 @@ func (s *Server) parseSearchScanBaseTokens(
 					}
 					s.luascripts.Put(shaSum, fn.Proto)
 				}
-				t.whereevals = append(t.whereevals, whereevalT{s, luaState, fn})
+				t.whereevals = append(t.whereevals, whereevalT{
+					c: s, luaState: luaState, fn: fn,
+				})
 				continue
 			case "nofields":
 				vs = nvs

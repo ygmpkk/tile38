@@ -592,9 +592,9 @@ func (s *Server) commandInScript(msg *Message) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = s.cmdSet(msg)
+		res, d, err = s.cmdSET(msg)
 	case "fset":
-		res, d, err = s.cmdFset(msg)
+		res, d, err = s.cmdFSET(msg)
 	case "del":
 		res, d, err = s.cmdDel(msg)
 	case "pdel":
@@ -602,13 +602,13 @@ func (s *Server) commandInScript(msg *Message) (
 	case "drop":
 		res, d, err = s.cmdDrop(msg)
 	case "expire":
-		res, d, err = s.cmdExpire(msg)
+		res, d, err = s.cmdEXPIRE(msg)
 	case "rename":
 		res, d, err = s.cmdRename(msg)
 	case "renamenx":
 		res, d, err = s.cmdRename(msg)
 	case "persist":
-		res, d, err = s.cmdPersist(msg)
+		res, d, err = s.cmdPERSIST(msg)
 	case "ttl":
 		res, err = s.cmdTTL(msg)
 	case "stats":
@@ -618,9 +618,9 @@ func (s *Server) commandInScript(msg *Message) (
 	case "nearby":
 		res, err = s.cmdNearby(msg)
 	case "within":
-		res, err = s.cmdWithin(msg)
+		res, err = s.cmdWITHIN(msg)
 	case "intersects":
-		res, err = s.cmdIntersects(msg)
+		res, err = s.cmdINTERSECTS(msg)
 	case "search":
 		res, err = s.cmdSearch(msg)
 	case "bounds":

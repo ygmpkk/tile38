@@ -10,6 +10,7 @@ import (
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/glob"
 )
 
@@ -87,9 +88,7 @@ func fenceMatch(
 		return nil
 	}
 	if details.command == "fset" {
-		sw.mu.Lock()
 		nofields := sw.nofields
-		sw.mu.Unlock()
 		if nofields {
 			return nil
 		}
@@ -166,9 +165,10 @@ func fenceMatch(
 		}
 	}
 
-	if details.fmap == nil {
-		return nil
-	}
+	// TODO: fields
+	// if details.fmap == nil {
+	// 	return nil
+	// }
 	for {
 		if fence.detect != nil && !fence.detect[detect] {
 			if detect == "enter" {
@@ -183,26 +183,24 @@ func fenceMatch(
 		}
 		break
 	}
-	sw.mu.Lock()
 	var distance float64
 	if fence.distance && fence.obj != nil {
 		distance = details.obj.Distance(fence.obj)
 	}
-	sw.fmap = details.fmap
+	// TODO: fields
+	// sw.fmap = details.fmap
 	sw.fullFields = true
 	sw.msg.OutputType = JSON
 	sw.writeObject(ScanWriterParams{
 		id:         details.id,
 		o:          details.obj,
 		fields:     details.fields,
-		noLock:     true,
 		noTest:     true,
 		distance:   distance,
 		distOutput: fence.distance,
 	})
 
 	if sw.wr.Len() == 0 {
-		sw.mu.Unlock()
 		return nil
 	}
 
@@ -214,7 +212,6 @@ func fenceMatch(
 	if sw.output == outputIDs {
 		res = `{"id":` + string(res) + `}`
 	}
-	sw.mu.Unlock()
 
 	var group string
 	if detect == "enter" {
@@ -300,7 +297,7 @@ func extendRoamMessage(
 			}
 			pattern := match.id + fence.roam.scan
 			iterator := func(
-				oid string, o geojson.Object, fields []float64,
+				oid string, o geojson.Object, fields field.List,
 			) bool {
 				if oid == match.id {
 					return true
@@ -387,7 +384,7 @@ func fenceMatchNearbys(
 		Max: geometry.Point{X: maxLon, Y: maxLat},
 	}
 	col.Intersects(geojson.NewRect(rect), 0, nil, nil, func(
-		id2 string, obj2 geojson.Object, fields []float64,
+		id2 string, obj2 geojson.Object, fields field.List,
 	) bool {
 		var idMatch bool
 		if id2 == id {

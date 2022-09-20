@@ -36,6 +36,7 @@ import (
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/deadline"
 	"github.com/tidwall/tile38/internal/endpoint"
+	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/log"
 )
 
@@ -53,14 +54,16 @@ const (
 // commandDetails is detailed information about a mutable command. It's used
 // for geofence formulas.
 type commandDetails struct {
-	command   string            // client command, like "SET" or "DEL"
-	key, id   string            // collection key and object id of object
-	newKey    string            // new key, for RENAME command
-	fmap      map[string]int    // map of field names to value indexes
-	obj       geojson.Object    // new object
-	fields    []float64         // array of field values
-	oldObj    geojson.Object    // previous object, if any
-	oldFields []float64         // previous object field values
+	command string // client command, like "SET" or "DEL"
+	key, id string // collection key and object id of object
+	newKey  string // new key, for RENAME command
+
+	obj    geojson.Object // new object
+	fields field.List     // array of field values
+
+	oldObj    geojson.Object // previous object, if any
+	oldFields field.List     // previous object field values
+
 	updated   bool              // object was updated
 	timestamp time.Time         // timestamp when the update occured
 	parent    bool              // when true, only children are forwarded
@@ -1016,9 +1019,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	default:
 		err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 	case "set":
-		res, d, err = s.cmdSet(msg)
+		res, d, err = s.cmdSET(msg)
 	case "fset":
-		res, d, err = s.cmdFset(msg)
+		res, d, err = s.cmdFSET(msg)
 	case "del":
 		res, d, err = s.cmdDel(msg)
 	case "pdel":
@@ -1026,7 +1029,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "drop":
 		res, d, err = s.cmdDrop(msg)
 	case "flushdb":
-		res, d, err = s.cmdFlushDB(msg)
+		res, d, err = s.cmdFLUSHDB(msg)
 	case "rename":
 		res, d, err = s.cmdRename(msg)
 	case "renamenx":
@@ -1048,9 +1051,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "chans":
 		res, err = s.cmdHooks(msg)
 	case "expire":
-		res, d, err = s.cmdExpire(msg)
+		res, d, err = s.cmdEXPIRE(msg)
 	case "persist":
-		res, d, err = s.cmdPersist(msg)
+		res, d, err = s.cmdPERSIST(msg)
 	case "ttl":
 		res, err = s.cmdTTL(msg)
 	case "shutdown":
@@ -1090,9 +1093,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "nearby":
 		res, err = s.cmdNearby(msg)
 	case "within":
-		res, err = s.cmdWithin(msg)
+		res, err = s.cmdWITHIN(msg)
 	case "intersects":
-		res, err = s.cmdIntersects(msg)
+		res, err = s.cmdINTERSECTS(msg)
 	case "search":
 		res, err = s.cmdSearch(msg)
 	case "bounds":

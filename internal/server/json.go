@@ -270,7 +270,7 @@ func (s *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 	}
 	var json string
 	var geoobj bool
-	o, _, _, ok := col.Get(id)
+	o, fields, _, ok := col.Get(id)
 	if ok {
 		geoobj = objIsSpatial(o)
 		json = o.String()
@@ -290,7 +290,7 @@ func (s *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 		nmsg := *msg
 		nmsg.Args = []string{"SET", key, id, "OBJECT", json}
 		// SET key id OBJECT json
-		return s.cmdSet(&nmsg)
+		return s.cmdSET(&nmsg)
 	}
 	if createcol {
 		s.cols.Set(key, col)
@@ -302,7 +302,7 @@ func (s *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 	d.timestamp = time.Now()
 	d.updated = true
 
-	col.Set(d.id, d.obj, nil, nil, 0)
+	col.Set(d.id, d.obj, fields, 0)
 	switch msg.OutputType {
 	case JSON:
 		var buf bytes.Buffer
@@ -335,7 +335,7 @@ func (s *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err er
 
 	var json string
 	var geoobj bool
-	o, _, _, ok := col.Get(id)
+	o, fields, _, ok := col.Get(id)
 	if ok {
 		geoobj = objIsSpatial(o)
 		json = o.String()
@@ -358,7 +358,7 @@ func (s *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err er
 		nmsg := *msg
 		nmsg.Args = []string{"SET", key, id, "OBJECT", json}
 		// SET key id OBJECT json
-		return s.cmdSet(&nmsg)
+		return s.cmdSET(&nmsg)
 	}
 
 	d.key = key
@@ -366,8 +366,7 @@ func (s *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err er
 	d.obj = collection.String(json)
 	d.timestamp = time.Now()
 	d.updated = true
-
-	col.Set(d.id, d.obj, nil, nil, 0)
+	col.Set(d.id, d.obj, fields, 0)
 	switch msg.OutputType {
 	case JSON:
 		var buf bytes.Buffer

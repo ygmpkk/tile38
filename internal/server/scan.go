@@ -7,6 +7,7 @@ import (
 
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/resp"
+	"github.com/tidwall/tile38/internal/field"
 )
 
 func (s *Server) cmdScanArgs(vs []string) (
@@ -54,10 +55,11 @@ func (s *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 	if msg.OutputType == JSON {
 		wr.WriteString(`{"ok":true`)
 	}
-	sw.writeHead()
+	var ierr error
 	if sw.col != nil {
 		if sw.output == outputCount && len(sw.wheres) == 0 &&
-			len(sw.whereins) == 0 && sw.globEverything {
+			len(sw.whereins) == 0 && len(sw.whereevals) == 0 &&
+			sw.globEverything {
 			count := sw.col.Count() - int(args.cursor)
 			if count < 0 {
 				count = 0
@@ -68,27 +70,40 @@ func (s *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 			if limits[0] == "" && limits[1] == "" {
 				sw.col.Scan(args.desc, sw,
 					msg.Deadline,
-					func(id string, o geojson.Object, fields []float64) bool {
-						return sw.writeObject(ScanWriterParams{
+					func(id string, o geojson.Object, fields field.List) bool {
+						keepGoing, err := sw.pushObject(ScanWriterParams{
 							id:     id,
 							o:      o,
 							fields: fields,
 						})
+						if err != nil {
+							ierr = err
+							return false
+						}
+						return keepGoing
 					},
 				)
 			} else {
 				sw.col.ScanRange(limits[0], limits[1], args.desc, sw,
 					msg.Deadline,
-					func(id string, o geojson.Object, fields []float64) bool {
-						return sw.writeObject(ScanWriterParams{
+					func(id string, o geojson.Object, fields field.List) bool {
+						keepGoing, err := sw.pushObject(ScanWriterParams{
 							id:     id,
 							o:      o,
 							fields: fields,
 						})
+						if err != nil {
+							ierr = err
+							return false
+						}
+						return keepGoing
 					},
 				)
 			}
 		}
+	}
+	if ierr != nil {
+		return retrerr(ierr)
 	}
 	sw.writeFoot()
 	if msg.OutputType == JSON {

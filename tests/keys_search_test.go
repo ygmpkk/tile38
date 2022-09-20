@@ -740,9 +740,9 @@ func keys_FIELDS_search_test(mc *mockServer) error {
 				`{"id":"5","object":{"type":"Point","coordinates":[-112.2799,33.5228]},"fields":[0,15,28]}` +
 				`],"count":4,"cursor":0}`},
 		{"NEARBY", "mykey", "WHERE", "field2", 0, 2, "POINT", 33.462, -112.268, 60000}, {
-			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
-				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[0,0,29]},` +
-				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0,0,0]}` +
+			`{"ok":true,"fields":["field3"],"objects":[` +
+				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[29]},` +
+				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0]}` +
 				`],"count":2,"cursor":0}`},
 
 		{"WITHIN", "mykey", "WHERE", "field2", 11, "+inf", "CIRCLE", 33.462, -112.268, 60000}, {
@@ -753,9 +753,9 @@ func keys_FIELDS_search_test(mc *mockServer) error {
 				`{"id":"1","object":{"type":"Point","coordinates":[-112.2791,33.522]},"fields":[10,11,0]}` +
 				`],"count":4,"cursor":0}`},
 		{"WITHIN", "mykey", "WHERE", "field2", 0, 2, "CIRCLE", 33.462, -112.268, 60000}, {
-			`{"ok":true,"fields":["field1","field2","field3"],"objects":[` +
-				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0,0,0]},` +
-				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[0,0,29]}` +
+			`{"ok":true,"fields":["field3"],"objects":[` +
+				`{"id":"7","object":{"type":"Point","coordinates":[-112.2803,33.5232]},"fields":[0]},` +
+				`{"id":"6","object":{"type":"Point","coordinates":[-112.2801,33.523]},"fields":[29]}` +
 				`],"count":2,"cursor":0}`},
 	})
 }
