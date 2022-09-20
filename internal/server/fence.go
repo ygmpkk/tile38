@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/glob"
+	"github.com/tidwall/tile38/internal/object"
 )
 
 // FenceMatch executes a fence match returns back json messages for fence detection.
@@ -81,10 +82,13 @@ func fenceMatch(
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
 	}
-	if !multiGlobMatch(fence.globs, details.id) {
+	if details.obj == nil {
 		return nil
 	}
-	if details.obj == nil || !objIsSpatial(details.obj) {
+	if !multiGlobMatch(fence.globs, details.obj.ID()) {
+		return nil
+	}
+	if !objIsSpatial(details.obj.Geo()) {
 		return nil
 	}
 	if details.command == "fset" {
@@ -97,7 +101,7 @@ func fenceMatch(
 		return []string{
 			`{"command":"del"` + hookJSONString(hookName, metas) +
 				`,"key":` + jsonString(details.key) +
-				`,"id":` + jsonString(details.id) +
+				`,"id":` + jsonString(details.obj.ID()) +
 				`,"time":` + jsonTimeFormat(details.timestamp) + `}`,
 		}
 	}
@@ -107,8 +111,7 @@ func fenceMatch(
 		if fence.roam.on {
 			if details.command == "set" {
 				roamNearbys, roamFaraways =
-					fenceMatchRoam(sw.s, fence, details.id,
-						details.oldObj, details.obj)
+					fenceMatchRoam(sw.s, fence, details.obj, details.old)
 				if len(roamNearbys) == 0 && len(roamFaraways) == 0 {
 					return nil
 				}
@@ -117,14 +120,14 @@ func fenceMatch(
 		} else {
 			var nocross bool
 			// not using roaming
-			match1 := fenceMatchObject(fence, details.oldObj)
+			match1 := fenceMatchObject(fence, details.old)
 			if match1 {
-				match1, _, _ = sw.testObject(details.id, details.oldObj, details.oldFields)
+				match1, _, _ = sw.testObject(details.old)
 				nocross = !match1
 			}
 			match2 := fenceMatchObject(fence, details.obj)
 			if match2 {
-				match2, _, _ = sw.testObject(details.id, details.obj, details.fields)
+				match2, _, _ = sw.testObject(details.obj)
 				nocross = !match2
 			}
 			if match1 && match2 {
@@ -140,11 +143,11 @@ func fenceMatch(
 				if details.command != "fset" {
 					// Maybe the old object and new object create a line that crosses the fence.
 					// Must detect for that possibility.
-					if !nocross && details.oldObj != nil {
+					if !nocross && details.old != nil {
 						ls := geojson.NewLineString(geometry.NewLine(
 							[]geometry.Point{
-								details.oldObj.Center(),
-								details.obj.Center(),
+								details.old.Geo().Center(),
+								details.obj.Geo().Center(),
 							}, nil))
 						temp := false
 						if fence.cmd == "within" {
@@ -153,7 +156,8 @@ func fenceMatch(
 							fence.cmd = "intersects"
 							temp = true
 						}
-						if fenceMatchObject(fence, ls) {
+						lso := object.New("", ls, 0, 0, field.List{})
+						if fenceMatchObject(fence, lso) {
 							detect = "cross"
 						}
 						if temp {
@@ -185,18 +189,15 @@ func fenceMatch(
 	}
 	var distance float64
 	if fence.distance && fence.obj != nil {
-		distance = details.obj.Distance(fence.obj)
+		distance = details.obj.Geo().Distance(fence.obj)
 	}
-	// TODO: fields
-	// sw.fmap = details.fmap
+
 	sw.fullFields = true
 	sw.msg.OutputType = JSON
 	sw.writeObject(ScanWriterParams{
-		id:         details.id,
-		o:          details.obj,
-		fields:     details.fields,
+		obj:        details.obj,
 		noTest:     true,
-		distance:   distance,
+		dist:       distance,
 		distOutput: fence.distance,
 	})
 
@@ -215,14 +216,14 @@ func fenceMatch(
 
 	var group string
 	if detect == "enter" {
-		group = sw.s.groupConnect(hookName, details.key, details.id)
+		group = sw.s.groupConnect(hookName, details.key, details.obj.ID())
 	} else if detect == "cross" {
-		sw.s.groupDisconnect(hookName, details.key, details.id)
-		group = sw.s.groupConnect(hookName, details.key, details.id)
+		sw.s.groupDisconnect(hookName, details.key, details.obj.ID())
+		group = sw.s.groupConnect(hookName, details.key, details.obj.ID())
 	} else {
-		group = sw.s.groupGet(hookName, details.key, details.id)
+		group = sw.s.groupGet(hookName, details.key, details.obj.ID())
 		if group == "" {
-			group = sw.s.groupConnect(hookName, details.key, details.id)
+			group = sw.s.groupConnect(hookName, details.key, details.obj.ID())
 		}
 	}
 	var msgs []string
@@ -287,26 +288,24 @@ func extendRoamMessage(
 		nmsg = append(nmsg, `,"scan":[`...)
 		col, _ := sw.s.cols.Get(fence.roam.key)
 		if col != nil {
-			obj, _, _, ok := col.Get(match.id)
-			if ok {
+			o := col.Get(match.id)
+			if o != nil {
 				nmsg = append(nmsg, `{"id":`...)
 				nmsg = appendJSONString(nmsg, match.id)
 				nmsg = append(nmsg, `,"self":true,"object":`...)
-				nmsg = obj.AppendJSON(nmsg)
+				nmsg = o.Geo().AppendJSON(nmsg)
 				nmsg = append(nmsg, '}')
 			}
 			pattern := match.id + fence.roam.scan
-			iterator := func(
-				oid string, o geojson.Object, fields field.List,
-			) bool {
-				if oid == match.id {
+			iterator := func(o *object.Object) bool {
+				if o.ID() == match.id {
 					return true
 				}
-				if matched, _ := glob.Match(pattern, oid); matched {
+				if matched, _ := glob.Match(pattern, o.ID()); matched {
 					nmsg = append(nmsg, `,{"id":`...)
-					nmsg = appendJSONString(nmsg, oid)
+					nmsg = appendJSONString(nmsg, o.ID())
 					nmsg = append(nmsg, `,"object":`...)
-					nmsg = o.AppendJSON(nmsg)
+					nmsg = o.Geo().AppendJSON(nmsg)
 					nmsg = append(nmsg, '}')
 				}
 				return true
@@ -345,8 +344,8 @@ func makemsg(
 	return string(buf)
 }
 
-func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
-	if obj == nil {
+func fenceMatchObject(fence *liveFenceSwitches, o *object.Object) bool {
+	if o == nil {
 		return false
 	}
 	if fence.roam.on {
@@ -356,18 +355,18 @@ func fenceMatchObject(fence *liveFenceSwitches, obj geojson.Object) bool {
 	switch fence.cmd {
 	case "nearby":
 		// nearby is an INTERSECT on a Circle
-		return obj.Intersects(fence.obj)
+		return o.Geo().Intersects(fence.obj)
 	case "within":
-		return obj.Within(fence.obj)
+		return o.Geo().Within(fence.obj)
 	case "intersects":
-		return obj.Intersects(fence.obj)
+		return o.Geo().Intersects(fence.obj)
 	}
 	return false
 }
 
 func fenceMatchNearbys(
 	s *Server, fence *liveFenceSwitches,
-	id string, obj geojson.Object,
+	obj *object.Object,
 ) (nearbys []roamMatch) {
 	if obj == nil {
 		return nil
@@ -376,49 +375,49 @@ func fenceMatchNearbys(
 	if col == nil {
 		return nil
 	}
-	center := obj.Center()
+	center := obj.Geo().Center()
 	minLat, minLon, maxLat, maxLon :=
 		geo.RectFromCenter(center.Y, center.X, fence.roam.meters)
 	rect := geometry.Rect{
 		Min: geometry.Point{X: minLon, Y: minLat},
 		Max: geometry.Point{X: maxLon, Y: maxLat},
 	}
-	col.Intersects(geojson.NewRect(rect), 0, nil, nil, func(
-		id2 string, obj2 geojson.Object, fields field.List,
-	) bool {
-		var idMatch bool
-		if id2 == id {
-			return true // skip self
-		}
-		meters := obj.Distance(obj2)
-		if meters > fence.roam.meters {
-			return true // skip outside radius
-		}
-		if fence.roam.pattern {
-			idMatch, _ = glob.Match(fence.roam.id, id2)
-		} else {
-			idMatch = fence.roam.id == id2
-		}
-		if !idMatch {
-			return true // skip non-id match
-		}
-		match := roamMatch{
-			id:     id2,
-			obj:    obj2,
-			meters: obj.Distance(obj2),
-		}
-		nearbys = append(nearbys, match)
-		return true
-	})
+	col.Intersects(geojson.NewRect(rect), 0, nil, nil,
+		func(o *object.Object) bool {
+			var idMatch bool
+			if o.ID() == obj.ID() {
+				return true // skip self
+			}
+			meters := o.Geo().Distance(o.Geo())
+			if meters > fence.roam.meters {
+				return true // skip outside radius
+			}
+			if fence.roam.pattern {
+				idMatch, _ = glob.Match(fence.roam.id, o.ID())
+			} else {
+				idMatch = fence.roam.id == o.ID()
+			}
+			if !idMatch {
+				return true // skip non-id match
+			}
+			match := roamMatch{
+				id:     o.ID(),
+				obj:    o.Geo(),
+				meters: obj.Geo().Distance(o.Geo()),
+			}
+			nearbys = append(nearbys, match)
+			return true
+		},
+	)
 	return nearbys
 }
 
 func fenceMatchRoam(
 	s *Server, fence *liveFenceSwitches,
-	id string, old, obj geojson.Object,
+	obj, old *object.Object,
 ) (nearbys, faraways []roamMatch) {
-	oldNearbys := fenceMatchNearbys(s, fence, id, old)
-	newNearbys := fenceMatchNearbys(s, fence, id, obj)
+	oldNearbys := fenceMatchNearbys(s, fence, old)
+	newNearbys := fenceMatchNearbys(s, fence, obj)
 	// Go through all matching objects in new-nearbys and old-nearbys.
 	for i := 0; i < len(oldNearbys); i++ {
 		var match bool
@@ -444,7 +443,7 @@ func fenceMatchRoam(
 	faraways, nearbys = oldNearbys, newNearbys
 	// ensure the faraways distances are to the new object
 	for i := 0; i < len(faraways); i++ {
-		faraways[i].meters = faraways[i].obj.Distance(obj)
+		faraways[i].meters = faraways[i].obj.Distance(obj.Geo())
 	}
 	sortRoamMatches(faraways)
 	sortRoamMatches(nearbys)

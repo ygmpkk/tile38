@@ -1,12 +1,23 @@
 package collection
 
-import "math"
+import (
+	"math"
 
-func geodeticDistAlgo[T any](center [2]float64) (
-	algo func(min, max [2]float64, data T, item bool) (dist float64),
+	"github.com/tidwall/tile38/internal/object"
+)
+
+func geodeticDistAlgo(center [2]float64) (
+	algo func(min, max [2]float64, obj *object.Object, item bool) (dist float64),
 ) {
 	const earthRadius = 6371e3
-	return func(min, max [2]float64, data T, item bool) (dist float64) {
+	return func(min, max [2]float64, obj *object.Object, item bool) (dist float64) {
+		if item {
+			r := obj.Rect()
+			min[0] = r.Min.X
+			min[1] = r.Min.Y
+			max[0] = r.Max.X
+			max[1] = r.Max.Y
+		}
 		return earthRadius * pointRectDistGeodeticDeg(
 			center[1], center[0],
 			min[1], min[0],

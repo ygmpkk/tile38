@@ -14,29 +14,8 @@ import (
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/glob"
+	"github.com/tidwall/tile38/internal/object"
 )
-
-// type fvt struct {
-// 	field string
-// 	value float64
-// }
-
-// func orderFields(fmap map[string]int, farr []string, fields []float64) []fvt {
-// 	var fv fvt
-// 	var idx int
-// 	fvs := make([]fvt, 0, len(fmap))
-// 	for _, field := range farr {
-// 		idx = fmap[field]
-// 		if idx < len(fields) {
-// 			fv.field = field
-// 			fv.value = fields[idx]
-// 			if fv.value != 0 {
-// 				fvs = append(fvs, fv)
-// 			}
-// 		}
-// 	}
-// 	return fvs
-// }
 
 func (s *Server) cmdBounds(msg *Message) (resp.Value, error) {
 	start := time.Now()
@@ -150,7 +129,8 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 		}
 		return NOMessage, errKeyNotFound
 	}
-	o, fields, _, ok := col.Get(id)
+	o := col.Get(id)
+	ok = o != nil
 	if !ok {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
@@ -174,17 +154,17 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 	case "object":
 		if msg.OutputType == JSON {
 			buf.WriteString(`,"object":`)
-			buf.WriteString(string(o.AppendJSON(nil)))
+			buf.WriteString(string(o.Geo().AppendJSON(nil)))
 		} else {
-			vals = append(vals, resp.StringValue(o.String()))
+			vals = append(vals, resp.StringValue(o.Geo().String()))
 		}
 	case "point":
 		if msg.OutputType == JSON {
 			buf.WriteString(`,"point":`)
-			buf.Write(appendJSONSimplePoint(nil, o))
+			buf.Write(appendJSONSimplePoint(nil, o.Geo()))
 		} else {
-			point := o.Center()
-			z := extractZCoordinate(o)
+			point := o.Geo().Center()
+			z := extractZCoordinate(o.Geo())
 			if z != 0 {
 				vals = append(vals, resp.ArrayValue([]resp.Value{
 					resp.StringValue(strconv.FormatFloat(point.Y, 'f', -1, 64)),
@@ -209,7 +189,7 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 		if err != nil || precision < 1 || precision > 12 {
 			return NOMessage, errInvalidArgument(sprecision)
 		}
-		center := o.Center()
+		center := o.Geo().Center()
 		p := geohash.EncodeWithPrecision(center.Y, center.X, uint(precision))
 		if msg.OutputType == JSON {
 			buf.WriteString(`"` + p + `"`)
@@ -219,7 +199,7 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 	case "bounds":
 		if msg.OutputType == JSON {
 			buf.WriteString(`,"bounds":`)
-			buf.Write(appendJSONSimpleBounds(nil, o))
+			buf.Write(appendJSONSimpleBounds(nil, o.Geo()))
 		} else {
 			bbox := o.Rect()
 			vals = append(vals, resp.ArrayValue([]resp.Value{
@@ -239,14 +219,14 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 		return NOMessage, errInvalidNumberOfArguments
 	}
 	if withfields {
-		nfields := fields.Len()
+		nfields := o.Fields().Len()
 		if nfields > 0 {
 			fvals := make([]resp.Value, 0, nfields*2)
 			if msg.OutputType == JSON {
 				buf.WriteString(`,"fields":{`)
 			}
 			var i int
-			fields.Scan(func(f field.Field) bool {
+			o.Fields().Scan(func(f field.Field) bool {
 				if msg.OutputType == JSON {
 					if i > 0 {
 						buf.WriteString(`,`)
@@ -282,57 +262,64 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 	return NOMessage, nil
 }
 
-func (s *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err error) {
+// DEL key id [ERRON404]
+func (s *Server) cmdDel(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ok bool
-	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
-		err = errInvalidNumberOfArguments
-		return
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) < 3 {
+		return retwerr(errInvalidNumberOfArguments)
 	}
-	if vs, d.id, ok = tokenval(vs); !ok || d.id == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
+	key := args[1]
+	id := args[2]
 	erron404 := false
-	if len(vs) > 0 {
-		_, arg, ok := tokenval(vs)
-		if ok && strings.ToLower(arg) == "erron404" {
+	for i := 3; i < len(args); i++ {
+		switch strings.ToLower(args[i]) {
+		case "erron404":
 			erron404 = true
-			vs = vs[1:]
-		} else {
-			err = errInvalidArgument(arg)
-			return
+		default:
+			return retwerr(errInvalidArgument(args[i]))
 		}
 	}
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	found := false
-	col, _ := s.cols.Get(d.key)
+
+	// >> Operation
+
+	updated := false
+	var old *object.Object
+	col, _ := s.cols.Get(key)
 	if col != nil {
-		d.obj, d.fields, ok = col.Delete(d.id)
-		if ok {
+		old = col.Delete(id)
+		if old != nil {
 			if col.Count() == 0 {
-				s.cols.Delete(d.key)
+				s.cols.Delete(key)
 			}
-			found = true
+			updated = true
 		} else if erron404 {
-			err = errIDNotFound
-			return
+			return retwerr(errIDNotFound)
 		}
 	} else if erron404 {
-		err = errKeyNotFound
-		return
+		return retwerr(errKeyNotFound)
 	}
-	s.groupDisconnectObject(d.key, d.id)
+	s.groupDisconnectObject(key, id)
+
+	// >> Response
+
+	var d commandDetails
+
 	d.command = "del"
-	d.updated = found
+	d.key = key
+	d.obj = old
+	d.updated = updated
 	d.timestamp = time.Now()
+
+	var res resp.Value
+
 	switch msg.OutputType {
 	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
 		if d.updated {
 			res = resp.IntegerValue(1)
@@ -340,7 +327,7 @@ func (s *Server) cmdDel(msg *Message) (res resp.Value, d commandDetails, err err
 			res = resp.IntegerValue(0)
 		}
 	}
-	return
+	return res, d, nil
 }
 
 func (s *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err error) {
@@ -360,14 +347,14 @@ func (s *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err er
 		return
 	}
 	now := time.Now()
-	iter := func(id string, o geojson.Object, fields field.List) bool {
-		if match, _ := glob.Match(d.pattern, id); match {
+	iter := func(o *object.Object) bool {
+		if match, _ := glob.Match(d.pattern, o.ID()); match {
 			d.children = append(d.children, &commandDetails{
 				command:   "del",
 				updated:   true,
 				timestamp: now,
 				key:       d.key,
-				id:        id,
+				obj:       o,
 			})
 		}
 		return true
@@ -384,14 +371,15 @@ func (s *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err er
 		}
 		var atLeastOneNotDeleted bool
 		for i, dc := range d.children {
-			dc.obj, dc.fields, ok = col.Delete(dc.id)
-			if !ok {
+			old := col.Delete(dc.obj.ID())
+			if old == nil {
 				d.children[i].command = "?"
 				atLeastOneNotDeleted = true
 			} else {
+				dc.obj = old
 				d.children[i] = dc
 			}
-			s.groupDisconnectObject(dc.key, dc.id)
+			s.groupDisconnectObject(dc.key, dc.obj.ID())
 		}
 		if atLeastOneNotDeleted {
 			var nchildren []*commandDetails
@@ -565,7 +553,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 	var ex int64
 	var xx bool
 	var nx bool
-	var obj geojson.Object
+	var oobj geojson.Object
 
 	args := msg.Args
 	if len(args) < 3 {
@@ -614,7 +602,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 			}
 			str := args[i+1]
 			i += 1
-			obj = collection.String(str)
+			oobj = collection.String(str)
 		case "point":
 			if i+2 >= len(args) {
 				return retwerr(errInvalidNumberOfArguments)
@@ -642,9 +630,9 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 				return retwerr(errInvalidArgument(slon))
 			}
 			if !hasZ {
-				obj = geojson.NewPoint(geometry.Point{X: x, Y: y})
+				oobj = geojson.NewPoint(geometry.Point{X: x, Y: y})
 			} else {
-				obj = geojson.NewPointZ(geometry.Point{X: x, Y: y}, z)
+				oobj = geojson.NewPointZ(geometry.Point{X: x, Y: y}, z)
 			}
 		case "bounds":
 			if i+4 >= len(args) {
@@ -659,7 +647,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 				}
 			}
 			i += 4
-			obj = geojson.NewRect(geometry.Rect{
+			oobj = geojson.NewRect(geometry.Rect{
 				Min: geometry.Point{X: vals[1], Y: vals[0]},
 				Max: geometry.Point{X: vals[3], Y: vals[2]},
 			})
@@ -670,7 +658,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 			shash := args[i+1]
 			i += 1
 			lat, lon := geohash.Decode(shash)
-			obj = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
+			oobj = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
 		case "object":
 			if i+1 >= len(args) {
 				return retwerr(errInvalidNumberOfArguments)
@@ -678,7 +666,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 			json := args[i+1]
 			i += 1
 			var err error
-			obj, err = geojson.Parse(json, &s.geomParseOpts)
+			oobj, err = geojson.Parse(json, &s.geomParseOpts)
 			if err != nil {
 				return retwerr(err)
 			}
@@ -702,7 +690,10 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 
 	var ofields field.List
 	if !nada {
-		_, ofields, _, ok = col.Get(id)
+		o := col.Get(id)
+		if o != nil {
+			ofields = o.Fields()
+		}
 		if xx || nx {
 			if (nx && ok) || (xx && !ok) {
 				nada = true
@@ -730,18 +721,16 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 		ofields = ofields.Set(f)
 	}
 
-	oldObj, oldFields, newFields := col.Set(id, obj, ofields, ex)
+	obj := object.New(id, oobj, 0, ex, ofields)
+	old := col.Set(obj)
 
 	// >> Response
 
 	var d commandDetails
 	d.command = "set"
 	d.key = key
-	d.id = id
 	d.obj = obj
-	d.oldObj = oldObj
-	d.oldFields = oldFields
-	d.fields = newFields
+	d.old = old
 	d.updated = true // perhaps we should do a diff on the previous object?
 	d.timestamp = time.Now()
 
@@ -811,12 +800,14 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 	if !ok {
 		return retwerr(errKeyNotFound)
 	}
-	obj, ofields, ex, ok := col.Get(id)
+	o := col.Get(id)
+	ok = o != nil
 	if !(ok || xx) {
 		return retwerr(errIDNotFound)
 	}
 
 	if ok {
+		ofields := o.Fields()
 		for _, f := range fields {
 			prev := ofields.Get(f.Name())
 			if !prev.Value().Equals(f.Value()) {
@@ -824,11 +815,11 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 				updateCount++
 			}
 		}
-		col.Set(id, obj, ofields, ex)
-		d.obj = obj
+		obj := object.New(id, o.Geo(), 0, o.Expires(), ofields)
+		col.Set(obj)
 		d.command = "fset"
 		d.key = key
-		d.id = id
+		d.obj = obj
 		d.timestamp = time.Now()
 		d.updated = updateCount > 0
 	}
@@ -861,21 +852,22 @@ func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 		return retwerr(errInvalidArgument(svalue))
 	}
 	var ok bool
+	var obj *object.Object
 	col, _ := s.cols.Get(key)
 	if col != nil {
 		// replace the expiration by getting the old objec
 		ex := time.Now().Add(time.Duration(float64(time.Second) * value)).UnixNano()
-		var obj geojson.Object
-		var fields field.List
-		obj, fields, _, ok = col.Get(id)
+		o := col.Get(id)
+		ok = o != nil
 		if ok {
-			col.Set(id, obj, fields, ex)
+			obj = object.New(id, o.Geo(), 0, ex, o.Fields())
+			col.Set(obj)
 		}
 	}
 	var d commandDetails
 	if ok {
 		d.key = key
-		d.id = id
+		d.obj = obj
 		d.command = "expire"
 		d.updated = true
 		d.timestamp = time.Now()
@@ -909,41 +901,35 @@ func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 		return retwerr(errInvalidNumberOfArguments)
 	}
 	key, id := args[1], args[2]
-	var cleared bool
-	var ok bool
 	col, _ := s.cols.Get(key)
-	if col != nil {
-		var ex int64
-		_, _, ex, ok = col.Get(id)
-		if ok && ex != 0 {
-			var obj geojson.Object
-			var fields field.List
-			obj, fields, _, ok = col.Get(id)
-			if ok {
-				col.Set(id, obj, fields, 0)
-			}
-			if ok {
-				cleared = true
-			}
-		}
-	}
-
-	if !ok {
+	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.IntegerValue(0), commandDetails{}, nil
 		}
-		if col == nil {
-			return retwerr(errKeyNotFound)
+		return retwerr(errKeyNotFound)
+	}
+	o := col.Get(id)
+	if o == nil {
+		if msg.OutputType == RESP {
+			return resp.IntegerValue(0), commandDetails{}, nil
 		}
 		return retwerr(errIDNotFound)
+	}
+
+	var obj *object.Object
+	var cleared bool
+	if o.Expires() != 0 {
+		obj = object.New(id, o.Geo(), 0, 0, o.Fields())
+		col.Set(obj)
+		cleared = true
 	}
 
 	var res resp.Value
 
 	var d commandDetails
-	d.key = key
-	d.id = id
 	d.command = "persist"
+	d.key = key
+	d.obj = obj
 	d.updated = cleared
 	d.timestamp = time.Now()
 
@@ -973,15 +959,15 @@ func (s *Server) cmdTTL(msg *Message) (resp.Value, error) {
 	var ok2 bool
 	col, _ := s.cols.Get(key)
 	if col != nil {
-		var ex int64
-		_, _, ex, ok = col.Get(id)
+		o := col.Get(id)
+		ok = o != nil
 		if ok {
-			if ex != 0 {
+			if o.Expires() != 0 {
 				now := start.UnixNano()
-				if now > ex {
+				if now > o.Expires() {
 					ok2 = false
 				} else {
-					v = float64(ex-now) / float64(time.Second)
+					v = float64(o.Expires()-now) / float64(time.Second)
 					if v < 0 {
 						v = 0
 					}

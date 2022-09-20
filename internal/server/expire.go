@@ -5,6 +5,7 @@ import (
 
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/log"
+	"github.com/tidwall/tile38/internal/object"
 )
 
 const bgExpireDelay = time.Second / 10
@@ -31,11 +32,11 @@ func (s *Server) backgroundExpireObjects(now time.Time) {
 	nano := now.UnixNano()
 	var msgs []*Message
 	s.cols.Scan(func(key string, col *collection.Collection) bool {
-		col.ScanExpires(func(id string, expires int64) bool {
-			if nano < expires {
+		col.ScanExpires(func(o *object.Object) bool {
+			if nano < o.Expires() {
 				return false
 			}
-			msgs = append(msgs, &Message{Args: []string{"del", key, id}})
+			msgs = append(msgs, &Message{Args: []string{"del", key, o.ID()}})
 			return true
 		})
 		return true

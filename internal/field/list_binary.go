@@ -151,6 +151,9 @@ func (fields List) Set(field Field) List {
 
 func delfield(b []byte, s, e int) *byte {
 	totallen := s + (len(b) - e)
+	if totallen == 0 {
+		return nil
+	}
 	var psz [10]byte
 	pn := binary.PutUvarint(psz[:], uint64(totallen))
 	plen := pn + totallen
@@ -346,4 +349,13 @@ func (fields List) Weight() int {
 	}
 	x, n := uvarint(*(*[]byte)(unsafe.Pointer(&bytes{fields.p, 10, 10})))
 	return x + n
+}
+
+// Bytes returns the raw bytes (including the header)
+func (fields List) Bytes() []byte {
+	if fields.p == nil {
+		return nil
+	}
+	x, n := uvarint(*(*[]byte)(unsafe.Pointer(&bytes{fields.p, 10, 10})))
+	return (*(*[]byte)(unsafe.Pointer(&bytes{fields.p, 0, n + x})))
 }

@@ -5,9 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/tidwall/geojson"
 	"github.com/tidwall/resp"
-	"github.com/tidwall/tile38/internal/field"
+	"github.com/tidwall/tile38/internal/object"
 )
 
 func (s *Server) cmdScanArgs(vs []string) (
@@ -70,11 +69,9 @@ func (s *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 			if limits[0] == "" && limits[1] == "" {
 				sw.col.Scan(args.desc, sw,
 					msg.Deadline,
-					func(id string, o geojson.Object, fields field.List) bool {
+					func(o *object.Object) bool {
 						keepGoing, err := sw.pushObject(ScanWriterParams{
-							id:     id,
-							o:      o,
-							fields: fields,
+							obj: o,
 						})
 						if err != nil {
 							ierr = err
@@ -86,11 +83,9 @@ func (s *Server) cmdScan(msg *Message) (res resp.Value, err error) {
 			} else {
 				sw.col.ScanRange(limits[0], limits[1], args.desc, sw,
 					msg.Deadline,
-					func(id string, o geojson.Object, fields field.List) bool {
+					func(o *object.Object) bool {
 						keepGoing, err := sw.pushObject(ScanWriterParams{
-							id:     id,
-							o:      o,
-							fields: fields,
+							obj: o,
 						})
 						if err != nil {
 							ierr = err
