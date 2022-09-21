@@ -48,7 +48,7 @@ func BenchmarkFieldMatch(t *testing.B) {
 	for i := 0; i < t.N; i++ {
 		// one call is super fast, measurements are not reliable, let's do 100
 		for ix := 0; ix < 100; ix++ {
-			sw.fieldMatch(object.New("", items[i].object, 0, 0, items[i].fields))
+			sw.fieldMatch(object.New("", items[i].object, 0, items[i].fields))
 		}
 	}
 }

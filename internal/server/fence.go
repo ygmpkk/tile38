@@ -156,7 +156,7 @@ func fenceMatch(
 							fence.cmd = "intersects"
 							temp = true
 						}
-						lso := object.New("", ls, 0, 0, field.List{})
+						lso := object.New("", ls, 0, field.List{})
 						if fenceMatchObject(fence, lso) {
 							detect = "cross"
 						}

@@ -721,7 +721,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 		ofields = ofields.Set(f)
 	}
 
-	obj := object.New(id, oobj, 0, ex, ofields)
+	obj := object.New(id, oobj, ex, ofields)
 	old := col.Set(obj)
 
 	// >> Response
@@ -815,7 +815,7 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 				updateCount++
 			}
 		}
-		obj := object.New(id, o.Geo(), 0, o.Expires(), ofields)
+		obj := object.New(id, o.Geo(), o.Expires(), ofields)
 		col.Set(obj)
 		d.command = "fset"
 		d.key = key
@@ -860,7 +860,7 @@ func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 		o := col.Get(id)
 		ok = o != nil
 		if ok {
-			obj = object.New(id, o.Geo(), 0, ex, o.Fields())
+			obj = object.New(id, o.Geo(), ex, o.Fields())
 			col.Set(obj)
 		}
 	}
@@ -919,7 +919,7 @@ func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 	var obj *object.Object
 	var cleared bool
 	if o.Expires() != 0 {
-		obj = object.New(id, o.Geo(), 0, 0, o.Fields())
+		obj = object.New(id, o.Geo(), 0, o.Fields())
 		col.Set(obj)
 		cleared = true
 	}

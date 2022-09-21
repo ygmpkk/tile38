@@ -300,7 +300,7 @@ func (s *Server) cmdJset(msg *Message) (res resp.Value, d commandDetails, err er
 		s.cols.Set(key, col)
 	}
 	var oobj geojson.Object = collection.String(json)
-	obj := object.New(id, oobj, 0, 0, fields)
+	obj := object.New(id, oobj, 0, fields)
 	col.Set(obj)
 
 	d.key = key
@@ -369,7 +369,7 @@ func (s *Server) cmdJdel(msg *Message) (res resp.Value, d commandDetails, err er
 	}
 
 	var oobj geojson.Object = collection.String(json)
-	obj := object.New(id, oobj, 0, 0, fields)
+	obj := object.New(id, oobj, 0, fields)
 	col.Set(obj)
 
 	d.key = key

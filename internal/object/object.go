@@ -9,7 +9,6 @@ import (
 type Object struct {
 	id      string
 	geo     geojson.Object
-	created int64 // unix nano created
 	expires int64 // unix nano expiration
 	fields  field.List
 }
@@ -26,13 +25,6 @@ func (o *Object) Fields() field.List {
 		return field.List{}
 	}
 	return o.fields
-}
-
-func (o *Object) Created() int64 {
-	if o == nil {
-		return 0
-	}
-	return o.created
 }
 
 func (o *Object) Expires() int64 {
@@ -83,13 +75,11 @@ func (o *Object) Weight() int {
 	return weight
 }
 
-func New(id string, geo geojson.Object, created, expires int64,
-	fields field.List,
+func New(id string, geo geojson.Object, expires int64, fields field.List,
 ) *Object {
 	return &Object{
 		id:      id,
 		geo:     geo,
-		created: created,
 		expires: expires,
 		fields:  fields,
 	}

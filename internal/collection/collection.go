@@ -196,7 +196,7 @@ func (c *Collection) Set(obj *object.Object) (prev *object.Object) {
 // Delete removes an object and returns it.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Delete(id string) (prev *object.Object) {
-	key := object.New(id, nil, 0, 0, field.List{})
+	key := object.New(id, nil, 0, field.List{})
 	prev, _ = c.items.Delete(key)
 	if prev == nil {
 		return nil
@@ -221,7 +221,7 @@ func (c *Collection) Delete(id string) (prev *object.Object) {
 // Get returns an object.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Get(id string) *object.Object {
-	key := object.New(id, nil, 0, 0, field.List{})
+	key := object.New(id, nil, 0, field.List{})
 	obj, _ := c.items.Get(key)
 	return obj
 }
@@ -291,7 +291,7 @@ func (c *Collection) ScanRange(
 		return keepon
 	}
 
-	pstart := object.New(start, nil, 0, 0, field.List{})
+	pstart := object.New(start, nil, 0, field.List{})
 	if desc {
 		c.items.Descend(pstart, iter)
 	} else {
@@ -354,8 +354,8 @@ func (c *Collection) SearchValuesRange(start, end string, desc bool,
 		return keepon
 	}
 
-	pstart := object.New("", String(start), 0, 0, field.List{})
-	pend := object.New("", String(end), 0, 0, field.List{})
+	pstart := object.New("", String(start), 0, field.List{})
+	pend := object.New("", String(end), 0, field.List{})
 	if desc {
 		// descend range
 		c.values.Descend(pstart, func(item *object.Object) bool {
@@ -394,7 +394,7 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		keepon = iterator(o)
 		return keepon
 	}
-	pstart := object.New(id, nil, 0, 0, field.List{})
+	pstart := object.New(id, nil, 0, field.List{})
 	if desc {
 		c.items.Descend(pstart, iter)
 	} else {

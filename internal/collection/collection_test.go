@@ -48,7 +48,7 @@ func TestCollectionNewCollection(t *testing.T) {
 		id := strconv.FormatInt(int64(i), 10)
 		obj := PO(rand.Float64()*360-180, rand.Float64()*180-90)
 		objs[id] = obj
-		c.Set(object.New(id, obj, 0, 0, field.List{}))
+		c.Set(object.New(id, obj, 0, field.List{}))
 	}
 	count := 0
 	bbox := geometry.Rect{
@@ -81,31 +81,31 @@ func TestCollectionSet(t *testing.T) {
 	t.Run("AddString", func(t *testing.T) {
 		c := New()
 		str1 := String("hello")
-		old := c.Set(object.New("str", str1, 0, 0, field.List{}))
+		old := c.Set(object.New("str", str1, 0, field.List{}))
 		expect(t, old == nil)
 	})
 	t.Run("UpdateString", func(t *testing.T) {
 		c := New()
 		str1 := String("hello")
 		str2 := String("world")
-		old := c.Set(object.New("str", str1, 0, 0, field.List{}))
+		old := c.Set(object.New("str", str1, 0, field.List{}))
 		expect(t, old == nil)
-		old = c.Set(object.New("str", str2, 0, 0, field.List{}))
+		old = c.Set(object.New("str", str2, 0, field.List{}))
 		expect(t, old.Geo() == str1)
 	})
 	t.Run("AddPoint", func(t *testing.T) {
 		c := New()
 		point1 := PO(-112.1, 33.1)
-		old := c.Set(object.New("point", point1, 0, 0, field.List{}))
+		old := c.Set(object.New("point", point1, 0, field.List{}))
 		expect(t, old == nil)
 	})
 	t.Run("UpdatePoint", func(t *testing.T) {
 		c := New()
 		point1 := PO(-112.1, 33.1)
 		point2 := PO(-112.2, 33.2)
-		old := c.Set(object.New("point", point1, 0, 0, field.List{}))
+		old := c.Set(object.New("point", point1, 0, field.List{}))
 		expect(t, old == nil)
-		old = c.Set(object.New("point", point2, 0, 0, field.List{}))
+		old = c.Set(object.New("point", point2, 0, field.List{}))
 		expect(t, old.Geo().Center() == point1.Base())
 	})
 	t.Run("Fields", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestCollectionSet(t *testing.T) {
 		fNames := []string{"a", "b", "c"}
 		fValues := []string{"1", "2", "3"}
 		fields1 := toFields(fNames, fValues)
-		old := c.Set(object.New("str", str1, 0, 0, fields1))
+		old := c.Set(object.New("str", str1, 0, fields1))
 		expect(t, old == nil)
 
 		str2 := String("hello")
@@ -124,23 +124,23 @@ func TestCollectionSet(t *testing.T) {
 		fValues = []string{"4", "5", "6"}
 		fields2 := toFields(fNames, fValues)
 
-		old = c.Set(object.New("str", str2, 0, 0, fields2))
+		old = c.Set(object.New("str", str2, 0, fields2))
 		expect(t, old.Geo() == str1)
 		expect(t, reflect.DeepEqual(old.Fields(), fields1))
 
 		fNames = []string{"a", "b", "c", "d", "e", "f"}
 		fValues = []string{"7", "8", "9", "10", "11", "12"}
 		fields3 := toFields(fNames, fValues)
-		old = c.Set(object.New("str", str1, 0, 0, fields3))
+		old = c.Set(object.New("str", str1, 0, fields3))
 		expect(t, old.Geo() == str2)
 		expect(t, reflect.DeepEqual(old.Fields(), fields2))
 	})
 	t.Run("Delete", func(t *testing.T) {
 		c := New()
 
-		c.Set(object.New("1", String("1"), 0, 0, field.List{}))
-		c.Set(object.New("2", String("2"), 0, 0, field.List{}))
-		c.Set(object.New("3", PO(1, 2), 0, 0, field.List{}))
+		c.Set(object.New("1", String("1"), 0, field.List{}))
+		c.Set(object.New("2", String("2"), 0, field.List{}))
+		c.Set(object.New("3", PO(1, 2), 0, field.List{}))
 
 		expect(t, c.Count() == 3)
 		expect(t, c.StringCount() == 2)
@@ -196,7 +196,7 @@ func TestCollectionScan(t *testing.T) {
 	c := New()
 	for _, i := range rand.Perm(N) {
 		id := fmt.Sprintf("%04d", i)
-		c.Set(object.New(id, String(id), 0, 0, makeFields(
+		c.Set(object.New(id, String(id), 0, makeFields(
 			field.Make("ex", id),
 		)))
 	}
@@ -293,8 +293,7 @@ func TestCollectionSearch(t *testing.T) {
 		id := fmt.Sprintf("%04d", j)
 		ex := fmt.Sprintf("%04d", i)
 		c.Set(object.New(id, String(ex),
-			0, 0,
-			makeFields(
+			0, makeFields(
 				field.Make("i", ex),
 				field.Make("j", id),
 			)))
@@ -352,11 +351,11 @@ func TestCollectionSearch(t *testing.T) {
 
 func TestCollectionWeight(t *testing.T) {
 	c := New()
-	c.Set(object.New("1", String("1"), 0, 0, field.List{}))
+	c.Set(object.New("1", String("1"), 0, field.List{}))
 	expect(t, c.TotalWeight() > 0)
 	c.Delete("1")
 	expect(t, c.TotalWeight() == 0)
-	c.Set(object.New("1", String("1"), 0, 0,
+	c.Set(object.New("1", String("1"), 0,
 		toFields(
 			[]string{"a", "b", "c"},
 			[]string{"1", "2", "3"},
@@ -365,19 +364,19 @@ func TestCollectionWeight(t *testing.T) {
 	expect(t, c.TotalWeight() > 0)
 	c.Delete("1")
 	expect(t, c.TotalWeight() == 0)
-	c.Set(object.New("1", String("1"), 0, 0,
+	c.Set(object.New("1", String("1"), 0,
 		toFields(
 			[]string{"a", "b", "c"},
 			[]string{"1", "2", "3"},
 		),
 	))
-	c.Set(object.New("2", String("2"), 0, 0,
+	c.Set(object.New("2", String("2"), 0,
 		toFields(
 			[]string{"d", "e", "f"},
 			[]string{"4", "5", "6"},
 		),
 	))
-	c.Set(object.New("1", String("1"), 0, 0,
+	c.Set(object.New("1", String("1"), 0,
 		toFields(
 			[]string{"d", "e", "f"},
 			[]string{"4", "5", "6"},
@@ -417,13 +416,13 @@ func TestSpatialSearch(t *testing.T) {
 	q4, _ := geojson.Parse(gjson.Get(json, `features.#[id=="q4"]`).Raw, nil)
 
 	c := New()
-	c.Set(object.New("p1", p1, 0, 0, field.List{}))
-	c.Set(object.New("p2", p2, 0, 0, field.List{}))
-	c.Set(object.New("p3", p3, 0, 0, field.List{}))
-	c.Set(object.New("p4", p4, 0, 0, field.List{}))
-	c.Set(object.New("r1", r1, 0, 0, field.List{}))
-	c.Set(object.New("r2", r2, 0, 0, field.List{}))
-	c.Set(object.New("r3", r3, 0, 0, field.List{}))
+	c.Set(object.New("p1", p1, 0, field.List{}))
+	c.Set(object.New("p2", p2, 0, field.List{}))
+	c.Set(object.New("p3", p3, 0, field.List{}))
+	c.Set(object.New("p4", p4, 0, field.List{}))
+	c.Set(object.New("r1", r1, 0, field.List{}))
+	c.Set(object.New("r2", r2, 0, field.List{}))
+	c.Set(object.New("r3", r3, 0, field.List{}))
 
 	var n int
 
@@ -507,7 +506,7 @@ func TestCollectionSparse(t *testing.T) {
 		x := (r.Max.X-r.Min.X)*rand.Float64() + r.Min.X
 		y := (r.Max.Y-r.Min.Y)*rand.Float64() + r.Min.Y
 		point := PO(x, y)
-		c.Set(object.New(fmt.Sprintf("%d", i), point, 0, 0, field.List{}))
+		c.Set(object.New(fmt.Sprintf("%d", i), point, 0, field.List{}))
 	}
 	var n int
 	n = 0
@@ -587,7 +586,7 @@ func TestManyCollections(t *testing.T) {
 				col = New()
 				colsM[key] = col
 			}
-			col.Set(object.New(id, obj, 0, 0, field.List{}))
+			col.Set(object.New(id, obj, 0, field.List{}))
 			k++
 		}
 	}
@@ -641,7 +640,7 @@ func benchmarkInsert(t *testing.B, nFields int) {
 	col := New()
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		col.Set(object.New(items[i].id, items[i].object, 0, 0, items[i].fields))
+		col.Set(object.New(items[i].id, items[i].object, 0, items[i].fields))
 	}
 }
 
@@ -665,11 +664,11 @@ func benchmarkReplace(t *testing.B, nFields int) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.Set(object.New(items[i].id, items[i].object, 0, 0, items[i].fields))
+		col.Set(object.New(items[i].id, items[i].object, 0, items[i].fields))
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
-		o := col.Set(object.New(items[i].id, items[i].object, 0, 0, field.List{}))
+		o := col.Set(object.New(items[i].id, items[i].object, 0, field.List{}))
 		if o.Geo() != items[i].object {
 			t.Fatal("shoot!")
 		}
@@ -696,7 +695,7 @@ func benchmarkGet(t *testing.B, nFields int) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.Set(object.New(items[i].id, items[i].object, 0, 0, items[i].fields))
+		col.Set(object.New(items[i].id, items[i].object, 0, items[i].fields))
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
@@ -727,7 +726,7 @@ func benchmarkRemove(t *testing.B, nFields int) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.Set(object.New(items[i].id, items[i].object, 0, 0, items[i].fields))
+		col.Set(object.New(items[i].id, items[i].object, 0, items[i].fields))
 	}
 	t.ResetTimer()
 	for _, i := range rand.Perm(t.N) {
@@ -758,7 +757,7 @@ func benchmarkScan(t *testing.B, nFields int) {
 	}
 	col := New()
 	for i := 0; i < t.N; i++ {
-		col.Set(object.New(items[i].id, items[i].object, 0, 0, items[i].fields))
+		col.Set(object.New(items[i].id, items[i].object, 0, items[i].fields))
 	}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {

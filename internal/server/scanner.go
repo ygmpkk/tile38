@@ -307,7 +307,7 @@ func (sw *scanWriter) pushObject(opts ScanWriterParams) (keepGoing bool, err err
 		opts.obj = object.New(
 			opts.obj.ID(),
 			clip.Clip(opts.obj.Geo(), opts.clip, &sw.s.geomIndexOpts),
-			0, opts.obj.Expires(),
+			opts.obj.Expires(),
 			opts.obj.Fields(),
 		)
 	}
