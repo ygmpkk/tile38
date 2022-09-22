@@ -51,10 +51,10 @@ func byExpires(a, b *object.Object) bool {
 
 // Collection represents a collection of geojson objects.
 type Collection struct {
-	items    *btree.BTreeG[*object.Object]           // sorted by id
-	spatial  *rtree.RTreeGN[float32, *object.Object] // geospatially indexed
-	values   *btree.BTreeG[*object.Object]           // sorted by value+id
-	expires  *btree.BTreeG[*object.Object]           // sorted by ex+id
+	objs     btree.Map[string, *object.Object]      // sorted by id
+	spatial  rtree.RTreeGN[float32, *object.Object] // geospatially indexed
+	values   *btree.BTreeG[*object.Object]          // sorted by value+id
+	expires  *btree.BTreeG[*object.Object]          // sorted by ex+id
 	weight   int
 	points   int
 	objects  int // geometry count
@@ -66,10 +66,8 @@ var optsNoLock = btree.Options{NoLocks: true}
 // New creates an empty collection
 func New() *Collection {
 	col := &Collection{
-		items:   btree.NewBTreeGOptions(byID, optsNoLock),
 		values:  btree.NewBTreeGOptions(byValue, optsNoLock),
 		expires: btree.NewBTreeGOptions(byExpires, optsNoLock),
-		spatial: &rtree.RTreeGN[float32, *object.Object]{},
 	}
 	return col
 }
@@ -163,7 +161,43 @@ func rtreeRect(rect geometry.Rect) (min, max [2]float32) {
 // Set adds or replaces an object in the collection and returns the fields
 // array.
 func (c *Collection) Set(obj *object.Object) (prev *object.Object) {
-	prev, _ = c.items.Set(obj)
+	prev, _ = c.objs.Set(obj.ID(), obj)
+	c.setFill(prev, obj)
+	return prev
+}
+
+// SetMerged works just like Set but it will merge the new object fields and
+// the previous object fields and create a newer object that is then set into
+// the collection. The newer object is returned.
+func (c *Collection) SetMerged(obj *object.Object,
+) (prev, newObj *object.Object) {
+	prev, _ = c.objs.Set(obj.ID(), obj)
+	if prev != nil {
+		// Check if at least one field exists from the previous object and
+		// merge the two field lists, then re-set the new object. Otherwise,
+		// we stick with the current object.
+		// TODO: check if the old object has fields that new object does not
+		// and only reset those.
+		ofields := prev.Fields()
+		var reset bool
+		ofields.Scan(func(f field.Field) bool {
+			reset = true
+			return false
+		})
+		if reset {
+			obj.Fields().Scan(func(f field.Field) bool {
+				ofields = ofields.Set(f)
+				return true
+			})
+			obj = object.New(obj.ID(), obj.Geo(), obj.Expires(), ofields)
+			c.objs.Set(obj.ID(), obj)
+		}
+	}
+	c.setFill(prev, obj)
+	return prev, obj
+}
+
+func (c *Collection) setFill(prev, obj *object.Object) {
 	if prev != nil {
 		if prev.IsSpatial() {
 			c.indexDelete(prev)
@@ -190,14 +224,12 @@ func (c *Collection) Set(obj *object.Object) (prev *object.Object) {
 	}
 	c.points += obj.Geo().NumPoints()
 	c.weight += obj.Weight()
-	return prev
 }
 
 // Delete removes an object and returns it.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Delete(id string) (prev *object.Object) {
-	key := object.New(id, nil, 0, field.List{})
-	prev, _ = c.items.Delete(key)
+	prev, _ = c.objs.Delete(id)
 	if prev == nil {
 		return nil
 	}
@@ -221,8 +253,7 @@ func (c *Collection) Delete(id string) (prev *object.Object) {
 // Get returns an object.
 // If the object does not exist then the 'ok' return value will be false.
 func (c *Collection) Get(id string) *object.Object {
-	key := object.New(id, nil, 0, field.List{})
-	obj, _ := c.items.Get(key)
+	obj, _ := c.objs.Get(id)
 	return obj
 }
 
@@ -240,7 +271,7 @@ func (c *Collection) Scan(
 		offset = cursor.Offset()
 		cursor.Step(offset)
 	}
-	iter := func(obj *object.Object) bool {
+	iter := func(_ string, obj *object.Object) bool {
 		count++
 		if count <= offset {
 			return true
@@ -250,9 +281,9 @@ func (c *Collection) Scan(
 		return keepon
 	}
 	if desc {
-		c.items.Reverse(iter)
+		c.objs.Reverse(iter)
 	} else {
-		c.items.Scan(iter)
+		c.objs.Scan(iter)
 	}
 	return keepon
 }
@@ -272,7 +303,7 @@ func (c *Collection) ScanRange(
 		offset = cursor.Offset()
 		cursor.Step(offset)
 	}
-	iter := func(o *object.Object) bool {
+	iter := func(_ string, o *object.Object) bool {
 		count++
 		if count <= offset {
 			return true
@@ -291,11 +322,10 @@ func (c *Collection) ScanRange(
 		return keepon
 	}
 
-	pstart := object.New(start, nil, 0, field.List{})
 	if desc {
-		c.items.Descend(pstart, iter)
+		c.objs.Descend(start, iter)
 	} else {
-		c.items.Ascend(pstart, iter)
+		c.objs.Ascend(start, iter)
 	}
 	return keepon
 }
@@ -385,7 +415,7 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		offset = cursor.Offset()
 		cursor.Step(offset)
 	}
-	iter := func(o *object.Object) bool {
+	iter := func(_ string, o *object.Object) bool {
 		count++
 		if count <= offset {
 			return true
@@ -394,11 +424,10 @@ func (c *Collection) ScanGreaterOrEqual(id string, desc bool,
 		keepon = iterator(o)
 		return keepon
 	}
-	pstart := object.New(id, nil, 0, field.List{})
 	if desc {
-		c.items.Descend(pstart, iter)
+		c.objs.Descend(id, iter)
 	} else {
-		c.items.Ascend(pstart, iter)
+		c.objs.Ascend(id, iter)
 	}
 	return keepon
 }

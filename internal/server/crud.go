@@ -677,31 +677,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 
 	// >> Operation
 
-	var nada bool
-	col, ok := s.cols.Get(key)
-	if !ok {
-		if xx {
-			nada = true
-		} else {
-			col = collection.New()
-			s.cols.Set(key, col)
-		}
-	}
-
-	var ofields field.List
-	if !nada {
-		o := col.Get(id)
-		if o != nil {
-			ofields = o.Fields()
-		}
-		if xx || nx {
-			if (nx && ok) || (xx && !ok) {
-				nada = true
-			}
-		}
-	}
-
-	if nada {
+	nada := func() (resp.Value, commandDetails, error) {
 		// exclude operation due to 'xx' or 'nx' match
 		switch msg.OutputType {
 		default:
@@ -717,12 +693,29 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 		return retwerr(errors.New("nada unknown output"))
 	}
 
-	for _, f := range fields {
-		ofields = ofields.Set(f)
+	col, ok := s.cols.Get(key)
+	if !ok {
+		if xx {
+			return nada()
+		}
+		col = collection.New()
+		s.cols.Set(key, col)
 	}
 
-	obj := object.New(id, oobj, ex, ofields)
-	old := col.Set(obj)
+	if xx || nx {
+		if col.Get(id) == nil {
+			if xx {
+				return nada()
+			}
+		} else {
+			if nx {
+				return nada()
+			}
+		}
+	}
+
+	obj := object.New(id, oobj, ex, field.MakeList(fields))
+	old, obj := col.SetMerged(obj)
 
 	// >> Response
 

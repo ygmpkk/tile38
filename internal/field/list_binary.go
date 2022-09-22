@@ -351,11 +351,12 @@ func (fields List) Weight() int {
 	return x + n
 }
 
-// Bytes returns the raw bytes (including the header)
-func (fields List) Bytes() []byte {
-	if fields.p == nil {
-		return nil
+// MakeList returns a field list from an array of fields.
+func MakeList(fields []Field) List {
+	// TODO: optimize to reduce allocations.
+	var list List
+	for _, f := range fields {
+		list = list.Set(f)
 	}
-	x, n := uvarint(*(*[]byte)(unsafe.Pointer(&bytes{fields.p, 10, 10})))
-	return (*(*[]byte)(unsafe.Pointer(&bytes{fields.p, 0, n + x})))
+	return list
 }
