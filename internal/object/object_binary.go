@@ -63,24 +63,18 @@ func varint(s string) (int64, int) {
 }
 
 func (o *Object) ID() string {
-	if o == nil {
-		return ""
+	if o.head[1] == 0 {
+		return o.head[2:]
 	}
 	_, n := varint(o.head[1:])
 	return o.head[1+n:]
 }
 
 func (o *Object) Fields() field.List {
-	if o == nil {
-		return field.List{}
-	}
 	return o.fields
 }
 
 func (o *Object) Expires() int64 {
-	if o == nil {
-		return 0
-	}
 	ex, _ := varint(o.head[1:])
 	return ex
 }
@@ -111,15 +105,15 @@ func (o *Object) IsSpatial() bool {
 }
 
 func (o *Object) Weight() int {
-	if o == nil {
-		return 0
-	}
 	var weight int
 	weight += len(o.ID())
-	if o.IsSpatial() {
-		weight += o.Geo().NumPoints() * 16
-	} else {
-		weight += len(o.Geo().String())
+	ogeo := o.geo()
+	if ogeo != nil {
+		if o.IsSpatial() {
+			weight += ogeo.NumPoints() * 16
+		} else {
+			weight += len(ogeo.String())
+		}
 	}
 	weight += o.Fields().Weight()
 	return weight
@@ -127,7 +121,10 @@ func (o *Object) Weight() int {
 
 func makeHead(kind byte, id string, expires int64) string {
 	var exb [20]byte
-	exn := binary.PutVarint(exb[:], expires)
+	exn := 1
+	if expires != 0 {
+		exn = binary.PutVarint(exb[:], expires)
+	}
 	n := 1 + exn + len(id)
 	head := make([]byte, n)
 	head[0] = kind

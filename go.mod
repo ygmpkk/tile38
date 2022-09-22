@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/assert v0.1.0
-	github.com/tidwall/btree v1.4.3
+	github.com/tidwall/btree v1.4.4
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/geojson v1.3.6
 	github.com/tidwall/gjson v1.14.3
