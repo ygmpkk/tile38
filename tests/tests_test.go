@@ -30,7 +30,7 @@ func TestAll(t *testing.T) {
 	mockCleanup(false)
 	defer mockCleanup(false)
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
@@ -82,8 +82,9 @@ func runStep(t *testing.T, mc *mockServer, name string, step func(mc *mockServer
 			}
 			return nil
 		}(); err != nil {
-			fmt.Printf("["+red+"fail"+clear+"]: %s\n", name)
+			fmt.Fprintf(os.Stderr, "["+red+"fail"+clear+"]: %s\n", name)
 			t.Fatal(err)
+			// t.Fatal(err)
 		}
 		fmt.Printf("["+green+"ok"+clear+"]: %s\n", name)
 	})
@@ -93,7 +94,7 @@ func BenchmarkAll(b *testing.B) {
 	mockCleanup(true)
 	defer mockCleanup(true)
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch

@@ -2,7 +2,7 @@ package tests
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -29,7 +29,7 @@ func fence_roaming_webhook_test(mc *mockServer) error {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			// Read the request body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				return err
 			}
@@ -115,8 +115,10 @@ func fence_roaming_live_test(mc *mockServer) error {
 	liveReady.Add(1)
 	return goMultiFunc(mc,
 		func() error {
-			sc, err := redis.DialTimeout("tcp", fmt.Sprintf(":%d", mc.port),
-				0, time.Second*5, time.Second*5)
+			sc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port),
+				redis.DialConnectTimeout(0),
+				redis.DialReadTimeout(time.Second*5),
+				redis.DialWriteTimeout(time.Second*5))
 			if err != nil {
 				liveReady.Done()
 				return err

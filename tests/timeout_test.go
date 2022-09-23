@@ -56,6 +56,9 @@ func setup(mc *mockServer, count int, points bool) (err error) {
 
 func timeout_spatial_test(mc *mockServer) (err error) {
 	err = setup(mc, 10000, true)
+	if err != nil {
+		return err
+	}
 
 	return mc.DoBatch([][]interface{}{
 		{"SCAN", "mykey", "WHERE", "foo", -1, 2, "COUNT"}, {"10000"},
@@ -70,6 +73,9 @@ func timeout_spatial_test(mc *mockServer) (err error) {
 
 func timeout_search_test(mc *mockServer) (err error) {
 	err = setup(mc, 10000, false)
+	if err != nil {
+		return err
+	}
 
 	return mc.DoBatch([][]interface{}{
 		{"SEARCH", "mykey", "MATCH", "val:*", "COUNT"}, {"10000"},
@@ -122,6 +128,9 @@ func scriptTimeoutErr(v interface{}) (resp, expect interface{}) {
 
 func timeout_within_scripts_test(mc *mockServer) (err error) {
 	err = setup(mc, 10000, true)
+	if err != nil {
+		return err
+	}
 
 	script1 := "return tile38.call('timeout', 10, 'SCAN', 'mykey', 'WHERE', 'foo', -1, 2, 'COUNT')"
 	script2 := "return tile38.call('timeout', 0.000001, 'SCAN', 'mykey', 'WHERE', 'foo', -1, 2, 'COUNT')"

@@ -4,9 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os/exec"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -36,18 +33,19 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 }
 
 func keys_BOUNDS_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid1", "POINT", 33, -115}, {"OK"},
-		{"BOUNDS", "mykey"}, {"[[-115 33] [-115 33]]"},
-		{"SET", "mykey", "myid2", "POINT", 34, -112}, {"OK"},
-		{"BOUNDS", "mykey"}, {"[[-115 33] [-112 34]]"},
-		{"DEL", "mykey", "myid2"}, {1},
-		{"BOUNDS", "mykey"}, {"[[-115 33] [-115 33]]"},
-		{"SET", "mykey", "myid3", "OBJECT", `{"type":"Point","coordinates":[-130,38,10]}`}, {"OK"},
-		{"SET", "mykey", "myid4", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`}, {"OK"},
-		{"BOUNDS", "mykey"}, {"[[-130 25] [-110 38]]"},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid1", "POINT", 33, -115).OK(),
+		Do("BOUNDS", "mykey").String("[[-115 33] [-115 33]]"),
+		Do("SET", "mykey", "myid2", "POINT", 34, -112).OK(),
+		Do("BOUNDS", "mykey").String("[[-115 33] [-112 34]]"),
+		Do("DEL", "mykey", "myid2").String("1"),
+		Do("BOUNDS", "mykey").String("[[-115 33] [-115 33]]"),
+		Do("SET", "mykey", "myid3", "OBJECT", `{"type":"Point","coordinates":[-130,38,10]}`).OK(),
+		Do("SET", "mykey", "myid4", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`).OK(),
+		Do("BOUNDS", "mykey").String("[[-130 25] [-110 38]]"),
+	)
 }
+
 func keys_DEL_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
 		{"SET", "mykey", "myid", "POINT", 33, -115}, {"OK"},
@@ -256,62 +254,6 @@ func keys_TTL_test(mc *mockServer) error {
 	})
 }
 
-type PSAUX struct {
-	User    string
-	PID     int
-	CPU     float64
-	Mem     float64
-	VSZ     int
-	RSS     int
-	TTY     string
-	Stat    string
-	Start   string
-	Time    string
-	Command string
-}
-
-func atoi(s string) int {
-	n, _ := strconv.ParseInt(s, 10, 64)
-	return int(n)
-}
-func atof(s string) float64 {
-	n, _ := strconv.ParseFloat(s, 64)
-	return float64(n)
-}
-func psaux(pid int) PSAUX {
-	var res []byte
-	res, err := exec.Command("ps", "aux").CombinedOutput()
-	if err != nil {
-		return PSAUX{}
-	}
-	pids := strconv.FormatInt(int64(pid), 10)
-	for _, line := range strings.Split(string(res), "\n") {
-		var words []string
-		for _, word := range strings.Split(line, " ") {
-			if word != "" {
-				words = append(words, word)
-			}
-			if len(words) > 11 {
-				if words[1] == pids {
-					return PSAUX{
-						User:    words[0],
-						PID:     atoi(words[1]),
-						CPU:     atof(words[2]),
-						Mem:     atof(words[3]),
-						VSZ:     atoi(words[4]),
-						RSS:     atoi(words[5]),
-						TTY:     words[6],
-						Stat:    words[7],
-						Start:   words[8],
-						Time:    words[9],
-						Command: words[10],
-					}
-				}
-			}
-		}
-	}
-	return PSAUX{}
-}
 func keys_SET_EX_test(mc *mockServer) (err error) {
 	rand.Seed(time.Now().UnixNano())
 
