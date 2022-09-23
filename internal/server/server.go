@@ -1080,7 +1080,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "readonly":
 		res, err = s.cmdReadOnly(msg)
 	case "stats":
-		res, err = s.cmdStats(msg)
+		res, err = s.cmdSTATS(msg)
 	case "server":
 		res, err = s.cmdServer(msg)
 	case "healthz":

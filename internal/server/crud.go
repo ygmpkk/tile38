@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -706,23 +706,22 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 			return retwerr(errInvalidArgument(args[i]))
 		}
 	}
+	if oobj == nil {
+		return retwerr(errInvalidNumberOfArguments)
+	}
 
 	// >> Operation
 
 	nada := func() (resp.Value, commandDetails, error) {
 		// exclude operation due to 'xx' or 'nx' match
-		switch msg.OutputType {
-		default:
-		case JSON:
+		if msg.OutputType == JSON {
 			if nx {
 				return retwerr(errIDAlreadyExists)
 			} else {
 				return retwerr(errIDNotFound)
 			}
-		case RESP:
-			return resp.NullValue(), commandDetails{}, nil
 		}
-		return retwerr(errors.New("nada unknown output"))
+		return resp.NullValue(), commandDetails{}, nil
 	}
 
 	col, ok := s.cols.Get(key)
@@ -931,11 +930,17 @@ func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 // PERSIST key id
 func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
+
+	// >> Args
+
 	args := msg.Args
 	if len(args) != 3 {
 		return retwerr(errInvalidNumberOfArguments)
 	}
 	key, id := args[1], args[2]
+
+	// >> Operation
+
 	col, _ := s.cols.Get(key)
 	if col == nil {
 		if msg.OutputType == RESP {
@@ -958,6 +963,8 @@ func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 		col.Set(obj)
 		cleared = true
 	}
+
+	// >> Response
 
 	var res resp.Value
 
@@ -985,62 +992,47 @@ func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 // TTL key id
 func (s *Server) cmdTTL(msg *Message) (resp.Value, error) {
 	start := time.Now()
+
+	// >> Args
+
 	args := msg.Args
 	if len(args) != 3 {
 		return retrerr(errInvalidNumberOfArguments)
 	}
 	key, id := args[1], args[2]
-	var v float64
-	var ok bool
-	var ok2 bool
+
+	// >> Operation
+
 	col, _ := s.cols.Get(key)
-	if col != nil {
-		o := col.Get(id)
-		ok = o != nil
-		if ok {
-			if o.Expires() != 0 {
-				now := start.UnixNano()
-				if now > o.Expires() {
-					ok2 = false
-				} else {
-					v = float64(o.Expires()-now) / float64(time.Second)
-					if v < 0 {
-						v = 0
-					}
-					ok2 = true
-				}
-			}
+	if col == nil {
+		if msg.OutputType == JSON {
+			return retrerr(errKeyNotFound)
 		}
+		return resp.IntegerValue(-2), nil
 	}
-	var res resp.Value
-	switch msg.OutputType {
-	case JSON:
-		if ok {
-			var ttl string
-			if ok2 {
-				ttl = strconv.FormatFloat(v, 'f', -1, 64)
-			} else {
-				ttl = "-1"
-			}
-			res = resp.SimpleStringValue(
-				`{"ok":true,"ttl":` + ttl + `,"elapsed":"` +
-					time.Since(start).String() + "\"}")
-		} else {
-			if col == nil {
-				return retrerr(errKeyNotFound)
-			}
+
+	o := col.Get(id)
+	if o == nil {
+		if msg.OutputType == JSON {
 			return retrerr(errIDNotFound)
 		}
-	case RESP:
-		if ok {
-			if ok2 {
-				res = resp.IntegerValue(int(v))
-			} else {
-				res = resp.IntegerValue(-1)
-			}
-		} else {
-			res = resp.IntegerValue(-2)
-		}
+		return resp.IntegerValue(-2), nil
 	}
-	return res, nil
+
+	var ttl float64
+	if o.Expires() == 0 {
+		ttl = -1
+	} else {
+		now := start.UnixNano()
+		ttl = math.Max(float64(o.Expires()-now)/float64(time.Second), 0)
+	}
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.SimpleStringValue(
+			`{"ok":true,"ttl":` + strconv.Itoa(int(ttl)) + `,"elapsed":"` +
+				time.Since(start).String() + "\"}"), nil
+	}
+	return resp.IntegerValue(int(ttl)), nil
 }

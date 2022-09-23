@@ -34,7 +34,7 @@ func (cmd *IO) Str(s string) *IO {
 	cmd.out = s
 	return cmd
 }
-func (cmd *IO) Custom(fn func(s string) error) *IO {
+func (cmd *IO) Func(fn func(s string) error) *IO {
 	cmd.out = func(s string) error {
 		if cmd.json {
 			if !gjson.Valid(s) {
@@ -47,7 +47,7 @@ func (cmd *IO) Custom(fn func(s string) error) *IO {
 }
 
 func (cmd *IO) OK() *IO {
-	return cmd.Custom(func(s string) error {
+	return cmd.Func(func(s string) error {
 		if cmd.json {
 			if gjson.Get(s, "ok").Type != gjson.True {
 				return errors.New("not ok")
@@ -60,7 +60,7 @@ func (cmd *IO) OK() *IO {
 }
 
 func (cmd *IO) Err(msg string) *IO {
-	return cmd.Custom(func(s string) error {
+	return cmd.Func(func(s string) error {
 		if cmd.json {
 			if gjson.Get(s, "ok").Type != gjson.False {
 				return errors.New("ok=true")
