@@ -85,44 +85,56 @@ func keys_DROP_test(mc *mockServer) error {
 		Do("SCAN", "mykey", "COUNT").Str("0"),
 		Do("DROP", "mykey").Str("0"),
 		Do("SCAN", "mykey", "COUNT").Str("0"),
-		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").Str("OK"),
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
 		Do("DROP", "mykey").JSON().OK(),
 		Do("DROP", "mykey").JSON().OK(),
 	)
 }
 func keys_RENAME_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid1", "HASH", "9my5xp7"}, {"OK"},
-		{"SET", "mykey", "myid2", "HASH", "9my5xp8"}, {"OK"},
-		{"SCAN", "mykey", "COUNT"}, {2},
-		{"RENAME", "mykey", "mynewkey"}, {"OK"},
-		{"SCAN", "mykey", "COUNT"}, {0},
-		{"SCAN", "mynewkey", "COUNT"}, {2},
-		{"SET", "mykey", "myid3", "HASH", "9my5xp7"}, {"OK"},
-		{"RENAME", "mykey", "mynewkey"}, {"OK"},
-		{"SCAN", "mykey", "COUNT"}, {0},
-		{"SCAN", "mynewkey", "COUNT"}, {1},
-		{"RENAME", "foo", "mynewkey"}, {"ERR key not found"},
-		{"SCAN", "mynewkey", "COUNT"}, {1},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
+		Do("SET", "mykey", "myid2", "HASH", "9my5xp8").OK(),
+		Do("SCAN", "mykey", "COUNT").Str("2"),
+		Do("RENAME", "foo", "mynewkey", "arg3").Err("wrong number of arguments for 'rename' command"),
+		Do("RENAME", "mykey", "mynewkey").OK(),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("SCAN", "mynewkey", "COUNT").Str("2"),
+		Do("SET", "mykey", "myid3", "HASH", "9my5xp7").OK(),
+		Do("RENAME", "mykey", "mynewkey").OK(),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("SCAN", "mynewkey", "COUNT").Str("1"),
+		Do("RENAME", "foo", "mynewkey").Err("key not found"),
+		Do("SCAN", "mynewkey", "COUNT").Str("1"),
+		Do("SETCHAN", "mychan", "INTERSECTS", "mynewkey", "BOUNDS", 10, 10, 20, 20).Str("1"),
+		Do("RENAME", "mynewkey", "foo2").Err("key has hooks set"),
+		Do("RENAMENX", "mynewkey", "foo2").Err("key has hooks set"),
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
+		Do("RENAME", "mykey", "foo2").OK(),
+		Do("RENAMENX", "foo2", "foo3").Str("1"),
+		Do("RENAMENX", "foo2", "foo3").Err("key not found"),
+		Do("RENAME", "foo2", "foo3").JSON().Err("key not found"),
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
+		Do("RENAMENX", "mykey", "foo3").Str("0"),
+		Do("RENAME", "foo3", "foo4").JSON().OK(),
+	)
 }
 func keys_RENAMENX_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid1", "HASH", "9my5xp7"}, {"OK"},
-		{"SET", "mykey", "myid2", "HASH", "9my5xp8"}, {"OK"},
-		{"SCAN", "mykey", "COUNT"}, {2},
-		{"RENAMENX", "mykey", "mynewkey"}, {1},
-		{"SCAN", "mykey", "COUNT"}, {0},
-		{"DROP", "mykey"}, {0},
-		{"SCAN", "mykey", "COUNT"}, {0},
-		{"SCAN", "mynewkey", "COUNT"}, {2},
-		{"SET", "mykey", "myid3", "HASH", "9my5xp7"}, {"OK"},
-		{"RENAMENX", "mykey", "mynewkey"}, {0},
-		{"SCAN", "mykey", "COUNT"}, {1},
-		{"SCAN", "mynewkey", "COUNT"}, {2},
-		{"RENAMENX", "foo", "mynewkey"}, {"ERR key not found"},
-		{"SCAN", "mynewkey", "COUNT"}, {2},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
+		Do("SET", "mykey", "myid2", "HASH", "9my5xp8").OK(),
+		Do("SCAN", "mykey", "COUNT").Str("2"),
+		Do("RENAMENX", "mykey", "mynewkey").Str("1"),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("DROP", "mykey").Str("0"),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("SCAN", "mynewkey", "COUNT").Str("2"),
+		Do("SET", "mykey", "myid3", "HASH", "9my5xp7").OK(),
+		Do("RENAMENX", "mykey", "mynewkey").Str("0"),
+		Do("SCAN", "mykey", "COUNT").Str("1"),
+		Do("SCAN", "mynewkey", "COUNT").Str("2"),
+		Do("RENAMENX", "foo", "mynewkey").Str("ERR key not found"),
+		Do("SCAN", "mynewkey", "COUNT").Str("2"),
+	)
 }
 func keys_EXPIRE_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{

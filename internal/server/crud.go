@@ -244,10 +244,11 @@ func (s *Server) cmdGET(msg *Message) (resp.Value, error) {
 					if i > 0 {
 						buf.WriteString(`,`)
 					}
-					buf.WriteString(jsonString(f.Name()) + ":" + f.Value().JSON())
+					buf.WriteString(jsonString(f.Name()) + ":" +
+						f.Value().JSON())
 				} else {
-					fvals = append(fvals,
-						resp.StringValue(f.Name()), resp.StringValue(f.Value().Data()))
+					fvals = append(fvals, resp.StringValue(f.Name()),
+						resp.StringValue(f.Value().Data()))
 				}
 				i++
 				return true
@@ -441,7 +442,8 @@ func (s *Server) cmdDROP(msg *Message) (resp.Value, commandDetails, error) {
 	d.timestamp = time.Now()
 	switch msg.OutputType {
 	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
 		if d.updated {
 			res = resp.IntegerValue(1)
@@ -452,54 +454,67 @@ func (s *Server) cmdDROP(msg *Message) (resp.Value, commandDetails, error) {
 	return res, d, nil
 }
 
-func (s *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err error) {
-	nx := msg.Command() == "renamenx"
+// RENAME key newkey
+// RENAMENX key newkey
+func (s *Server) cmdRENAME(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ok bool
-	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
-		err = errInvalidNumberOfArguments
-		return
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 3 {
+		return retwerr(errInvalidNumberOfArguments)
 	}
-	if vs, d.newKey, ok = tokenval(vs); !ok || d.newKey == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	col, _ := s.cols.Get(d.key)
+	nx := strings.ToLower(args[0]) == "renamenx"
+	key := args[1]
+	newKey := args[2]
+
+	// >> Operation
+
+	col, _ := s.cols.Get(key)
 	if col == nil {
-		err = errKeyNotFound
-		return
+		return retwerr(errKeyNotFound)
 	}
+	var ierr error
 	s.hooks.Ascend(nil, func(v interface{}) bool {
 		h := v.(*Hook)
-		if h.Key == d.key || h.Key == d.newKey {
-			err = errKeyHasHooksSet
+		if h.Key == key || h.Key == newKey {
+			ierr = errKeyHasHooksSet
 			return false
 		}
 		return true
 	})
-	d.command = "rename"
-	newCol, _ := s.cols.Get(d.newKey)
+	if ierr != nil {
+		return retwerr(ierr)
+	}
+	var updated bool
+	newCol, _ := s.cols.Get(newKey)
 	if newCol == nil {
-		d.updated = true
-	} else if nx {
-		d.updated = false
-	} else {
-		s.cols.Delete(d.newKey)
-		d.updated = true
+		updated = true
+	} else if !nx {
+		s.cols.Delete(newKey)
+		updated = true
 	}
-	if d.updated {
-		s.cols.Delete(d.key)
-		s.cols.Set(d.newKey, col)
+	if updated {
+		s.cols.Delete(key)
+		s.cols.Set(newKey, col)
 	}
+
+	// >> Response
+
+	var d commandDetails
+	var res resp.Value
+
+	d.command = "rename"
+	d.key = key
+	d.newKey = newKey
+	d.updated = updated
 	d.timestamp = time.Now()
+
 	switch msg.OutputType {
 	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
 		if !nx {
 			res = resp.SimpleStringValue("OK")
@@ -509,7 +524,7 @@ func (s *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err 
 			res = resp.IntegerValue(0)
 		}
 	}
-	return
+	return res, d, nil
 }
 
 func (s *Server) cmdFLUSHDB(msg *Message) (res resp.Value, d commandDetails, err error) {
@@ -535,7 +550,8 @@ func (s *Server) cmdFLUSHDB(msg *Message) (res resp.Value, d commandDetails, err
 	d.timestamp = time.Now()
 	switch msg.OutputType {
 	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
 		res = resp.SimpleStringValue("OK")
 	}
@@ -543,7 +559,8 @@ func (s *Server) cmdFLUSHDB(msg *Message) (res resp.Value, d commandDetails, err
 }
 
 // SET key id [FIELD name value ...] [EX seconds] [NX|XX]
-// (OBJECT geojson)|(POINT lat lon z)|(BOUNDS minlat minlon maxlat maxlon)|(HASH geohash)|(STRING value)
+// (OBJECT geojson)|(POINT lat lon z)|(BOUNDS minlat minlon maxlat maxlon)|
+// (HASH geohash)|(STRING value)
 func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
 	if s.config.maxMemory() > 0 && s.outOfMemory.on() {

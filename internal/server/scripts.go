@@ -604,9 +604,9 @@ func (s *Server) commandInScript(msg *Message) (
 	case "expire":
 		res, d, err = s.cmdEXPIRE(msg)
 	case "rename":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "renamenx":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "persist":
 		res, d, err = s.cmdPERSIST(msg)
 	case "ttl":

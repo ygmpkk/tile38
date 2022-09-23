@@ -1028,9 +1028,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "flushdb":
 		res, d, err = s.cmdFLUSHDB(msg)
 	case "rename":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "renamenx":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "sethook":
 		res, d, err = s.cmdSetHook(msg)
 	case "delhook":
