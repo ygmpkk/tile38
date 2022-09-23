@@ -34,8 +34,11 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 
 func keys_BOUNDS_test(mc *mockServer) error {
 	return mc.DoBatch(
+		Do("BOUNDS", "mykey").String("<nil>"),
+		Do("BOUNDS", "mykey").JSON().Error("key not found"),
 		Do("SET", "mykey", "myid1", "POINT", 33, -115).OK(),
 		Do("BOUNDS", "mykey").String("[[-115 33] [-115 33]]"),
+		Do("BOUNDS", "mykey").JSON().String(`{"ok":true,"bounds":{"type":"Point","coordinates":[-115,33]}}`),
 		Do("SET", "mykey", "myid2", "POINT", 34, -112).OK(),
 		Do("BOUNDS", "mykey").String("[[-115 33] [-112 34]]"),
 		Do("DEL", "mykey", "myid2").String("1"),
@@ -43,6 +46,11 @@ func keys_BOUNDS_test(mc *mockServer) error {
 		Do("SET", "mykey", "myid3", "OBJECT", `{"type":"Point","coordinates":[-130,38,10]}`).OK(),
 		Do("SET", "mykey", "myid4", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`).OK(),
 		Do("BOUNDS", "mykey").String("[[-130 25] [-110 38]]"),
+		Do("BOUNDS", "mykey", "hello").Error("wrong number of arguments for 'bounds' command"),
+		Do("BOUNDS", "nada").String("<nil>"),
+		Do("BOUNDS", "nada").JSON().Error("key not found"),
+		Do("BOUNDS", "").String("<nil>"),
+		Do("BOUNDS", "mykey").JSON().String(`{"ok":true,"bounds":{"type":"Polygon","coordinates":[[[-130,25],[-110,25],[-110,38],[-130,38],[-130,25]]]}}`),
 	)
 }
 

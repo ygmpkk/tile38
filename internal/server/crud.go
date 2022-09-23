@@ -17,26 +17,29 @@ import (
 	"github.com/tidwall/tile38/internal/object"
 )
 
-func (s *Server) cmdBounds(msg *Message) (resp.Value, error) {
+// BOUNDS key
+func (s *Server) cmdBOUNDS(msg *Message) (resp.Value, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
 
-	var ok bool
-	var key string
-	if vs, key, ok = tokenval(vs); !ok || key == "" {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 2 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	if len(vs) != 0 {
-		return NOMessage, errInvalidNumberOfArguments
-	}
+	key := args[1]
+
+	// >> Operation
 
 	col, _ := s.cols.Get(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
 		}
-		return NOMessage, errKeyNotFound
+		return retrerr(errKeyNotFound)
 	}
+
+	// >> Response
 
 	vals := make([]resp.Value, 0, 2)
 	var buf bytes.Buffer
@@ -52,26 +55,22 @@ func (s *Server) cmdBounds(msg *Message) (resp.Value, error) {
 	if msg.OutputType == JSON {
 		buf.WriteString(`,"bounds":`)
 		buf.WriteString(string(bbox.AppendJSON(nil)))
-	} else {
-		vals = append(vals, resp.ArrayValue([]resp.Value{
-			resp.ArrayValue([]resp.Value{
-				resp.FloatValue(minX),
-				resp.FloatValue(minY),
-			}),
-			resp.ArrayValue([]resp.Value{
-				resp.FloatValue(maxX),
-				resp.FloatValue(maxY),
-			}),
-		}))
-	}
-	switch msg.OutputType {
-	case JSON:
 		buf.WriteString(`,"elapsed":"` + time.Since(start).String() + "\"}")
 		return resp.StringValue(buf.String()), nil
-	case RESP:
-		return vals[0], nil
 	}
-	return NOMessage, nil
+
+	// RESP
+	vals = append(vals, resp.ArrayValue([]resp.Value{
+		resp.ArrayValue([]resp.Value{
+			resp.FloatValue(minX),
+			resp.FloatValue(minY),
+		}),
+		resp.ArrayValue([]resp.Value{
+			resp.FloatValue(maxX),
+			resp.FloatValue(maxY),
+		}),
+	}))
+	return vals[0], nil
 }
 
 func (s *Server) cmdType(msg *Message) (resp.Value, error) {

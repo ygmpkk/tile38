@@ -624,7 +624,7 @@ func (s *Server) commandInScript(msg *Message) (
 	case "search":
 		res, err = s.cmdSearch(msg)
 	case "bounds":
-		res, err = s.cmdBounds(msg)
+		res, err = s.cmdBOUNDS(msg)
 	case "get":
 		res, err = s.cmdGet(msg)
 	case "jget":

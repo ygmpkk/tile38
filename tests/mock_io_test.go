@@ -56,6 +56,26 @@ func (cmd *IO) OK() *IO {
 	})
 }
 
+func (cmd *IO) Error(msg string) *IO {
+	return cmd.Custom(func(s string) error {
+		if cmd.json {
+			if gjson.Get(s, "ok").Type != gjson.False {
+				return errors.New("ok=true")
+			}
+			if gjson.Get(s, "err").String() != msg {
+				return fmt.Errorf("expected '%s', got '%s'",
+					msg, gjson.Get(s, "err").String())
+			}
+		} else {
+			s = strings.TrimPrefix(s, "ERR ")
+			if s != msg {
+				return fmt.Errorf("expected '%s', got '%s'", msg, s)
+			}
+		}
+		return nil
+	})
+}
+
 type ioVisitor struct {
 	fset  *token.FileSet
 	ln    int
