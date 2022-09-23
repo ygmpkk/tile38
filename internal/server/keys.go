@@ -1,8 +1,7 @@
 package server
 
 import (
-	"bytes"
-	"strings"
+	"encoding/json"
 	"time"
 
 	"github.com/tidwall/resp"
@@ -10,86 +9,59 @@ import (
 	"github.com/tidwall/tile38/internal/glob"
 )
 
-func (s *Server) cmdKeys(msg *Message) (res resp.Value, err error) {
+// KEYS pattern
+func (s *Server) cmdKEYS(msg *Message) (resp.Value, error) {
 	var start = time.Now()
-	vs := msg.Args[1:]
 
-	var pattern string
-	var ok bool
-	if vs, pattern, ok = tokenval(vs); !ok || pattern == "" {
-		return NOMessage, errInvalidNumberOfArguments
-	}
-	if len(vs) != 0 {
-		return NOMessage, errInvalidNumberOfArguments
-	}
+	// >> Args
 
-	var wr = &bytes.Buffer{}
-	var once bool
-	if msg.OutputType == JSON {
-		wr.WriteString(`{"ok":true,"keys":[`)
+	args := msg.Args
+	if len(args) != 2 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	var wild bool
-	if strings.Contains(pattern, "*") {
-		wild = true
-	}
-	var everything bool
-	var greater bool
-	var greaterPivot string
-	var vals []resp.Value
+	pattern := args[1]
 
-	iter := func(key string, col *collection.Collection) bool {
-		var match bool
-		if everything {
-			match = true
-		} else if greater {
-			if !strings.HasPrefix(key, greaterPivot) {
-				return false
-			}
-			match = true
-		} else {
-			match, _ = glob.Match(pattern, key)
-		}
-		if match {
-			if once {
-				if msg.OutputType == JSON {
-					wr.WriteByte(',')
+	// >> Operation
+
+	keys := []string{}
+	g := glob.Parse(pattern, false)
+	everything := g.Limits[0] == "" && g.Limits[1] == ""
+	if everything {
+		s.cols.Scan(
+			func(key string, _ *collection.Collection) bool {
+				match, _ := glob.Match(pattern, key)
+				if match {
+					keys = append(keys, key)
 				}
-			} else {
-				once = true
-			}
-			switch msg.OutputType {
-			case JSON:
-				wr.WriteString(jsonString(key))
-			case RESP:
-				vals = append(vals, resp.StringValue(key))
-			}
-
-			// If no more than one match is expected, stop searching
-			if !wild {
-				return false
-			}
-		}
-		return true
-	}
-
-	// TODO: This can be further optimized by using glob.Parse and limits
-	if pattern == "*" {
-		everything = true
-		s.cols.Scan(iter)
-	} else if strings.HasSuffix(pattern, "*") {
-		greaterPivot = pattern[:len(pattern)-1]
-		if glob.IsGlob(greaterPivot) {
-			s.cols.Scan(iter)
-		} else {
-			greater = true
-			s.cols.Ascend(greaterPivot, iter)
-		}
+				return true
+			},
+		)
 	} else {
-		s.cols.Scan(iter)
+		s.cols.Ascend(g.Limits[0],
+			func(key string, _ *collection.Collection) bool {
+				if key > g.Limits[1] {
+					return false
+				}
+				match, _ := glob.Match(pattern, key)
+				if match {
+					keys = append(keys, key)
+				}
+				return true
+			},
+		)
 	}
+
+	// >> Response
+
 	if msg.OutputType == JSON {
-		wr.WriteString(`],"elapsed":"` + time.Since(start).String() + "\"}")
-		return resp.StringValue(wr.String()), nil
+		data, _ := json.Marshal(keys)
+		return resp.StringValue(`{"ok":true,"keys":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + `"}`), nil
+	}
+
+	var vals []resp.Value
+	for _, key := range keys {
+		vals = append(vals, resp.StringValue(key))
 	}
 	return resp.ArrayValue(vals), nil
 }

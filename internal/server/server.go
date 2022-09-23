@@ -1110,7 +1110,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "type":
 		res, err = s.cmdTYPE(msg)
 	case "keys":
-		res, err = s.cmdKeys(msg)
+		res, err = s.cmdKEYS(msg)
 	case "output":
 		res, err = s.cmdOutput(msg)
 	case "aof":

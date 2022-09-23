@@ -225,28 +225,30 @@ func keys_GET_test(mc *mockServer) error {
 	)
 }
 func keys_KEYS_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey11", "myid4", "STRING", "value"}, {"OK"},
-		{"SET", "mykey22", "myid2", "HASH", "9my5xp7"}, {"OK"},
-		{"SET", "mykey22", "myid1", "OBJECT", `{"type":"Point","coordinates":[-130,38,10]}`}, {"OK"},
-		{"SET", "mykey11", "myid3", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`}, {"OK"},
-		{"SET", "mykey42", "myid2", "HASH", "9my5xp7"}, {"OK"},
-		{"SET", "mykey31", "myid4", "STRING", "value"}, {"OK"},
-		{"SET", "mykey310", "myid5", "STRING", "value"}, {"OK"},
-		{"KEYS", "*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
-		{"KEYS", "*key*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
-		{"KEYS", "mykey*"}, {"[mykey11 mykey22 mykey31 mykey310 mykey42]"},
-		{"KEYS", "mykey4*"}, {"[mykey42]"},
-		{"KEYS", "mykey*1"}, {"[mykey11 mykey31]"},
-		{"KEYS", "mykey*1*"}, {"[mykey11 mykey31 mykey310]"},
-		{"KEYS", "mykey*10"}, {"[mykey310]"},
-		{"KEYS", "mykey*2"}, {"[mykey22 mykey42]"},
-		{"KEYS", "*2"}, {"[mykey22 mykey42]"},
-		{"KEYS", "*1*"}, {"[mykey11 mykey31 mykey310]"},
-		{"KEYS", "mykey"}, {"[]"},
-		{"KEYS", "mykey31"}, {"[mykey31]"},
-		{"KEYS", "mykey[^3]*"}, {"[mykey11 mykey22 mykey42]"},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey11", "myid4", "STRING", "value").OK(),
+		Do("SET", "mykey22", "myid2", "HASH", "9my5xp7").OK(),
+		Do("SET", "mykey22", "myid1", "OBJECT", `{"type":"Point","coordinates":[-130,38,10]}`).OK(),
+		Do("SET", "mykey11", "myid3", "OBJECT", `{"type":"Point","coordinates":[-110,25,-8]}`).OK(),
+		Do("SET", "mykey42", "myid2", "HASH", "9my5xp7").OK(),
+		Do("SET", "mykey31", "myid4", "STRING", "value").OK(),
+		Do("SET", "mykey310", "myid5", "STRING", "value").OK(),
+		Do("KEYS", "*").Str("[mykey11 mykey22 mykey31 mykey310 mykey42]"),
+		Do("KEYS", "*key*").Str("[mykey11 mykey22 mykey31 mykey310 mykey42]"),
+		Do("KEYS", "mykey*").Str("[mykey11 mykey22 mykey31 mykey310 mykey42]"),
+		Do("KEYS", "mykey4*").Str("[mykey42]"),
+		Do("KEYS", "mykey*1").Str("[mykey11 mykey31]"),
+		Do("KEYS", "mykey*1*").Str("[mykey11 mykey31 mykey310]"),
+		Do("KEYS", "mykey*10").Str("[mykey310]"),
+		Do("KEYS", "mykey*2").Str("[mykey22 mykey42]"),
+		Do("KEYS", "*2").Str("[mykey22 mykey42]"),
+		Do("KEYS", "*1*").Str("[mykey11 mykey31 mykey310]"),
+		Do("KEYS", "mykey").Str("[]"),
+		Do("KEYS", "mykey31").Str("[mykey31]"),
+		Do("KEYS", "mykey[^3]*").Str("[mykey11 mykey22 mykey42]"),
+		Do("KEYS").Err("wrong number of arguments for 'keys' command"),
+		Do("KEYS", "*").JSON().Str(`{"ok":true,"keys":["mykey11","mykey22","mykey31","mykey310","mykey42"]}`),
+	)
 }
 func keys_PERSIST_test(mc *mockServer) error {
 	return mc.DoBatch(
@@ -371,6 +373,8 @@ func keys_STATS_test(mc *mockServer) error {
 		Do("DEL", "mykey", "myid2").Str("1"),
 		Do("STATS", "mykey").Str("[nil]"),
 		Do("STATS", "mykey", "mykey2").Str("[nil nil]"),
+		Do("STATS", "mykey").Str("[nil]"),
+		Do("STATS").Err(`wrong number of arguments for 'stats' command`),
 	)
 }
 func keys_TTL_test(mc *mockServer) error {
