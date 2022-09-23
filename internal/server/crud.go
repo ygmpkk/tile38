@@ -73,33 +73,38 @@ func (s *Server) cmdBOUNDS(msg *Message) (resp.Value, error) {
 	return vals[0], nil
 }
 
-func (s *Server) cmdType(msg *Message) (resp.Value, error) {
+// TYPE key
+// undocumented return "none" or "hash"
+func (s *Server) cmdTYPE(msg *Message) (resp.Value, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
 
-	var ok bool
-	var key string
-	if _, key, ok = tokenval(vs); !ok || key == "" {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 2 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
+	key := args[1]
+
+	// >> Operation
 
 	col, _ := s.cols.Get(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.SimpleStringValue("none"), nil
 		}
-		return NOMessage, errKeyNotFound
+		return retrerr(errKeyNotFound)
 	}
+
+	// >> Response
 
 	typ := "hash"
 
-	switch msg.OutputType {
-	case JSON:
-		return resp.StringValue(`{"ok":true,"type":` + string(typ) + `,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-	case RESP:
-		return resp.SimpleStringValue(typ), nil
+	if msg.OutputType == JSON {
+		return resp.StringValue(`{"ok":true,"type":` + jsonString(typ) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return NOMessage, nil
+	return resp.SimpleStringValue(typ), nil
 }
 
 func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
@@ -262,7 +267,7 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 }
 
 // DEL key id [ERRON404]
-func (s *Server) cmdDel(msg *Message) (resp.Value, commandDetails, error) {
+func (s *Server) cmdDEL(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
 
 	// >> Args
@@ -329,85 +334,75 @@ func (s *Server) cmdDel(msg *Message) (resp.Value, commandDetails, error) {
 	return res, d, nil
 }
 
-func (s *Server) cmdPdel(msg *Message) (res resp.Value, d commandDetails, err error) {
+// PDEL key pattern
+func (s *Server) cmdPDEL(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ok bool
-	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if vs, d.pattern, ok = tokenval(vs); !ok || d.pattern == "" {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	now := time.Now()
-	iter := func(o *object.Object) bool {
-		if match, _ := glob.Match(d.pattern, o.ID()); match {
-			d.children = append(d.children, &commandDetails{
-				command:   "del",
-				updated:   true,
-				timestamp: now,
-				key:       d.key,
-				obj:       o,
-			})
-		}
-		return true
-	}
 
-	var expired int
-	col, _ := s.cols.Get(d.key)
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 3 {
+		return retwerr(errInvalidNumberOfArguments)
+	}
+	key := args[1]
+	pattern := args[2]
+
+	// >> Operation
+
+	now := time.Now()
+	var children []*commandDetails
+	col, _ := s.cols.Get(key)
 	if col != nil {
-		g := glob.Parse(d.pattern, false)
+		g := glob.Parse(pattern, false)
+		var ids []string
+		iter := func(o *object.Object) bool {
+			if match, _ := glob.Match(pattern, o.ID()); match {
+				ids = append(ids, o.ID())
+			}
+			return true
+		}
 		if g.Limits[0] == "" && g.Limits[1] == "" {
 			col.Scan(false, nil, msg.Deadline, iter)
 		} else {
-			col.ScanRange(g.Limits[0], g.Limits[1], false, nil, msg.Deadline, iter)
+			col.ScanRange(g.Limits[0], g.Limits[1],
+				false, nil, msg.Deadline, iter)
 		}
-		var atLeastOneNotDeleted bool
-		for i, dc := range d.children {
-			old := col.Delete(dc.obj.ID())
-			if old == nil {
-				d.children[i].command = "?"
-				atLeastOneNotDeleted = true
-			} else {
-				dc.obj = old
-				d.children[i] = dc
-			}
-			s.groupDisconnectObject(dc.key, dc.obj.ID())
-		}
-		if atLeastOneNotDeleted {
-			var nchildren []*commandDetails
-			for _, dc := range d.children {
-				if dc.command == "del" {
-					nchildren = append(nchildren, dc)
-				}
-			}
-			d.children = nchildren
+		for _, id := range ids {
+			obj := col.Delete(id)
+			children = append(children, &commandDetails{
+				command:   "del",
+				updated:   true,
+				timestamp: now,
+				key:       key,
+				obj:       obj,
+			})
+			s.groupDisconnectObject(key, id)
 		}
 		if col.Count() == 0 {
-			s.cols.Delete(d.key)
+			s.cols.Delete(key)
 		}
 	}
+
+	// >> Response
+
+	var d commandDetails
+	var res resp.Value
+
 	d.command = "pdel"
+	d.children = children
+	d.key = key
+	d.pattern = pattern
 	d.updated = len(d.children) > 0
 	d.timestamp = now
 	d.parent = true
 	switch msg.OutputType {
 	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
-		total := len(d.children) - expired
-		if total < 0 {
-			total = 0
-		}
-		res = resp.IntegerValue(total)
+		res = resp.IntegerValue(len(d.children))
 	}
-	return
+	return res, d, nil
 }
 
 func (s *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err error) {

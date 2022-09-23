@@ -27,7 +27,7 @@ func (cmd *IO) JSON() *IO {
 	cmd.json = true
 	return cmd
 }
-func (cmd *IO) String(s string) *IO {
+func (cmd *IO) Str(s string) *IO {
 	cmd.out = s
 	return cmd
 }
@@ -56,7 +56,7 @@ func (cmd *IO) OK() *IO {
 	})
 }
 
-func (cmd *IO) Error(msg string) *IO {
+func (cmd *IO) Err(msg string) *IO {
 	return cmd.Custom(func(s string) error {
 		if cmd.json {
 			if gjson.Get(s, "ok").Type != gjson.False {

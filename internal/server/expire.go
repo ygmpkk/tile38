@@ -42,7 +42,7 @@ func (s *Server) backgroundExpireObjects(now time.Time) {
 		return true
 	})
 	for _, msg := range msgs {
-		_, d, err := s.cmdDel(msg)
+		_, d, err := s.cmdDEL(msg)
 		if err != nil {
 			log.Fatal(err)
 		}

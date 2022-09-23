@@ -1020,9 +1020,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "fset":
 		res, d, err = s.cmdFSET(msg)
 	case "del":
-		res, d, err = s.cmdDel(msg)
+		res, d, err = s.cmdDEL(msg)
 	case "pdel":
-		res, d, err = s.cmdPdel(msg)
+		res, d, err = s.cmdPDEL(msg)
 	case "drop":
 		res, d, err = s.cmdDrop(msg)
 	case "flushdb":
@@ -1106,7 +1106,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "jdel":
 		res, d, err = s.cmdJdel(msg)
 	case "type":
-		res, err = s.cmdType(msg)
+		res, err = s.cmdTYPE(msg)
 	case "keys":
 		res, err = s.cmdKeys(msg)
 	case "output":
