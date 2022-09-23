@@ -75,15 +75,20 @@ func keys_DEL_test(mc *mockServer) error {
 }
 
 func keys_DROP_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid1", "HASH", "9my5xp7"}, {"OK"},
-		{"SET", "mykey", "myid2", "HASH", "9my5xp8"}, {"OK"},
-		{"SCAN", "mykey", "COUNT"}, {2},
-		{"DROP", "mykey"}, {1},
-		{"SCAN", "mykey", "COUNT"}, {0},
-		{"DROP", "mykey"}, {0},
-		{"SCAN", "mykey", "COUNT"}, {0},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").OK(),
+		Do("SET", "mykey", "myid2", "HASH", "9my5xp8").OK(),
+		Do("SCAN", "mykey", "COUNT").Str("2"),
+		Do("DROP").Err("wrong number of arguments for 'drop' command"),
+		Do("DROP", "mykey", "arg3").Err("wrong number of arguments for 'drop' command"),
+		Do("DROP", "mykey").Str("1"),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("DROP", "mykey").Str("0"),
+		Do("SCAN", "mykey", "COUNT").Str("0"),
+		Do("SET", "mykey", "myid1", "HASH", "9my5xp7").Str("OK"),
+		Do("DROP", "mykey").JSON().OK(),
+		Do("DROP", "mykey").JSON().OK(),
+	)
 }
 func keys_RENAME_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
@@ -157,6 +162,31 @@ func keys_GET_test(mc *mockServer) error {
 		Do("GET", "mykey", "myid").Str("value2"),
 		Do("DEL", "mykey", "myid").Str("1"),
 		Do("GET", "mykey", "myid").Str("<nil>"),
+		Do("GET", "mykey").Err("wrong number of arguments for 'get' command"),
+		Do("GET", "mykey", "myid", "hash").Err("wrong number of arguments for 'get' command"),
+		Do("GET", "mykey", "myid", "hash", "0").Err("invalid argument '0'"),
+		Do("GET", "mykey", "myid", "hash", "-1").Err("invalid argument '-1'"),
+		Do("GET", "mykey", "myid", "hash", "13").Err("invalid argument '13'"),
+		Do("SET", "mykey", "myid", "field", "hello", "world", "field", "hiya", 55, "point", 33, -112).OK(),
+		Do("GET", "mykey", "myid", "hash", "1").Str("9"),
+		Do("GET", "mykey", "myid", "point").Str("[33 -112]"),
+		Do("GET", "mykey", "myid", "bounds").Str("[[33 -112] [33 -112]]"),
+		Do("GET", "mykey", "myid", "object").Str(`{"type":"Point","coordinates":[-112,33]}`),
+		Do("GET", "mykey", "myid", "object").Str(`{"type":"Point","coordinates":[-112,33]}`),
+		Do("GET", "mykey", "myid", "withfields", "point").Str(`[[33 -112] [hello world hiya 55]]`),
+		Do("GET", "mykey", "myid", "joint").Err("wrong number of arguments for 'get' command"),
+		Do("GET", "mykey2", "myid").Str("<nil>"),
+		Do("GET", "mykey2", "myid").JSON().Err("key not found"),
+		Do("GET", "mykey", "myid2").Str("<nil>"),
+		Do("GET", "mykey", "myid2").JSON().Err("id not found"),
+		Do("GET", "mykey", "myid", "point").JSON().Str(`{"ok":true,"point":{"lat":33,"lon":-112}}`),
+		Do("GET", "mykey", "myid", "object").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[-112,33]}}`),
+		Do("GET", "mykey", "myid", "hash", "1").JSON().Str(`{"ok":true,"hash":"9"}`),
+		Do("GET", "mykey", "myid", "bounds").JSON().Str(`{"ok":true,"bounds":{"sw":{"lat":33,"lon":-112},"ne":{"lat":33,"lon":-112}}}`),
+		Do("SET", "mykey", "myid2", "point", 33, -112, 55).OK(),
+		Do("GET", "mykey", "myid2", "point").Str("[33 -112 55]"),
+		Do("GET", "mykey", "myid2", "point").JSON().Str(`{"ok":true,"point":{"lat":33,"lon":-112,"z":55}}`),
+		Do("GET", "mykey", "myid", "withfields").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[-112,33]},"fields":{"hello":"world","hiya":55}}`),
 	)
 }
 func keys_KEYS_test(mc *mockServer) error {

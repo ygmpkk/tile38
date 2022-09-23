@@ -107,54 +107,73 @@ func (s *Server) cmdTYPE(msg *Message) (resp.Value, error) {
 	return resp.SimpleStringValue(typ), nil
 }
 
-func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
+// GET key id [WITHFIELDS] [OBJECT|POINT|BOUNDS|(HASH geohash)]
+func (s *Server) cmdGET(msg *Message) (resp.Value, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
 
-	var ok bool
-	var key, id, typ, sprecision string
-	if vs, key, ok = tokenval(vs); !ok || key == "" {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+
+	if len(args) < 3 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	if vs, id, ok = tokenval(vs); !ok || id == "" {
-		return NOMessage, errInvalidNumberOfArguments
-	}
+	key, id := args[1], args[2]
 
 	withfields := false
-	if _, peek, ok := tokenval(vs); ok && strings.ToLower(peek) == "withfields" {
-		withfields = true
-		vs = vs[1:]
+	kind := "object"
+	var precision int64
+	for i := 3; i < len(args); i++ {
+		switch strings.ToLower(args[i]) {
+		case "withfields":
+			withfields = true
+		case "object":
+			kind = "object"
+		case "point":
+			kind = "point"
+		case "bounds":
+			kind = "bounds"
+		case "hash":
+			kind = "hash"
+			i++
+			if i == len(args) {
+				return retrerr(errInvalidNumberOfArguments)
+			}
+			var err error
+			precision, err = strconv.ParseInt(args[i], 10, 64)
+			if err != nil || precision < 1 || precision > 12 {
+				return retrerr(errInvalidArgument(args[i]))
+			}
+		default:
+			return retrerr(errInvalidNumberOfArguments)
+		}
 	}
+
+	// >> Operation
 
 	col, _ := s.cols.Get(key)
 	if col == nil {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
 		}
-		return NOMessage, errKeyNotFound
+		return retrerr(errKeyNotFound)
 	}
 	o := col.Get(id)
-	ok = o != nil
-	if !ok {
+	if o == nil {
 		if msg.OutputType == RESP {
 			return resp.NullValue(), nil
 		}
-		return NOMessage, errIDNotFound
+		return retrerr(errIDNotFound)
 	}
+
+	// >> Response
 
 	vals := make([]resp.Value, 0, 2)
 	var buf bytes.Buffer
 	if msg.OutputType == JSON {
 		buf.WriteString(`{"ok":true`)
 	}
-	vs, typ, ok = tokenval(vs)
-	typ = strings.ToLower(typ)
-	if !ok {
-		typ = "object"
-	}
-	switch typ {
-	default:
-		return NOMessage, errInvalidArgument(typ)
+	switch kind {
 	case "object":
 		if msg.OutputType == JSON {
 			buf.WriteString(`,"object":`)
@@ -183,15 +202,8 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 			}
 		}
 	case "hash":
-		if vs, sprecision, ok = tokenval(vs); !ok || sprecision == "" {
-			return NOMessage, errInvalidNumberOfArguments
-		}
 		if msg.OutputType == JSON {
 			buf.WriteString(`,"hash":`)
-		}
-		precision, err := strconv.ParseInt(sprecision, 10, 64)
-		if err != nil || precision < 1 || precision > 12 {
-			return NOMessage, errInvalidArgument(sprecision)
 		}
 		center := o.Geo().Center()
 		p := geohash.EncodeWithPrecision(center.Y, center.X, uint(precision))
@@ -219,9 +231,6 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 		}
 	}
 
-	if len(vs) != 0 {
-		return NOMessage, errInvalidNumberOfArguments
-	}
 	if withfields {
 		nfields := o.Fields().Len()
 		if nfields > 0 {
@@ -250,20 +259,17 @@ func (s *Server) cmdGet(msg *Message) (resp.Value, error) {
 			}
 		}
 	}
-	switch msg.OutputType {
-	case JSON:
+	if msg.OutputType == JSON {
 		buf.WriteString(`,"elapsed":"` + time.Since(start).String() + "\"}")
 		return resp.StringValue(buf.String()), nil
-	case RESP:
-		var oval resp.Value
-		if withfields {
-			oval = resp.ArrayValue(vals)
-		} else {
-			oval = vals[0]
-		}
-		return oval, nil
 	}
-	return NOMessage, nil
+	var oval resp.Value
+	if withfields {
+		oval = resp.ArrayValue(vals)
+	} else {
+		oval = vals[0]
+	}
+	return oval, nil
 }
 
 // DEL key id [ERRON404]
@@ -405,27 +411,32 @@ func (s *Server) cmdPDEL(msg *Message) (resp.Value, commandDetails, error) {
 	return res, d, nil
 }
 
-func (s *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err error) {
+// DROP key
+func (s *Server) cmdDROP(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ok bool
-	if vs, d.key, ok = tokenval(vs); !ok || d.key == "" {
-		err = errInvalidNumberOfArguments
-		return
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 2 {
+		return retwerr(errInvalidNumberOfArguments)
 	}
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
-	}
-	col, _ := s.cols.Get(d.key)
+	key := args[1]
+
+	// >> Operation
+
+	col, _ := s.cols.Get(key)
 	if col != nil {
-		s.cols.Delete(d.key)
-		d.updated = true
-	} else {
-		d.key = "" // ignore the details
-		d.updated = false
+		s.cols.Delete(key)
 	}
-	s.groupDisconnectCollection(d.key)
+	s.groupDisconnectCollection(key)
+
+	// >> Response
+
+	var res resp.Value
+	var d commandDetails
+	d.key = key
+	d.updated = col != nil
 	d.command = "drop"
 	d.timestamp = time.Now()
 	switch msg.OutputType {
@@ -438,7 +449,7 @@ func (s *Server) cmdDrop(msg *Message) (res resp.Value, d commandDetails, err er
 			res = resp.IntegerValue(0)
 		}
 	}
-	return
+	return res, d, nil
 }
 
 func (s *Server) cmdRename(msg *Message) (res resp.Value, d commandDetails, err error) {

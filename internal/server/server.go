@@ -1024,7 +1024,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "pdel":
 		res, d, err = s.cmdPDEL(msg)
 	case "drop":
-		res, d, err = s.cmdDrop(msg)
+		res, d, err = s.cmdDROP(msg)
 	case "flushdb":
 		res, d, err = s.cmdFLUSHDB(msg)
 	case "rename":
@@ -1098,7 +1098,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "bounds":
 		res, err = s.cmdBOUNDS(msg)
 	case "get":
-		res, err = s.cmdGet(msg)
+		res, err = s.cmdGET(msg)
 	case "jget":
 		res, err = s.cmdJget(msg)
 	case "jset":
