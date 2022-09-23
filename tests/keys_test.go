@@ -160,24 +160,34 @@ func keys_EXPIRE_test(mc *mockServer) error {
 	)
 }
 func keys_FSET_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid", "HASH", "9my5xp7"}, {"OK"},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7]"},
-		{"FSET", "mykey", "myid", "f1", 105.6}, {1},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7 [f1 105.6]]"},
-		{"FSET", "mykey", "myid", "f1", 1.1, "f2", 2.2}, {2},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7 [f1 1.1 f2 2.2]]"},
-		{"FSET", "mykey", "myid", "f1", 1.1, "f2", 22.22}, {1},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7 [f1 1.1 f2 22.22]]"},
-		{"FSET", "mykey", "myid", "f1", 0}, {1},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7 [f2 22.22]]"},
-		{"FSET", "mykey", "myid", "f2", 0}, {1},
-		{"GET", "mykey", "myid", "WITHFIELDS", "HASH", 7}, {"[9my5xp7]"},
-		{"FSET", "mykey", "myid2", "xx", "f1", 1.1, "f2", 2.2}, {0},
-		{"GET", "mykey", "myid2"}, {nil},
-		{"DEL", "mykey", "myid"}, {"1"},
-		{"GET", "mykey", "myid"}, {nil},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "HASH", "9my5xp7").OK(),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7]"),
+		Do("FSET", "mykey", "myid", "f1", 105.6).Str("1"),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7 [f1 105.6]]"),
+		Do("FSET", "mykey", "myid", "f1", 1.1, "f2", 2.2).Str("2"),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7 [f1 1.1 f2 2.2]]"),
+		Do("FSET", "mykey", "myid", "f1", 1.1, "f2", 22.22).Str("1"),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7 [f1 1.1 f2 22.22]]"),
+		Do("FSET", "mykey", "myid", "f1", 0).Str("1"),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7 [f2 22.22]]"),
+		Do("FSET", "mykey", "myid", "f2", 0).Str("1"),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7]"),
+		Do("FSET", "mykey", "myid2", "xx", "f1", 1.1, "f2", 2.2).Str("0"),
+		Do("GET", "mykey", "myid2").Str("<nil>"),
+		Do("DEL", "mykey", "myid").Str("1"),
+		Do("GET", "mykey", "myid").Str("<nil>"),
+		Do("SET", "mykey", "myid", "HASH", "9my5xp7").OK(),
+		Do("CONFIG", "SET", "maxmemory", "1").OK(),
+		Do("FSET", "mykey", "myid", "xx", "f1", 1.1, "f2", 2.2).Err(`OOM command not allowed when used memory > 'maxmemory'`),
+		Do("CONFIG", "SET", "maxmemory", "0").OK(),
+		Do("FSET", "mykey", "myid", "xx").Err("wrong number of arguments for 'fset' command"),
+		Do("FSET", "mykey", "myid", "f1", "a", "f2").Err("wrong number of arguments for 'fset' command"),
+		Do("FSET", "mykey", "myid", "z", "a").Err("invalid argument 'z'"),
+		Do("FSET", "mykey2", "myid", "a", "b").Err("key not found"),
+		Do("FSET", "mykey", "myid2", "a", "b").Err("id not found"),
+		Do("FSET", "mykey", "myid", "f2", 0).JSON().OK(),
+	)
 }
 func keys_GET_test(mc *mockServer) error {
 	return mc.DoBatch(

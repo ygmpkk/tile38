@@ -623,28 +623,30 @@ func (s *Server) watchAutoGC() {
 	}
 }
 
+func (s *Server) checkOutOfMemory() {
+	if s.stopServer.on() {
+		return
+	}
+	oom := s.outOfMemory.on()
+	var mem runtime.MemStats
+	if s.config.maxMemory() == 0 {
+		if oom {
+			s.outOfMemory.set(false)
+		}
+		return
+	}
+	if oom {
+		runtime.GC()
+	}
+	runtime.ReadMemStats(&mem)
+	s.outOfMemory.set(int(mem.HeapAlloc) > s.config.maxMemory())
+}
+
 func (s *Server) watchOutOfMemory() {
 	t := time.NewTicker(time.Second * 2)
 	defer t.Stop()
-	var mem runtime.MemStats
 	for range t.C {
-		func() {
-			if s.stopServer.on() {
-				return
-			}
-			oom := s.outOfMemory.on()
-			if s.config.maxMemory() == 0 {
-				if oom {
-					s.outOfMemory.set(false)
-				}
-				return
-			}
-			if oom {
-				runtime.GC()
-			}
-			runtime.ReadMemStats(&mem)
-			s.outOfMemory.set(int(mem.HeapAlloc) > s.config.maxMemory())
-		}()
+		s.checkOutOfMemory()
 	}
 }
 

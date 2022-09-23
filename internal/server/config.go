@@ -427,6 +427,9 @@ func (s *Server) cmdConfigSet(msg *Message) (res resp.Value, err error) {
 	if err := s.config.setProperty(name, value, false); err != nil {
 		return NOMessage, err
 	}
+	if name == MaxMemory {
+		s.checkOutOfMemory()
+	}
 	return OKMessage(msg, start), nil
 }
 func (s *Server) cmdConfigRewrite(msg *Message) (res resp.Value, err error) {
