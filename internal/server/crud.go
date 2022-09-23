@@ -527,13 +527,19 @@ func (s *Server) cmdRENAME(msg *Message) (resp.Value, commandDetails, error) {
 	return res, d, nil
 }
 
-func (s *Server) cmdFLUSHDB(msg *Message) (res resp.Value, d commandDetails, err error) {
+// FLUSHDB
+func (s *Server) cmdFLUSHDB(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	if len(vs) != 0 {
-		err = errInvalidNumberOfArguments
-		return
+
+	// >> Args
+
+	args := msg.Args
+
+	if len(args) != 1 {
+		return retwerr(errInvalidNumberOfArguments)
 	}
+
+	// >> Operation
 
 	// clear the entire database
 	s.cols.Clear()
@@ -545,17 +551,21 @@ func (s *Server) cmdFLUSHDB(msg *Message) (res resp.Value, d commandDetails, err
 	s.hookTree.Clear()
 	s.hookCross.Clear()
 
+	// >> Response
+
+	var d commandDetails
 	d.command = "flushdb"
 	d.updated = true
 	d.timestamp = time.Now()
-	switch msg.OutputType {
-	case JSON:
+
+	var res resp.Value
+	if msg.OutputType == JSON {
 		res = resp.StringValue(`{"ok":true,"elapsed":"` +
 			time.Since(start).String() + "\"}")
-	case RESP:
+	} else {
 		res = resp.SimpleStringValue("OK")
 	}
-	return
+	return res, d, nil
 }
 
 // SET key id [FIELD name value ...] [EX seconds] [NX|XX]
@@ -857,6 +867,9 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 // EXPIRE key id seconds
 func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
+
+	// >> Args
+
 	args := msg.Args
 	if len(args) != 4 {
 		return retwerr(errInvalidNumberOfArguments)
@@ -866,12 +879,16 @@ func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 	if err != nil {
 		return retwerr(errInvalidArgument(svalue))
 	}
+
+	// >> Operation
+
 	var ok bool
 	var obj *object.Object
 	col, _ := s.cols.Get(key)
 	if col != nil {
-		// replace the expiration by getting the old objec
-		ex := time.Now().Add(time.Duration(float64(time.Second) * value)).UnixNano()
+		// replace the expiration by getting the old object
+		ex := time.Now().Add(
+			time.Duration(float64(time.Second) * value)).UnixNano()
 		o := col.Get(id)
 		ok = o != nil
 		if ok {
@@ -879,6 +896,9 @@ func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 			col.Set(obj)
 		}
 	}
+
+	// >> Response
+
 	var d commandDetails
 	if ok {
 		d.key = key
@@ -950,7 +970,8 @@ func (s *Server) cmdPERSIST(msg *Message) (resp.Value, commandDetails, error) {
 
 	switch msg.OutputType {
 	case JSON:
-		res = resp.SimpleStringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
+		res = resp.SimpleStringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}")
 	case RESP:
 		if cleared {
 			res = resp.IntegerValue(1)

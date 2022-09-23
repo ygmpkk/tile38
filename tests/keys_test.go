@@ -31,6 +31,7 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "WHEREIN", keys_WHEREIN_test)
 	runStep(t, mc, "WHEREEVAL", keys_WHEREEVAL_test)
 	runStep(t, mc, "TYPE", keys_TYPE_test)
+	runStep(t, mc, "FLUSHDB", keys_FLUSHDB_test)
 }
 
 func keys_BOUNDS_test(mc *mockServer) error {
@@ -137,14 +138,26 @@ func keys_RENAMENX_test(mc *mockServer) error {
 	)
 }
 func keys_EXPIRE_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid", "STRING", "value"}, {"OK"},
-		{"EXPIRE", "mykey", "myid", 1}, {1},
-		{time.Second / 4}, {}, // sleep
-		{"GET", "mykey", "myid"}, {"value"},
-		{time.Second}, {}, // sleep
-		{"GET", "mykey", "myid"}, {nil},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "STRING", "value").OK(),
+		Do("EXPIRE", "mykey", "myid").Err("wrong number of arguments for 'expire' command"),
+		Do("EXPIRE", "mykey", "myid", "y").Err("invalid argument 'y'"),
+		Do("EXPIRE", "mykey", "myid", 1).Str("1"),
+		Do("EXPIRE", "mykey", "myid", 1).JSON().OK(),
+		Sleep(time.Second/4),
+		Do("GET", "mykey", "myid").Str("value"),
+		Sleep(time.Second),
+		Do("GET", "mykey", "myid").Str("<nil>"),
+		Do("EXPIRE", "mykey", "myid", 1).JSON().Err("key not found"),
+		Do("SET", "mykey", "myid1", "STRING", "value1").OK(),
+		Do("SET", "mykey", "myid2", "STRING", "value2").OK(),
+		Do("EXPIRE", "mykey", "myid1", 1).Str("1"),
+		Sleep(time.Second/4),
+		Do("GET", "mykey", "myid1").Str("value1"),
+		Sleep(time.Second),
+		Do("EXPIRE", "mykey", "myid1", 1).Str("0"),
+		Do("EXPIRE", "mykey", "myid1", 1).JSON().Err("id not found"),
+	)
 }
 func keys_FSET_test(mc *mockServer) error {
 	return mc.DoBatch([][]interface{}{
@@ -433,5 +446,28 @@ func keys_TYPE_test(mc *mockServer) error {
 		Do("TYPE", "mykey2").Str("none"),
 		Do("TYPE", "mykey2").JSON().Err("key not found"),
 		Do("TYPE", "mykey").JSON().Str(`{"ok":true,"type":"hash"}`),
+	)
+}
+
+func keys_FLUSHDB_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("SET", "mykey1", "myid1", "POINT", 33, -115).OK(),
+		Do("SET", "mykey2", "myid1", "POINT", 33, -115).OK(),
+		Do("SETCHAN", "mychan", "INTERSECTS", "mykey1", "BOUNDS", 10, 10, 10, 10).Str("1"),
+		Do("KEYS", "*").Str("[mykey1 mykey2]"),
+		Do("CHANS", "*").JSON().Custom(func(s string) error {
+			if gjson.Get(s, "chans.#").Int() != 1 {
+				return fmt.Errorf("expected '%d', got '%d'", 1, gjson.Get(s, "chans.#").Int())
+			}
+			return nil
+		}),
+		Do("FLUSHDB", "arg2").Err("wrong number of arguments for 'flushdb' command"),
+		Do("FLUSHDB").OK(),
+		Do("KEYS", "*").Str("[]"),
+		Do("CHANS", "*").Str("[]"),
+		Do("SET", "mykey1", "myid1", "POINT", 33, -115).OK(),
+		Do("SET", "mykey2", "myid1", "POINT", 33, -115).OK(),
+		Do("SETCHAN", "mychan", "INTERSECTS", "mykey1", "BOUNDS", 10, 10, 10, 10).Str("1"),
+		Do("FLUSHDB").JSON().OK(),
 	)
 }
