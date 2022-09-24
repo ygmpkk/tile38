@@ -947,7 +947,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 						}
 					}
 					res = NOMessage
-					err = writeErr("timeout")
+					err = errTimeout
 				}
 			}()
 		}
@@ -975,21 +975,15 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 			return err
 		}
 	}
-	if !isRespValueEmptyString(res) {
-		var resStr string
-		resStr, err := serializeOutput(res)
-		if err != nil {
-			return err
-		}
-		if err := writeOutput(resStr); err != nil {
-			return err
-		}
+	var resStr string
+	resStr, err = serializeOutput(res)
+	if err != nil {
+		return err
+	}
+	if err := writeOutput(resStr); err != nil {
+		return err
 	}
 	return nil
-}
-
-func isRespValueEmptyString(val resp.Value) bool {
-	return !val.IsNull() && (val.Type() == resp.SimpleString || val.Type() == resp.BulkString) && len(val.Bytes()) == 0
 }
 
 func randomKey(n int) string {
