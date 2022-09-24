@@ -1081,7 +1081,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "healthz":
 		res, err = s.cmdHEALTHZ(msg)
 	case "info":
-		res, err = s.cmdInfo(msg)
+		res, err = s.cmdINFO(msg)
 	case "scan":
 		res, err = s.cmdScan(msg)
 	case "nearby":

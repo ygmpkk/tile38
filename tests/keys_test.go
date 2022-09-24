@@ -35,7 +35,7 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "FLUSHDB", keys_FLUSHDB_test)
 	runStep(t, mc, "HEALTHZ", keys_HEALTHZ_test)
 	runStep(t, mc, "SERVER", keys_SERVER_test)
-
+	runStep(t, mc, "INFO", keys_INFO_test)
 }
 
 func keys_BOUNDS_test(mc *mockServer) error {
@@ -545,32 +545,9 @@ func keys_FLUSHDB_test(mc *mockServer) error {
 }
 
 func keys_HEALTHZ_test(mc *mockServer) error {
-
-	// // follow and wait
-	// str, err := redis.String(mc.Do("FOLLOW", "localhost", mc.alt.port))
-	// if err != nil {
-	// 	return err
-	// }
-	// if str != "OK" {
-	// 	return errors.New("not ok")
-	// }
-	// start := time.Now()
-	// for time.Since(start) < time.Second*5 {
-	// 	str, err = redis.String(mc.Do("HEALTHZ"))
-	// 	if str == "OK" {
-	// 		err = nil
-	// 		break
-	// 	}
-	// 	time.Sleep(time.Second / 4)
-	// }
-	// if err != nil {
-	// 	return err
-	// }
-
 	return mc.DoBatch(
 		Do("HEALTHZ").OK(),
 		Do("HEALTHZ").JSON().OK(),
-		// Do("FOLLOW", "no", "one").OK(),
 		Do("HEALTHZ", "arg").Err(`wrong number of arguments for 'healthz' command`),
 	)
 }
@@ -619,5 +596,53 @@ func keys_SERVER_test(mc *mockServer) error {
 		}),
 		Do("SERVER", "ett").Err(`invalid argument 'ett'`),
 		Do("SERVER", "ett").JSON().Err(`invalid argument 'ett'`),
+	)
+}
+
+func keys_INFO_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("INFO").Func(func(s string) error {
+			if !strings.Contains(s, "# Clients") ||
+				!strings.Contains(s, "# Stats") {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
+		Do("INFO", "all").Func(func(s string) error {
+			if !strings.Contains(s, "# Clients") ||
+				!strings.Contains(s, "# Stats") {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
+		Do("INFO", "default").Func(func(s string) error {
+			if !strings.Contains(s, "# Clients") ||
+				!strings.Contains(s, "# Stats") {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
+		Do("INFO", "cpu").Func(func(s string) error {
+			if !strings.Contains(s, "# CPU") ||
+				strings.Contains(s, "# Clients") ||
+				strings.Contains(s, "# Stats") {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
+		Do("INFO", "cpu", "clients").Func(func(s string) error {
+			if !strings.Contains(s, "# CPU") ||
+				!strings.Contains(s, "# Clients") ||
+				strings.Contains(s, "# Stats") {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
+		Do("INFO").JSON().Func(func(s string) error {
+			if gjson.Get(s, "info.tile38_version").String() == "" {
+				return errors.New("looks invalid")
+			}
+			return nil
+		}),
 	)
 }

@@ -42,10 +42,10 @@ func (client *Client) Write(b []byte) (n int, err error) {
 }
 
 // CLIENT (LIST | KILL | GETNAME | SETNAME)
-func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
+func (s *Server) cmdCLIENT(msg *Message, client *Client) (resp.Value, error) {
 	start := time.Now()
 
-	args := _msg.Args
+	args := msg.Args
 	if len(args) == 1 {
 		return retrerr(errInvalidNumberOfArguments)
 	}
@@ -79,7 +79,7 @@ func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
 			)
 			client.mu.Unlock()
 		}
-		if _msg.OutputType == JSON {
+		if msg.OutputType == JSON {
 			// Create a map of all key/value info fields
 			var cmap []map[string]interface{}
 			clients := strings.Split(string(buf), "\n")
@@ -111,7 +111,7 @@ func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
 		client.mu.Lock()
 		name := client.name
 		client.mu.Unlock()
-		if _msg.OutputType == JSON {
+		if msg.OutputType == JSON {
 			return resp.StringValue(`{"ok":true,"name":` + jsonString(name) +
 				`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 		}
@@ -120,7 +120,7 @@ func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
 		if len(args) != 3 {
 			return retrerr(errInvalidNumberOfArguments)
 		}
-		name := _msg.Args[2]
+		name := msg.Args[2]
 		for i := 0; i < len(name); i++ {
 			if name[i] < '!' || name[i] > '~' {
 				return retrerr(clientErrorf(
@@ -131,7 +131,7 @@ func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
 		client.mu.Lock()
 		client.name = name
 		client.mu.Unlock()
-		if _msg.OutputType == JSON {
+		if msg.OutputType == JSON {
 			return resp.StringValue(`{"ok":true,"elapsed":"` +
 				time.Since(start).String() + "\"}"), nil
 		}
@@ -198,7 +198,7 @@ func (s *Server) cmdCLIENT(_msg *Message, client *Client) (resp.Value, error) {
 			closer.Close()
 		}
 		// }()
-		if _msg.OutputType == JSON {
+		if msg.OutputType == JSON {
 			return resp.StringValue(`{"ok":true,"elapsed":"` +
 				time.Since(start).String() + "\"}"), nil
 		}

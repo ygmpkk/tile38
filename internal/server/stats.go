@@ -457,27 +457,52 @@ func (s *Server) writeInfoCluster(w *bytes.Buffer) {
 	fmt.Fprintf(w, "cluster_enabled:0\r\n")
 }
 
-func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
+// INFO [section ...]
+func (s *Server) cmdINFO(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
 
-	sections := []string{"server", "clients", "memory", "persistence", "stats", "replication", "cpu", "cluster", "keyspace"}
-	switch len(msg.Args) {
-	default:
-		return NOMessage, errInvalidNumberOfArguments
-	case 1:
-	case 2:
-		section := strings.ToLower(msg.Args[1])
+	// >> Args
+
+	args := msg.Args
+
+	msects := make(map[string]bool)
+	allsects := []string{
+		"server", "clients", "memory", "persistence", "stats",
+		"replication", "cpu", "cluster", "keyspace",
+	}
+
+	if len(args) == 1 {
+		for _, s := range allsects {
+			msects[s] = true
+		}
+	}
+	for i := 1; i < len(args); i++ {
+		section := strings.ToLower(args[i])
 		switch section {
+		case "all", "default":
+			for _, s := range allsects {
+				msects[s] = true
+			}
 		default:
-			sections = []string{section}
-		case "all":
-			sections = []string{"server", "clients", "memory", "persistence", "stats", "replication", "cpu", "commandstats", "cluster", "keyspace"}
-		case "default":
+			for _, s := range allsects {
+				if s == section {
+					msects[section] = true
+				}
+			}
+		}
+	}
+
+	// >> Operation
+
+	var sects []string
+	for _, s := range allsects {
+		if msects[s] {
+			sects = append(sects, s)
 		}
 	}
 
 	w := &bytes.Buffer{}
-	for i, section := range sections {
+	for i, section := range sects {
 		if i > 0 {
 			w.WriteString("\r\n")
 		}
@@ -511,8 +536,9 @@ func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 		}
 	}
 
-	switch msg.OutputType {
-	case JSON:
+	// >> Response
+
+	if msg.OutputType == JSON {
 		// Create a map of all key/value info fields
 		m := make(map[string]interface{})
 		for _, kv := range strings.Split(w.String(), "\r\n") {
@@ -525,15 +551,11 @@ func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 		}
 
 		// Marshal the map and use the output in the JSON response
-		data, err := json.Marshal(m)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"info":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		res = resp.BytesValue(w.Bytes())
+		data, _ := json.Marshal(m)
+		return resp.StringValue(`{"ok":true,"info":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.BytesValue(w.Bytes()), nil
 }
 
 // tryParseType attempts to parse the passed string as an integer, float64 and
