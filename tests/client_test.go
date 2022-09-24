@@ -8,6 +8,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/pretty"
 )
 
 func subTestClient(t *testing.T, mc *mockServer) {
@@ -62,6 +63,16 @@ func client_CLIENT_test(mc *mockServer) error {
 		}
 		conns = append(conns, conn)
 	}
+
+	_, err := conns[1].Do("CLIENT", "setname", "cl1")
+	if err != nil {
+		return err
+	}
+	_, err = conns[2].Do("CLIENT", "setname", "cl2")
+	if err != nil {
+		return err
+	}
+
 	if _, err := mc.Do("OUTPUT", "JSON"); err != nil {
 		return err
 	}
@@ -73,10 +84,14 @@ func client_CLIENT_test(mc *mockServer) error {
 	if !ok {
 		return errors.New("Failed to type assert CLIENT response")
 	}
-	sres := string(bres)
-	if len(gjson.Get(sres, "list").Array()) < numConns {
+	sres := string(pretty.Pretty(bres))
+	if int(gjson.Get(sres, "list.#").Int()) < numConns {
 		return errors.New("Invalid number of connections")
 	}
+
+	client13ID := gjson.Get(sres, "list.13.id").String()
+	client14Addr := gjson.Get(sres, "list.14.addr").String()
+	client15Addr := gjson.Get(sres, "list.15.addr").String()
 
 	return mc.DoBatch(
 		Do("CLIENT", "list").JSON().Func(func(s string) error {
@@ -97,6 +112,25 @@ func client_CLIENT_test(mc *mockServer) error {
 		Do("CLIENT", "getname", "arg3").Err(`wrong number of arguments for 'client' command`),
 		Do("CLIENT", "getname").JSON().Str(`{"ok":true,"name":""}`),
 		Do("CLIENT", "getname").Str(``),
+		Do("CLIENT", "setname", "abc").OK(),
+		Do("CLIENT", "getname").Str(`abc`),
+		Do("CLIENT", "getname").JSON().Str(`{"ok":true,"name":"abc"}`),
+		Do("CLIENT", "setname", "abc", "efg").Err(`wrong number of arguments for 'client' command`),
+		Do("CLIENT", "setname", " abc ").Err(`Client names cannot contain spaces, newlines or special characters.`),
+		Do("CLIENT", "setname", "abcd").JSON().OK(),
+		Do("CLIENT", "kill", "name", "abcd").Err("No such client"),
+		Do("CLIENT", "getname").Str(`abcd`),
+		Do("CLIENT", "kill").Err(`wrong number of arguments for 'client' command`),
+		Do("CLIENT", "kill", "").Err(`No such client`),
+		Do("CLIENT", "kill", "abcd").Err(`No such client`),
+		Do("CLIENT", "kill", "id", client13ID).OK(),
+		Do("CLIENT", "kill", "id").Err("wrong number of arguments for 'client' command"),
+		Do("CLIENT", "kill", client14Addr).OK(),
+		Do("CLIENT", "kill", client14Addr, "yikes").Err("wrong number of arguments for 'client' command"),
+		Do("CLIENT", "kill", "addr").Err("wrong number of arguments for 'client' command"),
+		Do("CLIENT", "kill", "addr", client15Addr).JSON().OK(),
+		Do("CLIENT", "kill", "addr", client14Addr, "yikes").Err("wrong number of arguments for 'client' command"),
+		Do("CLIENT", "kill", "id", "1000").Err("No such client"),
 	)
 
 }

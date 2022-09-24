@@ -376,6 +376,7 @@ func (s *Server) netServe() error {
 			client.id = int(atomic.AddInt64(&clientID, 1))
 			client.opened = time.Now()
 			client.remoteAddr = conn.RemoteAddr().String()
+			client.closer = conn
 
 			// add client to server map
 			s.connsmu.Lock()
