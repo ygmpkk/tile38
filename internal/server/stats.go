@@ -125,35 +125,41 @@ func (s *Server) cmdHEALTHZ(msg *Message) (resp.Value, error) {
 	return resp.SimpleStringValue("OK"), nil
 }
 
-func (s *Server) cmdServer(msg *Message) (res resp.Value, err error) {
+// SERVER [ext]
+func (s *Server) cmdSERVER(msg *Message) (resp.Value, error) {
 	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	var ext bool
+	for i := 1; i < len(args); i++ {
+		switch strings.ToLower(args[i]) {
+		case "ext":
+			ext = true
+		default:
+			return retrerr(errInvalidArgument(args[i]))
+		}
+	}
+
+	// >> Operation
+
 	m := make(map[string]interface{})
-	args := msg.Args[1:]
 
-	// Switch on the type of stats requested
-	switch len(args) {
-	case 0:
+	if ext {
+		s.extStats(m)
+	} else {
 		s.basicStats(m)
-	case 1:
-		if strings.ToLower(args[0]) == "ext" {
-			s.extStats(m)
-		}
-	default:
-		return NOMessage, errInvalidNumberOfArguments
 	}
 
-	switch msg.OutputType {
-	case JSON:
-		data, err := json.Marshal(m)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"stats":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		vals := respValuesSimpleMap(m)
-		res = resp.ArrayValue(vals)
+	// >> Response
+
+	if msg.OutputType == JSON {
+		data, _ := json.Marshal(m)
+		return resp.StringValue(`{"ok":true,"stats":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.ArrayValue(respValuesSimpleMap(m)), nil
 }
 
 // basicStats populates the passed map with basic system/go/tile38 statistics

@@ -640,7 +640,7 @@ func (s *Server) commandInScript(msg *Message) (
 	case "test":
 		res, err = s.cmdTest(msg)
 	case "server":
-		res, err = s.cmdServer(msg)
+		res, err = s.cmdSERVER(msg)
 	}
 	s.sendMonitor(err, msg, nil, true)
 	return

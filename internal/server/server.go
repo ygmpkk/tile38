@@ -1082,7 +1082,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "stats":
 		res, err = s.cmdSTATS(msg)
 	case "server":
-		res, err = s.cmdServer(msg)
+		res, err = s.cmdSERVER(msg)
 	case "healthz":
 		res, err = s.cmdHEALTHZ(msg)
 	case "info":
