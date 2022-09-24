@@ -52,7 +52,8 @@ func (arr byID) Swap(a, b int) {
 	arr[a], arr[b] = arr[b], arr[a]
 }
 
-func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
+// CLIENT (LIST | KILL | GETNAME | SETNAME)
+func (s *Server) cmdCLIENT(msg *Message, client *Client) (resp.Value, error) {
 	start := time.Now()
 
 	if len(msg.Args) == 1 {
@@ -89,8 +90,7 @@ func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 			)
 			client.mu.Unlock()
 		}
-		switch msg.OutputType {
-		case JSON:
+		if msg.OutputType == JSON {
 			// Create a map of all key/value info fields
 			var cmap []map[string]interface{}
 			clients := strings.Split(string(buf), "\n")
@@ -110,32 +110,23 @@ func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 				}
 			}
 
-			// Marshal the map and use the output in the JSON response
-			data, err := json.Marshal(cmap)
-			if err != nil {
-				return NOMessage, err
-			}
-			return resp.StringValue(`{"ok":true,"list":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-		case RESP:
-			return resp.BytesValue(buf), nil
+			data, _ := json.Marshal(cmap)
+			return resp.StringValue(`{"ok":true,"list":` + string(data) +
+				`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 		}
-		return NOMessage, nil
+		return resp.BytesValue(buf), nil
 	case "getname":
 		if len(msg.Args) != 2 {
 			return NOMessage, errInvalidNumberOfArguments
 		}
-		name := ""
-		switch msg.OutputType {
-		case JSON:
-			client.mu.Lock()
-			name := client.name
-			client.mu.Unlock()
-			return resp.StringValue(`{"ok":true,"name":` +
-				jsonString(name) +
+		client.mu.Lock()
+		name := client.name
+		client.mu.Unlock()
+		if msg.OutputType == JSON {
+			return resp.StringValue(`{"ok":true,"name":` + jsonString(name) +
 				`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-		case RESP:
-			return resp.StringValue(name), nil
 		}
+		return resp.StringValue(name), nil
 	case "setname":
 		if len(msg.Args) != 3 {
 			return NOMessage, errInvalidNumberOfArguments

@@ -56,10 +56,10 @@ func TestAll(t *testing.T) {
 	runSubTest(t, "json", mc, subTestJSON)
 	runSubTest(t, "search", mc, subTestSearch)
 	runSubTest(t, "testcmd", mc, subTestTestCmd)
-	runSubTest(t, "fence", mc, subTestFence)
-	runSubTest(t, "scripts", mc, subTestScripts)
-	runSubTest(t, "info", mc, subTestInfo)
 	runSubTest(t, "client", mc, subTestClient)
+	runSubTest(t, "scripts", mc, subTestScripts)
+	runSubTest(t, "fence", mc, subTestFence)
+	runSubTest(t, "info", mc, subTestInfo)
 	runSubTest(t, "timeouts", mc, subTestTimeout)
 	runSubTest(t, "metrics", mc, subTestMetrics)
 }

@@ -977,7 +977,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 			return err
 		}
 	}
-	if !isRespValueEmptyString(res) {
+	if false || !isRespValueEmptyString(res) {
 		var resStr string
 		resStr, err := serializeOutput(res)
 		if err != nil {
@@ -1140,7 +1140,7 @@ func (s *Server) command(msg *Message, client *Client) (
 			return s.command(msg, client)
 		}
 	case "client":
-		res, err = s.cmdClient(msg, client)
+		res, err = s.cmdCLIENT(msg, client)
 	case "eval", "evalro", "evalna":
 		res, err = s.cmdEvalUnified(false, msg)
 	case "evalsha", "evalrosha", "evalnasha":
@@ -1162,6 +1162,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "monitor":
 		res, err = s.cmdMonitor(msg)
 	}
+
 	s.sendMonitor(err, msg, client, false)
 	return
 }
