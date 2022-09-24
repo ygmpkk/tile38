@@ -122,9 +122,7 @@ func keys_KNN_random_test(mc *mockServer) error {
 	mc.Do("OUTPUT", "json")
 	defer mc.Do("OUTPUT", "resp")
 
-	start := time.Now()
 	res, err := redis.String(mc.Do("NEARBY", "points", "LIMIT", N, "POINT", target[1], target[0]))
-	println(time.Since(start).String())
 	if err != nil {
 		return err
 	}

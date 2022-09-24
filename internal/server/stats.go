@@ -95,22 +95,34 @@ func (s *Server) cmdSTATS(msg *Message) (resp.Value, error) {
 	return resp.ArrayValue(vals), nil
 }
 
-func (s *Server) cmdHealthz(msg *Message) (res resp.Value, err error) {
+// HEALTHZ
+func (s *Server) cmdHEALTHZ(msg *Message) (resp.Value, error) {
 	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 1 {
+		return retrerr(errInvalidNumberOfArguments)
+	}
+
+	// >> Operation
+
 	if s.config.followHost() != "" {
 		m := make(map[string]interface{})
 		s.basicStats(m)
 		if fmt.Sprintf("%v", m["caught_up"]) != "true" {
-			return NOMessage, errors.New("not caught up")
+			return retrerr(errors.New("not caught up"))
 		}
 	}
-	switch msg.OutputType {
-	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		res = resp.SimpleStringValue("OK")
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.SimpleStringValue("OK"), nil
 }
 
 func (s *Server) cmdServer(msg *Message) (res resp.Value, err error) {

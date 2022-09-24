@@ -32,6 +32,8 @@ func subTestKeys(t *testing.T, mc *mockServer) {
 	runStep(t, mc, "WHEREEVAL", keys_WHEREEVAL_test)
 	runStep(t, mc, "TYPE", keys_TYPE_test)
 	runStep(t, mc, "FLUSHDB", keys_FLUSHDB_test)
+	runStep(t, mc, "HEALTHZ", keys_HEALTHZ_test)
+
 }
 
 func keys_BOUNDS_test(mc *mockServer) error {
@@ -538,5 +540,36 @@ func keys_FLUSHDB_test(mc *mockServer) error {
 		Do("SET", "mykey2", "myid1", "POINT", 33, -115).OK(),
 		Do("SETCHAN", "mychan", "INTERSECTS", "mykey1", "BOUNDS", 10, 10, 10, 10).Str("1"),
 		Do("FLUSHDB").JSON().OK(),
+	)
+}
+
+func keys_HEALTHZ_test(mc *mockServer) error {
+
+	// // follow and wait
+	// str, err := redis.String(mc.Do("FOLLOW", "localhost", mc.alt.port))
+	// if err != nil {
+	// 	return err
+	// }
+	// if str != "OK" {
+	// 	return errors.New("not ok")
+	// }
+	// start := time.Now()
+	// for time.Since(start) < time.Second*5 {
+	// 	str, err = redis.String(mc.Do("HEALTHZ"))
+	// 	if str == "OK" {
+	// 		err = nil
+	// 		break
+	// 	}
+	// 	time.Sleep(time.Second / 4)
+	// }
+	// if err != nil {
+	// 	return err
+	// }
+
+	return mc.DoBatch(
+		Do("HEALTHZ").OK(),
+		Do("HEALTHZ").JSON().OK(),
+		// Do("FOLLOW", "no", "one").OK(),
+		Do("HEALTHZ", "arg").Err(`wrong number of arguments for 'healthz' command`),
 	)
 }

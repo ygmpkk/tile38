@@ -38,9 +38,10 @@ type mockServer struct {
 	port   int
 	conn   redis.Conn
 	ioJSON bool
+	// alt    *mockServer
 }
 
-func mockOpenServer(silent bool) (*mockServer, error) {
+func mockOpenServer(silent, metrics bool) (*mockServer, error) {
 	rand.Seed(time.Now().UnixNano())
 	port := rand.Int()%20000 + 20000
 	dir := fmt.Sprintf("data-mock-%d", port)
@@ -56,11 +57,13 @@ func mockOpenServer(silent bool) (*mockServer, error) {
 	tlog.SetOutput(logOutput)
 	go func() {
 		opts := server.Options{
-			Host:        "localhost",
-			Port:        port,
-			Dir:         dir,
-			UseHTTP:     true,
-			MetricsAddr: ":4321",
+			Host:    "localhost",
+			Port:    port,
+			Dir:     dir,
+			UseHTTP: true,
+		}
+		if metrics {
+			opts.MetricsAddr = ":4321"
 		}
 		if err := server.Serve(opts); err != nil {
 			log.Fatal(err)
