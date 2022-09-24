@@ -135,6 +135,8 @@ type Server struct {
 
 	monconnsMu sync.RWMutex
 	monconns   map[net.Conn]bool // monitor connections
+
+	opts Options
 }
 
 // Options for Serve()
@@ -145,15 +147,36 @@ type Options struct {
 	UseHTTP        bool
 	MetricsAddr    string
 	UnixSocketPath string // path for unix socket
+
+	// DevMode puts application in to dev mode
+	DevMode bool
+
+	// ShowDebugMessages allows for log.Debug to print to console.
+	ShowDebugMessages bool
+
+	// ProtectedMode forces Tile38 to default in protected mode.
+	ProtectedMode string
+
+	// AppendOnly allows for disabling the appendonly file.
+	AppendOnly bool
+
+	// AppendFileName allows for custom appendonly file path
+	AppendFileName string
+
+	// QueueFileName allows for custom queue.db file path
+	QueueFileName string
 }
 
 // Serve starts a new tile38 server
 func Serve(opts Options) error {
-	if core.AppendFileName == "" {
-		core.AppendFileName = path.Join(opts.Dir, "appendonly.aof")
+	if opts.AppendFileName == "" {
+		opts.AppendFileName = path.Join(opts.Dir, "appendonly.aof")
 	}
-	if core.QueueFileName == "" {
-		core.QueueFileName = path.Join(opts.Dir, "queue.db")
+	if opts.QueueFileName == "" {
+		opts.QueueFileName = path.Join(opts.Dir, "queue.db")
+	}
+	if opts.ProtectedMode == "" {
+		opts.ProtectedMode = "no"
 	}
 
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
@@ -183,6 +206,7 @@ func Serve(opts Options) error {
 		groupHooks:   btree.NewNonConcurrent(byGroupHook),
 		groupObjects: btree.NewNonConcurrent(byGroupObject),
 		hookExpires:  btree.NewNonConcurrent(byHookExpires),
+		opts:         opts,
 	}
 
 	s.epc = endpoint.NewManager(s)
@@ -256,7 +280,7 @@ func Serve(opts Options) error {
 	}()
 
 	// Load the queue before the aof
-	qdb, err := buntdb.Open(core.QueueFileName)
+	qdb, err := buntdb.Open(opts.QueueFileName)
 	if err != nil {
 		return err
 	}
@@ -284,8 +308,8 @@ func Serve(opts Options) error {
 	if err := s.migrateAOF(); err != nil {
 		return err
 	}
-	if core.AppendOnly {
-		f, err := os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
+	if opts.AppendOnly {
+		f, err := os.OpenFile(opts.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			return err
 		}
@@ -334,7 +358,7 @@ func Serve(opts Options) error {
 }
 
 func (s *Server) isProtected() bool {
-	if core.ProtectedMode == "no" {
+	if s.opts.ProtectedMode == "no" {
 		// --protected-mode no
 		return false
 	}
@@ -1051,19 +1075,19 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "ttl":
 		res, err = s.cmdTTL(msg)
 	case "shutdown":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}
 		log.Fatal("shutdown requested by developer")
 	case "massinsert":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}
 		res, err = s.cmdMassInsert(msg)
 	case "sleep":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}

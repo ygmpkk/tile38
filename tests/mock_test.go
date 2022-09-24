@@ -7,12 +7,12 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/sjson"
-	"github.com/tidwall/tile38/core"
 	tlog "github.com/tidwall/tile38/internal/log"
 	"github.com/tidwall/tile38/internal/server"
 )
@@ -38,34 +38,55 @@ type mockServer struct {
 	port   int
 	conn   redis.Conn
 	ioJSON bool
+	dir    string
 	// alt    *mockServer
 }
 
-func mockOpenServer(silent, metrics bool) (*mockServer, error) {
+func (mc *mockServer) readAOF() ([]byte, error) {
+	return os.ReadFile(filepath.Join(mc.dir, "appendonly.aof"))
+}
+
+type MockServerOptions struct {
+	AOFData []byte
+	Silent  bool
+	Metrics bool
+}
+
+func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	rand.Seed(time.Now().UnixNano())
 	port := rand.Int()%20000 + 20000
 	dir := fmt.Sprintf("data-mock-%d", port)
-	if !silent {
+	if !opts.Silent {
 		fmt.Printf("Starting test server at port %d\n", port)
+	}
+	if len(opts.AOFData) > 0 {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			return nil, err
+		}
+		err := os.WriteFile(filepath.Join(dir, "appendonly.aof"),
+			opts.AOFData, 0666)
+		if err != nil {
+			return nil, err
+		}
 	}
 	logOutput := io.Discard
 	if os.Getenv("PRINTLOG") == "1" {
 		logOutput = os.Stderr
 	}
-	core.DevMode = true
 	s := &mockServer{port: port}
 	tlog.SetOutput(logOutput)
 	go func() {
-		opts := server.Options{
+		sopts := server.Options{
 			Host:    "localhost",
 			Port:    port,
 			Dir:     dir,
 			UseHTTP: true,
+			DevMode: true,
 		}
-		if metrics {
-			opts.MetricsAddr = ":4321"
+		if opts.Metrics {
+			sopts.MetricsAddr = ":4321"
 		}
-		if err := server.Serve(opts); err != nil {
+		if err := server.Serve(sopts); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -73,6 +94,7 @@ func mockOpenServer(silent, metrics bool) (*mockServer, error) {
 		s.Close()
 		return nil, err
 	}
+	s.dir = dir
 	return s, nil
 }
 

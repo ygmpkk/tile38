@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tidwall/resp"
-	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/log"
 )
 
@@ -140,7 +139,7 @@ func getEndOfLastValuePositionInFile(fname string, startPos int64) (int64, error
 // We will do some various checksums on the leader until we find the correct position to start at.
 func (s *Server) followCheckSome(addr string, followc int, auth string,
 ) (pos int64, err error) {
-	if core.ShowDebugMessages {
+	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":check some")
 	}
 	s.mu.Lock()
@@ -211,7 +210,7 @@ func (s *Server) followCheckSome(addr string, followc int, auth string,
 		return 0, err
 	}
 	if pos == fullpos {
-		if core.ShowDebugMessages {
+		if s.opts.ShowDebugMessages {
 			log.Debug("follow: aof fully intact")
 		}
 		return pos, nil

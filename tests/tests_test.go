@@ -38,7 +38,10 @@ func TestAll(t *testing.T) {
 		os.Exit(1)
 	}()
 
-	mc, err := mockOpenServer(false, true)
+	mc, err := mockOpenServer(MockServerOptions{
+		Silent:  false,
+		Metrics: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,6 +65,7 @@ func TestAll(t *testing.T) {
 	runSubTest(t, "info", mc, subTestInfo)
 	runSubTest(t, "timeouts", mc, subTestTimeout)
 	runSubTest(t, "metrics", mc, subTestMetrics)
+	runSubTest(t, "aof", mc, subTestAOF)
 }
 
 func runSubTest(t *testing.T, name string, mc *mockServer, test func(t *testing.T, mc *mockServer)) {
@@ -111,7 +115,9 @@ func BenchmarkAll(b *testing.B) {
 		os.Exit(1)
 	}()
 
-	mc, err := mockOpenServer(true, true)
+	mc, err := mockOpenServer(MockServerOptions{
+		Silent: true, Metrics: true,
+	})
 	if err != nil {
 		b.Fatal(err)
 	}

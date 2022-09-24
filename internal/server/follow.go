@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tidwall/resp"
-	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/log"
 )
 
@@ -240,7 +239,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	if v.String() != "OK" {
 		return errors.New("invalid response to replconf request")
 	}
-	if core.ShowDebugMessages {
+	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":replconf")
 	}
 
@@ -254,7 +253,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	if v.String() != "OK" {
 		return errors.New("invalid response to aof live request")
 	}
-	if core.ShowDebugMessages {
+	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":read aof")
 	}
 

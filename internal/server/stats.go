@@ -318,7 +318,7 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Whether or not a cluster is enabled
 	m["tile38_cluster_enabled"] = false
 	// Whether or not the Tile38 AOF is enabled
-	m["tile38_aof_enabled"] = core.AppendOnly
+	m["tile38_aof_enabled"] = s.opts.AppendOnly
 	// Whether or not an AOF shrink is currently in progress
 	m["tile38_aof_rewrite_in_progress"] = s.shrinking
 	// Length of time the last AOF shrink took
@@ -409,7 +409,7 @@ func boolInt(t bool) int {
 	return 0
 }
 func (s *Server) writeInfoPersistence(w *bytes.Buffer) {
-	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(core.AppendOnly))
+	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(s.opts.AppendOnly))
 	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(s.shrinking))                          // Flag indicating a AOF rewrite operation is on-going
 	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", s.lastShrinkDuration.get()/int(time.Second)) // Duration of the last AOF rewrite operation in seconds
 
