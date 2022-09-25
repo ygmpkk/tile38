@@ -21,10 +21,16 @@ type liveBuffer struct {
 	cond    *sync.Cond
 }
 
-func (s *Server) processLives() {
-	defer s.lwait.Done()
+func (s *Server) processLives(wg *sync.WaitGroup) {
+	defer wg.Done()
+	var done abool
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
+			if done.on() {
+				break
+			}
 			s.lcond.Broadcast()
 			time.Sleep(time.Second / 4)
 		}
@@ -33,6 +39,7 @@ func (s *Server) processLives() {
 	defer s.lcond.L.Unlock()
 	for {
 		if s.stopServer.on() {
+			done.set(true)
 			return
 		}
 		for len(s.lstack) > 0 {

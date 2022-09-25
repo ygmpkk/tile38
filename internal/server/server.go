@@ -79,6 +79,7 @@ type Server struct {
 	started time.Time
 	config  *Config
 	epc     *endpoint.Manager
+	ln      net.Listener // server listener
 
 	// env opts
 	geomParseOpts geojson.ParseOptions
@@ -114,7 +115,6 @@ type Server struct {
 	lstack       []*commandDetails
 	lives        map[*liveBuffer]bool
 	lcond        *sync.Cond
-	lwait        sync.WaitGroup
 	fcup         bool         // follow caught up
 	fcuponce     bool         // follow caught up once
 	shrinking    bool         // aof shrinking flag
@@ -165,6 +165,9 @@ type Options struct {
 
 	// QueueFileName allows for custom queue.db file path
 	QueueFileName string
+
+	// Shutdown allows for shutting down the server.
+	Shutdown <-chan bool
 }
 
 // Serve starts a new tile38 server
@@ -180,6 +183,15 @@ func Serve(opts Options) error {
 	}
 
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
+	defer func() {
+		log.Warn("Server has shutdown, bye now")
+		if false {
+			// prints the stack, looking for running goroutines.
+			buf := make([]byte, 10000)
+			n := runtime.Stack(buf, true)
+			println(string(buf[:n]))
+		}
+	}()
 
 	// Initialize the s
 	s := &Server{
@@ -210,6 +222,7 @@ func Serve(opts Options) error {
 	}
 
 	s.epc = endpoint.NewManager(s)
+	defer s.epc.Shutdown()
 	s.luascripts = s.newScriptMap()
 	s.luapool = s.newPool()
 	defer s.luapool.Shutdown()
@@ -279,6 +292,13 @@ func Serve(opts Options) error {
 		nerr <- s.netServe()
 	}()
 
+	go func() {
+		<-opts.Shutdown
+		s.stopServer.set(true)
+		log.Warnf("Shutting down...")
+		s.ln.Close()
+	}()
+
 	// Load the queue before the aof
 	qdb, err := buntdb.Open(opts.QueueFileName)
 	if err != nil {
@@ -324,32 +344,60 @@ func Serve(opts Options) error {
 	}
 
 	// Start background routines
-	if s.config.followHost() != "" {
-		go s.follow(s.config.followHost(), s.config.followPort(),
-			s.followc.get())
-	}
+	var bgwg sync.WaitGroup
 
-	if opts.MetricsAddr != "" {
-		log.Infof("Listening for metrics at: %s", opts.MetricsAddr)
+	if s.config.followHost() != "" {
+		bgwg.Add(1)
 		go func() {
-			http.HandleFunc("/", s.MetricsIndexHandler)
-			http.HandleFunc("/metrics", s.MetricsHandler)
-			log.Fatal(http.ListenAndServe(opts.MetricsAddr, nil))
+			defer bgwg.Done()
+			s.follow(s.config.followHost(), s.config.followPort(),
+				s.followc.get())
 		}()
 	}
 
-	s.lwait.Add(1)
-	go s.processLives()
-	go s.watchOutOfMemory()
-	go s.watchLuaStatePool()
-	go s.watchAutoGC()
-	go s.backgroundExpiring()
-	go s.backgroundSyncAOF()
+	var mln net.Listener
+	if opts.MetricsAddr != "" {
+		log.Infof("Listening for metrics at: %s", opts.MetricsAddr)
+		mln, err = net.Listen("tcp", opts.MetricsAddr)
+		if err != nil {
+			return err
+		}
+		bgwg.Add(1)
+		go func() {
+			defer bgwg.Done()
+			smux := http.NewServeMux()
+			smux.HandleFunc("/", s.MetricsIndexHandler)
+			smux.HandleFunc("/metrics", s.MetricsHandler)
+			err := http.Serve(mln, smux)
+			if err != nil {
+				if !s.stopServer.on() {
+					log.Fatalf("metrics server: %s", err)
+				}
+			}
+		}()
+	}
+
+	bgwg.Add(1)
+	go s.processLives(&bgwg)
+	bgwg.Add(1)
+	go s.watchOutOfMemory(&bgwg)
+	bgwg.Add(1)
+	go s.watchLuaStatePool(&bgwg)
+	bgwg.Add(1)
+	go s.watchAutoGC(&bgwg)
+	bgwg.Add(1)
+	go s.backgroundExpiring(&bgwg)
+	bgwg.Add(1)
+	go s.backgroundSyncAOF(&bgwg)
 	defer func() {
+		log.Debug("Stopping background routines")
 		// Stop background routines
 		s.followc.add(1) // this will force any follow communication to die
 		s.stopServer.set(true)
-		s.lwait.Wait()
+		if mln != nil {
+			mln.Close() // Stop the metrics server
+		}
+		bgwg.Wait()
 	}()
 
 	// Server is now loaded and ready. Wait for network error messages.
@@ -384,16 +432,37 @@ func (s *Server) netServe() error {
 	if err != nil {
 		return err
 	}
-	defer ln.Close()
+
+	var wg sync.WaitGroup
+	defer func() {
+		log.Debug("Closing client connections...")
+		s.connsmu.RLock()
+		for _, c := range s.conns {
+			c.closer.Close()
+		}
+		s.connsmu.RUnlock()
+		wg.Wait()
+		ln.Close()
+		log.Debug("Client connection closed")
+	}()
+	s.ln = ln
+
 	log.Infof("Ready to accept connections at %s", ln.Addr())
 	var clientID int64
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			return err
+			if s.stopServer.on() {
+				return nil
+			}
+			log.Warn(err)
+			time.Sleep(time.Second / 5)
+			continue
 		}
-
+		wg.Add(1)
 		go func(conn net.Conn) {
+			defer wg.Done()
+
 			// open connection
 			// create the client
 			client := new(Client)
@@ -617,20 +686,16 @@ func (conn *liveConn) SetWriteDeadline(deadline time.Time) error {
 	panic("not supported")
 }
 
-func (s *Server) watchAutoGC() {
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
+func (s *Server) watchAutoGC(wg *sync.WaitGroup) {
+	defer wg.Done()
 	start := time.Now()
-	for range t.C {
-		if s.stopServer.on() {
-			return
-		}
+	s.loopUntilServerStops(time.Second, func() {
 		autoGC := s.config.autoGC()
 		if autoGC == 0 {
-			continue
+			return
 		}
 		if time.Since(start) < time.Second*time.Duration(autoGC) {
-			continue
+			return
 		}
 		var mem1, mem2 runtime.MemStats
 		runtime.ReadMemStats(&mem1)
@@ -645,7 +710,7 @@ func (s *Server) watchAutoGC() {
 			"alloc: %v, heap_alloc: %v, heap_released: %v",
 			mem2.Alloc, mem2.HeapAlloc, mem2.HeapReleased)
 		start = time.Now()
-	}
+	})
 }
 
 func (s *Server) checkOutOfMemory() {
@@ -667,38 +732,43 @@ func (s *Server) checkOutOfMemory() {
 	s.outOfMemory.set(int(mem.HeapAlloc) > s.config.maxMemory())
 }
 
-func (s *Server) watchOutOfMemory() {
-	t := time.NewTicker(time.Second * 2)
-	defer t.Stop()
-	for range t.C {
-		s.checkOutOfMemory()
-	}
-}
-
-func (s *Server) watchLuaStatePool() {
-	t := time.NewTicker(time.Second * 10)
-	defer t.Stop()
-	for range t.C {
-		func() {
-			s.luapool.Prune()
-		}()
-	}
-}
-
-// backgroundSyncAOF ensures that the aof buffer is does not grow too big.
-func (s *Server) backgroundSyncAOF() {
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
-	for range t.C {
+func (s *Server) loopUntilServerStops(dur time.Duration, op func()) {
+	var last time.Time
+	for {
 		if s.stopServer.on() {
 			return
 		}
-		func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			s.flushAOF(true)
-		}()
+		now := time.Now()
+		if now.Sub(last) > dur {
+			op()
+			last = now
+		}
+		time.Sleep(time.Second / 5)
 	}
+}
+
+func (s *Server) watchOutOfMemory(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second*4, func() {
+		s.checkOutOfMemory()
+	})
+}
+
+func (s *Server) watchLuaStatePool(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second*10, func() {
+		s.luapool.Prune()
+	})
+}
+
+// backgroundSyncAOF ensures that the aof buffer is does not grow too big.
+func (s *Server) backgroundSyncAOF(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.flushAOF(true)
+	})
 }
 
 func isReservedFieldName(field string) bool {

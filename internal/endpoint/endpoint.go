@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -136,6 +137,7 @@ type Endpoint struct {
 
 // Conn is an endpoint connection
 type Conn interface {
+	ExpireNow()
 	Expired() bool
 	Send(val string) error
 }
@@ -145,6 +147,8 @@ type Manager struct {
 	mu        sync.RWMutex
 	conns     map[string]Conn
 	publisher LocalPublisher
+	shutdown  int32          // atomic bool
+	wg        sync.WaitGroup // run wait group
 }
 
 // NewManager returns a new manager
@@ -153,13 +157,29 @@ func NewManager(publisher LocalPublisher) *Manager {
 		conns:     make(map[string]Conn),
 		publisher: publisher,
 	}
-	go epc.Run()
+	epc.wg.Add(1)
+	go epc.run()
 	return epc
 }
 
+func (epc *Manager) Shutdown() {
+	defer epc.wg.Wait()
+	atomic.StoreInt32(&epc.shutdown, 1)
+	// expire the connections
+	epc.mu.Lock()
+	defer epc.mu.Unlock()
+	for _, conn := range epc.conns {
+		conn.ExpireNow()
+	}
+}
+
 // Run starts the managing of endpoints
-func (epc *Manager) Run() {
+func (epc *Manager) run() {
+	defer epc.wg.Done()
 	for {
+		if atomic.LoadInt32(&epc.shutdown) != 0 {
+			return
+		}
 		time.Sleep(time.Second)
 		func() {
 			epc.mu.Lock()

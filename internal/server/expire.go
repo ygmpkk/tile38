@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sync"
 	"time"
 
 	"github.com/tidwall/tile38/internal/collection"
@@ -12,20 +13,15 @@ const bgExpireDelay = time.Second / 10
 
 // backgroundExpiring deletes expired items from the database.
 // It's executes every 1/10 of a second.
-func (s *Server) backgroundExpiring() {
-	for {
-		if s.stopServer.on() {
-			return
-		}
-		func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			now := time.Now()
-			s.backgroundExpireObjects(now)
-			s.backgroundExpireHooks(now)
-		}()
-		time.Sleep(bgExpireDelay)
-	}
+func (s *Server) backgroundExpiring(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(bgExpireDelay, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		now := time.Now()
+		s.backgroundExpireObjects(now)
+		s.backgroundExpireHooks(now)
+	})
 }
 
 func (s *Server) backgroundExpireObjects(now time.Time) {

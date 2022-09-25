@@ -28,6 +28,10 @@ func (conn *EvenHubConn) Expired() bool {
 	return false
 }
 
+// ExpireNow forces the connection to expire
+func (conn *EvenHubConn) ExpireNow() {
+}
+
 // Send sends a message
 func (conn *EvenHubConn) Send(msg string) error {
 	hub, err := eventhub.NewHubFromConnectionString(conn.ep.EventHub.ConnectionString)

@@ -38,6 +38,10 @@ func (conn *HTTPConn) Expired() bool {
 	return false
 }
 
+// ExpireNow forces the connection to expire
+func (conn *HTTPConn) ExpireNow() {
+}
+
 // Send sends a message
 func (conn *HTTPConn) Send(msg string) error {
 	req, err := http.NewRequest("POST", conn.ep.Original, bytes.NewBufferString(msg))

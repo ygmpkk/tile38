@@ -27,11 +27,19 @@ func (conn *AMQPConn) Expired() bool {
 	defer conn.mu.Unlock()
 	if !conn.ex {
 		if time.Since(conn.t) > amqpExpiresAfter {
-			conn.ex = true
 			conn.close()
+			conn.ex = true
 		}
 	}
 	return conn.ex
+}
+
+// ExpireNow forces the connection to expire
+func (conn *AMQPConn) ExpireNow() {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	conn.close()
+	conn.ex = true
 }
 
 func (conn *AMQPConn) close() {

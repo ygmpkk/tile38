@@ -26,6 +26,18 @@ const (
 	white   = "\x1b[37m"
 )
 
+// type mockTest struct {
+// }
+
+// func mockTestInit() *mockTest {
+// 	mt := &mockTest{}
+// 	return mt
+// }
+
+// func (mt *mockTest) Cleanup() {
+
+// }
+
 func TestAll(t *testing.T) {
 	mockCleanup(false)
 	defer mockCleanup(false)
@@ -45,6 +57,8 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// log.Printf("Waiting a second for everything to cleanly start...")
+	// time.Sleep(time.Second * 2)
 	defer mc.Close()
 
 	runSubTest(t, "keys", mc, subTestKeys)

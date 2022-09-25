@@ -35,10 +35,11 @@ func mockCleanup(silent bool) {
 }
 
 type mockServer struct {
-	port   int
-	conn   redis.Conn
-	ioJSON bool
-	dir    string
+	port     int
+	conn     redis.Conn
+	ioJSON   bool
+	dir      string
+	shutdown chan bool
 }
 
 func (mc *mockServer) readAOF() ([]byte, error) {
@@ -71,24 +72,29 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	logOutput := io.Discard
 	if os.Getenv("PRINTLOG") == "1" {
 		logOutput = os.Stderr
+		tlog.Level = 3
 	}
-	s := &mockServer{port: port, dir: dir}
+	shutdown := make(chan bool)
+	s := &mockServer{port: port, dir: dir, shutdown: shutdown}
 	tlog.SetOutput(logOutput)
 	var ferrt int32 // atomic flag for when ferr has been set
 	var ferr error  // ferr for when the server fails to start
 	go func() {
 		sopts := server.Options{
-			Host:       "localhost",
-			Port:       port,
-			Dir:        dir,
-			UseHTTP:    true,
-			DevMode:    true,
-			AppendOnly: true,
+			Host:              "localhost",
+			Port:              port,
+			Dir:               dir,
+			UseHTTP:           true,
+			DevMode:           true,
+			AppendOnly:        true,
+			Shutdown:          shutdown,
+			ShowDebugMessages: true,
 		}
 		if opts.Metrics {
 			sopts.MetricsAddr = ":4321"
 		}
-		if err := server.Serve(sopts); err != nil {
+		err := server.Serve(sopts)
+		if err != nil {
 			ferr = err
 			atomic.StoreInt32(&ferrt, 1)
 		}
@@ -133,6 +139,7 @@ func (s *mockServer) waitForStartup(ferr *error, ferrt *int32) error {
 }
 
 func (mc *mockServer) Close() {
+	mc.shutdown <- true
 	if mc.conn != nil {
 		mc.conn.Close()
 	}
