@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -39,7 +39,6 @@ type mockServer struct {
 	conn   redis.Conn
 	ioJSON bool
 	dir    string
-	// alt    *mockServer
 }
 
 func (mc *mockServer) readAOF() ([]byte, error) {
@@ -73,35 +72,41 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	if os.Getenv("PRINTLOG") == "1" {
 		logOutput = os.Stderr
 	}
-	s := &mockServer{port: port}
+	s := &mockServer{port: port, dir: dir}
 	tlog.SetOutput(logOutput)
+	var ferrt int32 // atomic flag for when ferr has been set
+	var ferr error  // ferr for when the server fails to start
 	go func() {
 		sopts := server.Options{
-			Host:    "localhost",
-			Port:    port,
-			Dir:     dir,
-			UseHTTP: true,
-			DevMode: true,
+			Host:       "localhost",
+			Port:       port,
+			Dir:        dir,
+			UseHTTP:    true,
+			DevMode:    true,
+			AppendOnly: true,
 		}
 		if opts.Metrics {
 			sopts.MetricsAddr = ":4321"
 		}
 		if err := server.Serve(sopts); err != nil {
-			log.Fatal(err)
+			ferr = err
+			atomic.StoreInt32(&ferrt, 1)
 		}
 	}()
-	if err := s.waitForStartup(); err != nil {
+	if err := s.waitForStartup(&ferr, &ferrt); err != nil {
 		s.Close()
 		return nil, err
 	}
-	s.dir = dir
 	return s, nil
 }
 
-func (s *mockServer) waitForStartup() error {
+func (s *mockServer) waitForStartup(ferr *error, ferrt *int32) error {
 	var lerr error
 	start := time.Now()
 	for {
+		if atomic.LoadInt32(ferrt) != 0 {
+			return *ferr
+		}
 		if time.Since(start) > time.Second*5 {
 			if lerr != nil {
 				return lerr
@@ -130,6 +135,9 @@ func (s *mockServer) waitForStartup() error {
 func (mc *mockServer) Close() {
 	if mc.conn != nil {
 		mc.conn.Close()
+	}
+	if mc.dir != "" {
+		os.RemoveAll(mc.dir)
 	}
 }
 

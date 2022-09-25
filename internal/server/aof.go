@@ -41,10 +41,7 @@ func (s *Server) loadAOF() (err error) {
 		ps := float64(count) / (float64(d) / float64(time.Second))
 		suf := []string{"bytes/s", "KB/s", "MB/s", "GB/s", "TB/s"}
 		bps := float64(fi.Size()) / (float64(d) / float64(time.Second))
-		for i := 0; bps > 1024; i++ {
-			if len(suf) == 1 {
-				break
-			}
+		for i := 0; bps > 1024 && len(suf) > 1; i++ {
 			bps /= 1024
 			suf = suf[1:]
 		}
@@ -123,11 +120,7 @@ func commandErrIsFatal(err error) bool {
 	// FSET (and other writable commands) may return errors that we need
 	// to ignore during the loading process. These errors may occur (though unlikely)
 	// due to the aof rewrite operation.
-	switch err {
-	case errKeyNotFound, errIDNotFound:
-		return false
-	}
-	return true
+	return !(err == errKeyNotFound || err == errIDNotFound)
 }
 
 // flushAOF flushes all aof buffer data to disk. Set sync to true to sync the

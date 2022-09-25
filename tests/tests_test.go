@@ -47,14 +47,6 @@ func TestAll(t *testing.T) {
 	}
 	defer mc.Close()
 
-	// mc2, err := mockOpenServer(false, false)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// defer mc2.Close()
-	// mc.alt = mc2
-	// mc2.alt = mc
-
 	runSubTest(t, "keys", mc, subTestKeys)
 	runSubTest(t, "json", mc, subTestJSON)
 	runSubTest(t, "search", mc, subTestSearch)
