@@ -1,42 +1,54 @@
 package tests
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 )
 
-func downloadURLWithStatusCode(t *testing.T, u string) (int, string) {
+func subTestMetrics(t *testing.T, mc *mockServer) {
+	runStep(t, mc, "basic", metrics_basic_test)
+}
+
+func downloadURLWithStatusCode(u string) (int, string, error) {
 	resp, err := http.Get(u)
 	if err != nil {
-		t.Fatal(err)
+		return 0, "", err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal(err)
+		return 0, "", err
 	}
-	return resp.StatusCode, string(body)
+	return resp.StatusCode, string(body), nil
 }
 
-func subTestMetrics(t *testing.T, mc *mockServer) {
+func metrics_basic_test(mc *mockServer) error {
+
 	mc.Do("SET", "metrics_test_1", "1", "FIELD", "foo", 5.5, "POINT", 5, 5)
 	mc.Do("SET", "metrics_test_2", "2", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "3", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "truck1:driver", "STRING", "John Denton")
 
-	status, index := downloadURLWithStatusCode(t, "http://127.0.0.1:4321/")
+	status, index, err := downloadURLWithStatusCode("http://127.0.0.1:4321/")
+	if err != nil {
+		return err
+	}
 	if status != 200 {
-		t.Fatalf("Expected status code 200, got: %d", status)
+		return fmt.Errorf("Expected status code 200, got: %d", status)
 	}
 	if !strings.Contains(index, "<a href") {
-		t.Fatalf("missing link on index page")
+		return fmt.Errorf("missing link on index page")
 	}
 
-	status, metrics := downloadURLWithStatusCode(t, "http://127.0.0.1:4321/metrics")
+	status, metrics, err := downloadURLWithStatusCode("http://127.0.0.1:4321/metrics")
+	if err != nil {
+		return err
+	}
 	if status != 200 {
-		t.Fatalf("Expected status code 200, got: %d", status)
+		return fmt.Errorf("Expected status code 200, got: %d", status)
 	}
 	for _, want := range []string{
 		`tile38_connected_clients`,
@@ -50,7 +62,8 @@ func subTestMetrics(t *testing.T, mc *mockServer) {
 		`role="leader"`,
 	} {
 		if !strings.Contains(metrics, want) {
-			t.Fatalf("wanted metric: %s, got: %s", want, metrics)
+			return fmt.Errorf("wanted metric: %s, got: %s", want, metrics)
 		}
 	}
+	return nil
 }
