@@ -26,19 +26,8 @@ const (
 	white   = "\x1b[37m"
 )
 
-// type mockTest struct {
-// }
-
-// func mockTestInit() *mockTest {
-// 	mt := &mockTest{}
-// 	return mt
-// }
-
-// func (mt *mockTest) Cleanup() {
-
-// }
-
 func TestAll(t *testing.T) {
+
 	mockCleanup(false)
 	defer mockCleanup(false)
 
@@ -50,39 +39,39 @@ func TestAll(t *testing.T) {
 		os.Exit(1)
 	}()
 
-	mc, err := mockOpenServer(MockServerOptions{
-		Silent:  false,
-		Metrics: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// log.Printf("Waiting a second for everything to cleanly start...")
-	// time.Sleep(time.Second * 2)
-	defer mc.Close()
-
-	runSubTest(t, "keys", mc, subTestKeys)
-	runSubTest(t, "json", mc, subTestJSON)
-	runSubTest(t, "search", mc, subTestSearch)
-	runSubTest(t, "testcmd", mc, subTestTestCmd)
-	runSubTest(t, "client", mc, subTestClient)
-	runSubTest(t, "scripts", mc, subTestScripts)
-	runSubTest(t, "fence", mc, subTestFence)
-	runSubTest(t, "info", mc, subTestInfo)
-	runSubTest(t, "timeouts", mc, subTestTimeout)
-	runSubTest(t, "metrics", mc, subTestMetrics)
-	runSubTest(t, "aof", mc, subTestAOF)
+	runSubTest(t, "keys", subTestKeys)
+	runSubTest(t, "json", subTestJSON)
+	runSubTest(t, "search", subTestSearch)
+	runSubTest(t, "testcmd", subTestTestCmd)
+	runSubTest(t, "client", subTestClient)
+	runSubTest(t, "scripts", subTestScripts)
+	runSubTest(t, "fence", subTestFence)
+	runSubTest(t, "info", subTestInfo)
+	runSubTest(t, "timeouts", subTestTimeout)
+	runSubTest(t, "metrics", subTestMetrics)
+	runSubTest(t, "aof", subTestAOF)
 }
 
-func runSubTest(t *testing.T, name string, mc *mockServer, test func(t *testing.T, mc *mockServer)) {
+func runSubTest(t *testing.T, name string, test func(t *testing.T, mc *mockServer)) {
 	t.Run(name, func(t *testing.T) {
+		// t.Parallel()
+		t.Helper()
+
+		mc, err := mockOpenServer(MockServerOptions{
+			Silent:  true,
+			Metrics: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer mc.Close()
+
 		fmt.Printf(bright+"Testing %s\n"+clear, name)
 		test(t, mc)
 	})
 }
 
 func runStep(t *testing.T, mc *mockServer, name string, step func(mc *mockServer) error) {
-	t.Helper()
 	t.Run(name, func(t *testing.T) {
 		t.Helper()
 		if err := func() error {

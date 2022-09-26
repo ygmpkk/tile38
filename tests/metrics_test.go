@@ -27,12 +27,14 @@ func downloadURLWithStatusCode(u string) (int, string, error) {
 
 func metrics_basic_test(mc *mockServer) error {
 
+	maddr := fmt.Sprintf("http://127.0.0.1:%d/", mc.metricsPort())
+
 	mc.Do("SET", "metrics_test_1", "1", "FIELD", "foo", 5.5, "POINT", 5, 5)
 	mc.Do("SET", "metrics_test_2", "2", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "3", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "truck1:driver", "STRING", "John Denton")
 
-	status, index, err := downloadURLWithStatusCode("http://127.0.0.1:4321/")
+	status, index, err := downloadURLWithStatusCode(maddr)
 	if err != nil {
 		return err
 	}
@@ -43,7 +45,7 @@ func metrics_basic_test(mc *mockServer) error {
 		return fmt.Errorf("missing link on index page")
 	}
 
-	status, metrics, err := downloadURLWithStatusCode("http://127.0.0.1:4321/metrics")
+	status, metrics, err := downloadURLWithStatusCode(maddr + "metrics")
 	if err != nil {
 		return err
 	}

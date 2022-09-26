@@ -302,7 +302,7 @@ Developer Options:
 	flag.Parse()
 
 	if logEncoding == "json" {
-		log.LogJSON = true
+		log.SetLogJSON(true)
 		data, _ := os.ReadFile(filepath.Join(dir, "config"))
 		if gjson.GetBytes(data, "logconfig.encoding").String() == "json" {
 			c := gjson.GetBytes(data, "logconfig").String()
@@ -320,13 +320,13 @@ Developer Options:
 	log.SetOutput(logw)
 
 	if quiet {
-		log.Level = 0
+		log.SetLevel(0)
 	} else if veryVerbose {
-		log.Level = 3
+		log.SetLevel(3)
 	} else if verbose {
-		log.Level = 2
+		log.SetLevel(2)
 	} else {
-		log.Level = 1
+		log.SetLevel(1)
 	}
 
 	showDebugMessages = veryVerbose
@@ -445,7 +445,7 @@ Developer Options:
 		saddr = fmt.Sprintf("Port: %d", port)
 	}
 
-	if log.LogJSON {
+	if log.LogJSON() {
 		log.Printf(`Tile38 %s%s %d bit (%s/%s) %s%s, PID: %d. Visit tile38.com/sponsor to support the project`,
 			core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, saddr, os.Getpid())
 	} else {

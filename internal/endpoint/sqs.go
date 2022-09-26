@@ -90,7 +90,7 @@ func (conn *SQSConn) Send(msg string) error {
 		sess := session.Must(session.NewSession(&aws.Config{
 			Region:                        &region,
 			Credentials:                   creds,
-			CredentialsChainVerboseErrors: aws.Bool(log.Level >= 3),
+			CredentialsChainVerboseErrors: aws.Bool(log.Level() >= 3),
 			MaxRetries:                    aws.Int(5),
 		}))
 		svc := sqs.New(sess)

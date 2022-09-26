@@ -68,7 +68,7 @@ func (conn *KafkaConn) Send(msg string) error {
 	}
 	conn.t = time.Now()
 
-	if log.Level > 2 {
+	if log.Level() > 2 {
 		sarama.Logger = lg.New(log.Output(), "[sarama] ", 0)
 	}
 
