@@ -44,9 +44,9 @@ type mockServer struct {
 	shutdown chan bool
 }
 
-// func (mc *mockServer) readAOF() ([]byte, error) {
-// 	return os.ReadFile(filepath.Join(mc.dir, "appendonly.aof"))
-// }
+func (mc *mockServer) readAOF() ([]byte, error) {
+	return os.ReadFile(filepath.Join(mc.dir, "appendonly.aof"))
+}
 
 func (mc *mockServer) metricsPort() int {
 	return mc.mport

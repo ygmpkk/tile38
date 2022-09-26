@@ -302,9 +302,12 @@ func Serve(opts Options) error {
 		ln := s.ln
 		s.ln = nil
 		s.lnmu.Unlock()
-
 		if ln != nil {
 			ln.Close()
+		}
+		for conn, f := range s.aofconnM {
+			conn.Close()
+			f.Close()
 		}
 	}()
 

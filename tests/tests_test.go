@@ -125,14 +125,15 @@ func runTestGroups(t *testing.T) {
 					fmt.Printf(bright+"Testing %s\n"+clear, g.name)
 					g.printed.Store(true)
 				}
+				const frtmp = "[" + magenta + "  " + clear + "] %s (running) "
 				for _, s := range g.subs {
 					if !s.skipped.Load() && !s.printedName.Load() {
-						fmt.Printf("[..] %s (running) ", s.name)
+						fmt.Printf(frtmp, s.name)
 						s.printedName.Store(true)
 					}
 					if s.done.Load() && !s.printedResult.Load() {
 						fmt.Printf("\r")
-						msg := fmt.Sprintf("[..] %s (running) ", s.name)
+						msg := fmt.Sprintf(frtmp, s.name)
 						fmt.Print(strings.Repeat(" ", len(msg)))
 						fmt.Printf("\r")
 						if s.err != nil {
