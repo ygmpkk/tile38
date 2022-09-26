@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
+	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -16,6 +19,7 @@ func subTestAOF(g *testGroup) {
 	g.regSubTest("loading", aof_loading_test)
 	g.regSubTest("AOF", aof_AOF_test)
 	g.regSubTest("AOFMD5", aof_AOFMD5_test)
+	g.regSubTest("AOFSHRINK", aof_AOFSHRINK_test)
 }
 
 func loadAOFAndClose(aof any) error {
@@ -131,6 +135,34 @@ func aof_AOFMD5_test(mc *mockServer) error {
 	)
 }
 
+func openFollower(mc *mockServer) (conn redis.Conn, err error) {
+	conn, err = redis.Dial("tcp", fmt.Sprintf(":%d", mc.port),
+		redis.DialReadTimeout(time.Second))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			conn.Close()
+			conn = nil
+		}
+	}()
+	if err := conn.Send("AOF", 0); err != nil {
+		return nil, err
+	}
+	if err := conn.Flush(); err != nil {
+		return nil, err
+	}
+	str, err := redis.String(conn.Receive())
+	if err != nil {
+		return nil, err
+	}
+	if str != "OK" {
+		return nil, fmt.Errorf("expected '%s', got '%s'", "OK", str)
+	}
+	return conn, nil
+}
+
 func aof_AOF_test(mc *mockServer) error {
 	var argss [][]interface{}
 	for i := 0; i < 10000; i++ {
@@ -144,10 +176,9 @@ func aof_AOF_test(mc *mockServer) error {
 		}
 	}
 	readAll := func() (conn redis.Conn, err error) {
-		conn, err = redis.Dial("tcp", fmt.Sprintf(":%d", mc.port),
-			redis.DialReadTimeout(time.Second))
+		conn, err = openFollower(mc)
 		if err != nil {
-			return nil, err
+			return
 		}
 		defer func() {
 			if err != nil {
@@ -155,19 +186,6 @@ func aof_AOF_test(mc *mockServer) error {
 				conn = nil
 			}
 		}()
-		if err := conn.Send("AOF", 0); err != nil {
-			return nil, err
-		}
-		if err := conn.Flush(); err != nil {
-			return nil, err
-		}
-		str, err := redis.String(conn.Receive())
-		if err != nil {
-			return nil, err
-		}
-		if str != "OK" {
-			return nil, fmt.Errorf("expected '%s', got '%s'", "OK", str)
-		}
 		var t bool
 		for i := 0; i < len(argss); i++ {
 			args, err := redis.Values(conn.Receive())
@@ -215,4 +233,43 @@ func aof_AOF_test(mc *mockServer) error {
 		Do("AOF", -1).Err("invalid argument '-1'"),
 		Do("AOF", 1000000000000).Err("pos is too big, must be less that the aof_size of leader"),
 	)
+}
+
+func aof_AOFSHRINK_test(mc *mockServer) error {
+	var err error
+	haddr := fmt.Sprintf("localhost:%d", getNextPort())
+	ln, err := net.Listen("tcp", haddr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+	var msgs atomic.Int32
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			msgs.Add(1)
+			// println(r.URL.Path)
+		})
+		http.Serve(ln, mux)
+	}()
+	err = mc.DoBatch(
+		Do("SETCHAN", "mychan", "INTERSECTS", "mi:0", "BOUNDS", -10, -10, 10, 10).Str("1"),
+		Do("SETHOOK", "myhook", "http://"+haddr, "INTERSECTS", "mi:0", "BOUNDS", -10, -10, 10, 10).Str("1"),
+		Do("MASSINSERT", 5, 10000).OK(),
+	)
+	if err != nil {
+		return err
+	}
+	err = mc.DoBatch(
+		Do("AOFSHRINK").OK(),
+		Do("MASSINSERT", 5, 10000).OK(),
+	)
+	if err != nil {
+		return err
+	}
+	nmsgs := msgs.Load()
+	if nmsgs == 0 {
+		return fmt.Errorf("expected > 0, got %d", nmsgs)
+	}
+	return err
 }

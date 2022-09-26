@@ -19,12 +19,9 @@ const maxids = 32
 const maxchunk = 4 * 1024 * 1024
 
 func (s *Server) aofshrink() {
-	if s.aof == nil {
-		return
-	}
 	start := time.Now()
 	s.mu.Lock()
-	if s.shrinking {
+	if s.aof == nil || s.shrinking {
 		s.mu.Unlock()
 		return
 	}

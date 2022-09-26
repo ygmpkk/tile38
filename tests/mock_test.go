@@ -60,7 +60,7 @@ type MockServerOptions struct {
 
 var nextPort int32 = 10000
 
-func getRandPort() int {
+func getNextPort() int {
 	// choose a valid port between 10000-50000
 	for {
 		port := int(atomic.AddInt32(&nextPort, 1))
@@ -82,7 +82,7 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	log.SetOutput(logOutput)
 
 	rand.Seed(time.Now().UnixNano())
-	port := getRandPort()
+	port := getNextPort()
 	dir := fmt.Sprintf("data-mock-%d", port)
 	if !opts.Silent {
 		fmt.Printf("Starting test server at port %d\n", port)
@@ -101,7 +101,7 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	shutdown := make(chan bool)
 	s := &mockServer{port: port, dir: dir, shutdown: shutdown}
 	if opts.Metrics {
-		s.mport = getRandPort()
+		s.mport = getNextPort()
 	}
 	var ferrt int32 // atomic flag for when ferr has been set
 	var ferr error  // ferr for when the server fails to start
