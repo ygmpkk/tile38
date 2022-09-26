@@ -1,15 +1,11 @@
 package tests
 
-import (
-	"testing"
-)
-
-func subTestTestCmd(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "WITHIN", testcmd_WITHIN_test)
-	runStep(t, mc, "INTERSECTS", testcmd_INTERSECTS_test)
-	runStep(t, mc, "INTERSECTS_CLIP", testcmd_INTERSECTS_CLIP_test)
-	runStep(t, mc, "ExpressionErrors", testcmd_expressionErrors_test)
-	runStep(t, mc, "Expressions", testcmd_expression_test)
+func subTestTestCmd(g *testGroup) {
+	g.regSubTest("WITHIN", testcmd_WITHIN_test)
+	g.regSubTest("INTERSECTS", testcmd_INTERSECTS_test)
+	g.regSubTest("INTERSECTS_CLIP", testcmd_INTERSECTS_CLIP_test)
+	g.regSubTest("ExpressionErrors", testcmd_expressionErrors_test)
+	g.regSubTest("Expressions", testcmd_expression_test)
 }
 
 func testcmd_WITHIN_test(mc *mockServer) error {

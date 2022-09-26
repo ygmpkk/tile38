@@ -5,37 +5,36 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/gjson"
 )
 
-func subTestKeys(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "BOUNDS", keys_BOUNDS_test)
-	runStep(t, mc, "DEL", keys_DEL_test)
-	runStep(t, mc, "DROP", keys_DROP_test)
-	runStep(t, mc, "RENAME", keys_RENAME_test)
-	runStep(t, mc, "RENAMENX", keys_RENAMENX_test)
-	runStep(t, mc, "EXPIRE", keys_EXPIRE_test)
-	runStep(t, mc, "FSET", keys_FSET_test)
-	runStep(t, mc, "GET", keys_GET_test)
-	runStep(t, mc, "KEYS", keys_KEYS_test)
-	runStep(t, mc, "PERSIST", keys_PERSIST_test)
-	runStep(t, mc, "SET", keys_SET_test)
-	runStep(t, mc, "STATS", keys_STATS_test)
-	runStep(t, mc, "TTL", keys_TTL_test)
-	runStep(t, mc, "SET EX", keys_SET_EX_test)
-	runStep(t, mc, "PDEL", keys_PDEL_test)
-	runStep(t, mc, "FIELDS", keys_FIELDS_test)
-	runStep(t, mc, "WHEREIN", keys_WHEREIN_test)
-	runStep(t, mc, "WHEREEVAL", keys_WHEREEVAL_test)
-	runStep(t, mc, "TYPE", keys_TYPE_test)
-	runStep(t, mc, "FLUSHDB", keys_FLUSHDB_test)
-	runStep(t, mc, "HEALTHZ", keys_HEALTHZ_test)
-	runStep(t, mc, "SERVER", keys_SERVER_test)
-	runStep(t, mc, "INFO", keys_INFO_test)
+func subTestKeys(g *testGroup) {
+	g.regSubTest("BOUNDS", keys_BOUNDS_test)
+	g.regSubTest("DEL", keys_DEL_test)
+	g.regSubTest("DROP", keys_DROP_test)
+	g.regSubTest("RENAME", keys_RENAME_test)
+	g.regSubTest("RENAMENX", keys_RENAMENX_test)
+	g.regSubTest("EXPIRE", keys_EXPIRE_test)
+	g.regSubTest("FSET", keys_FSET_test)
+	g.regSubTest("GET", keys_GET_test)
+	g.regSubTest("KEYS", keys_KEYS_test)
+	g.regSubTest("PERSIST", keys_PERSIST_test)
+	g.regSubTest("SET", keys_SET_test)
+	g.regSubTest("STATS", keys_STATS_test)
+	g.regSubTest("TTL", keys_TTL_test)
+	g.regSubTest("SET EX", keys_SET_EX_test)
+	g.regSubTest("PDEL", keys_PDEL_test)
+	g.regSubTest("FIELDS", keys_FIELDS_test)
+	g.regSubTest("WHEREIN", keys_WHEREIN_test)
+	g.regSubTest("WHEREEVAL", keys_WHEREEVAL_test)
+	g.regSubTest("TYPE", keys_TYPE_test)
+	g.regSubTest("FLUSHDB", keys_FLUSHDB_test)
+	g.regSubTest("HEALTHZ", keys_HEALTHZ_test)
+	g.regSubTest("SERVER", keys_SERVER_test)
+	g.regSubTest("INFO", keys_INFO_test)
 }
 
 func keys_BOUNDS_test(mc *mockServer) error {

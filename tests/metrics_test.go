@@ -5,11 +5,10 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"testing"
 )
 
-func subTestMetrics(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "basic", metrics_basic_test)
+func subTestMetrics(g *testGroup) {
+	g.regSubTest("basic", metrics_basic_test)
 }
 
 func downloadURLWithStatusCode(u string) (int, string, error) {

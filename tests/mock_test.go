@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,9 +44,9 @@ type mockServer struct {
 	shutdown chan bool
 }
 
-func (mc *mockServer) readAOF() ([]byte, error) {
-	return os.ReadFile(filepath.Join(mc.dir, "appendonly.aof"))
-}
+// func (mc *mockServer) readAOF() ([]byte, error) {
+// 	return os.ReadFile(filepath.Join(mc.dir, "appendonly.aof"))
+// }
 
 func (mc *mockServer) metricsPort() int {
 	return mc.mport
@@ -55,6 +56,20 @@ type MockServerOptions struct {
 	AOFData []byte
 	Silent  bool
 	Metrics bool
+}
+
+var nextPort int32 = 10000
+
+func getRandPort() int {
+	// choose a valid port between 10000-50000
+	for {
+		port := int(atomic.AddInt32(&nextPort, 1))
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err == nil {
+			ln.Close()
+			return port
+		}
+	}
 }
 
 func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
@@ -67,7 +82,7 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	log.SetOutput(logOutput)
 
 	rand.Seed(time.Now().UnixNano())
-	port := rand.Int()%20000 + 20000
+	port := getRandPort()
 	dir := fmt.Sprintf("data-mock-%d", port)
 	if !opts.Silent {
 		fmt.Printf("Starting test server at port %d\n", port)
@@ -86,7 +101,7 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	shutdown := make(chan bool)
 	s := &mockServer{port: port, dir: dir, shutdown: shutdown}
 	if opts.Metrics {
-		s.mport = rand.Int()%20000 + 20000
+		s.mport = getRandPort()
 	}
 	var ferrt int32 // atomic flag for when ferr has been set
 	var ferr error  // ferr for when the server fails to start

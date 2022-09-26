@@ -79,7 +79,9 @@ type Server struct {
 	started time.Time
 	config  *Config
 	epc     *endpoint.Manager
-	ln      net.Listener // server listener
+
+	lnmu sync.Mutex
+	ln   net.Listener // server listener
 
 	// env opts
 	geomParseOpts geojson.ParseOptions
@@ -296,7 +298,14 @@ func Serve(opts Options) error {
 		<-opts.Shutdown
 		s.stopServer.set(true)
 		log.Warnf("Shutting down...")
-		s.ln.Close()
+		s.lnmu.Lock()
+		ln := s.ln
+		s.ln = nil
+		s.lnmu.Unlock()
+
+		if ln != nil {
+			ln.Close()
+		}
 	}()
 
 	// Load the queue before the aof
@@ -432,6 +441,9 @@ func (s *Server) netServe() error {
 	if err != nil {
 		return err
 	}
+	s.lnmu.Lock()
+	s.ln = ln
+	s.lnmu.Unlock()
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -445,7 +457,6 @@ func (s *Server) netServe() error {
 		ln.Close()
 		log.Debug("Client connection closed")
 	}()
-	s.ln = ln
 
 	log.Infof("Ready to accept connections at %s", ln.Addr())
 	var clientID int64

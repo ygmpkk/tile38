@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
 
-func subTestTimeout(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "spatial", timeout_spatial_test)
-	runStep(t, mc, "search", timeout_search_test)
-	runStep(t, mc, "scripts", timeout_scripts_test)
-	runStep(t, mc, "no writes", timeout_no_writes_test)
-	runStep(t, mc, "within scripts", timeout_within_scripts_test)
-	runStep(t, mc, "no writes within scripts", timeout_no_writes_within_scripts_test)
+func subTestTimeout(g *testGroup) {
+	g.regSubTest("spatial", timeout_spatial_test)
+	g.regSubTest("search", timeout_search_test)
+	g.regSubTest("scripts", timeout_scripts_test)
+	g.regSubTest("no writes", timeout_no_writes_test)
+	g.regSubTest("within scripts", timeout_within_scripts_test)
+	g.regSubTest("no writes within scripts", timeout_no_writes_within_scripts_test)
 }
 
 func setup(mc *mockServer, count int, points bool) (err error) {

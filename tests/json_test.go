@@ -1,11 +1,9 @@
 package tests
 
-import "testing"
-
-func subTestJSON(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "basic", json_JSET_basic_test)
-	runStep(t, mc, "geojson", json_JSET_geojson_test)
-	runStep(t, mc, "number", json_JSET_number_test)
+func subTestJSON(g *testGroup) {
+	g.regSubTest("basic", json_JSET_basic_test)
+	g.regSubTest("geojson", json_JSET_geojson_test)
+	g.regSubTest("number", json_JSET_number_test)
 
 }
 func json_JSET_basic_test(mc *mockServer) error {

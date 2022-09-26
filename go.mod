@@ -22,6 +22,7 @@ require (
 	github.com/tidwall/geojson v1.3.6
 	github.com/tidwall/gjson v1.14.3
 	github.com/tidwall/hashmap v1.6.1
+	github.com/tidwall/limiter v0.4.0
 	github.com/tidwall/match v1.1.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/tidwall/redbench v0.1.0
@@ -31,6 +32,7 @@ require (
 	github.com/tidwall/sjson v1.2.4
 	github.com/xdg/scram v1.0.5
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
+	go.uber.org/atomic v1.5.0
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20220809184613-07c6da5e1ced
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
@@ -95,7 +97,6 @@ require (
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/xdg/stringprep v1.0.3 // indirect
 	go.opencensus.io v0.22.4 // indirect
-	go.uber.org/atomic v1.5.0 // indirect
 	go.uber.org/multierr v1.3.0 // indirect
 	go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect

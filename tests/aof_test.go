@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"testing"
 )
 
-func subTestAOF(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "loading", aof_loading_test)
-	// runStep(t, mc, "AOFMD5", aof_AOFMD5_test)
+func subTestAOF(g *testGroup) {
+	g.regSubTest("loading", aof_loading_test)
+	// g.regSubTest("AOFMD5", aof_AOFMD5_test)
 }
 
 func loadAOFAndClose(aof any) error {

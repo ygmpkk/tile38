@@ -12,30 +12,29 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"testing"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/gjson"
 )
 
-func subTestFence(t *testing.T, mc *mockServer) {
+func subTestFence(g *testGroup) {
 
 	// Standard
-	runStep(t, mc, "basic", fence_basic_test)
-	runStep(t, mc, "channel message order", fence_channel_message_order_test)
-	runStep(t, mc, "detect inside,outside", fence_detect_inside_test)
+	g.regSubTest("basic", fence_basic_test)
+	g.regSubTest("channel message order", fence_channel_message_order_test)
+	g.regSubTest("detect inside,outside", fence_detect_inside_test)
 
 	// Roaming
-	runStep(t, mc, "roaming live", fence_roaming_live_test)
-	runStep(t, mc, "roaming channel", fence_roaming_channel_test)
-	runStep(t, mc, "roaming webhook", fence_roaming_webhook_test)
+	g.regSubTest("roaming live", fence_roaming_live_test)
+	g.regSubTest("roaming channel", fence_roaming_channel_test)
+	g.regSubTest("roaming webhook", fence_roaming_webhook_test)
 
 	// channel meta
-	runStep(t, mc, "channel meta", fence_channel_meta_test)
+	g.regSubTest("channel meta", fence_channel_meta_test)
 
 	// various
-	runStep(t, mc, "detect eecio", fence_eecio_test)
+	g.regSubTest("detect eecio", fence_eecio_test)
 }
 
 type fenceReader struct {

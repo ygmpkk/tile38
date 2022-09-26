@@ -4,16 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"testing"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/pretty"
 )
 
-func subTestClient(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "OUTPUT", client_OUTPUT_test)
-	runStep(t, mc, "CLIENT", client_CLIENT_test)
+func subTestClient(g *testGroup) {
+	g.regSubTest("OUTPUT", client_OUTPUT_test)
+	g.regSubTest("CLIENT", client_CLIENT_test)
 }
 
 func client_OUTPUT_test(mc *mockServer) error {
