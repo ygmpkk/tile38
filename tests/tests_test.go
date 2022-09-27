@@ -113,6 +113,18 @@ func runTestGroups(t *testing.T) {
 	done := make(chan bool)
 	go func() {
 		defer func() { done <- true }()
+		// count the largest sub test name
+		var largest int
+		for _, g := range allGroups {
+			for _, s := range g.subs {
+				if !s.skipped.Load() {
+					if len(s.name) > largest {
+						largest = len(s.name)
+					}
+				}
+			}
+		}
+
 		for {
 			finished := true
 			for _, g := range allGroups {
@@ -124,24 +136,26 @@ func runTestGroups(t *testing.T) {
 					}
 				}
 				if !skipped && !g.printed.Load() {
-					fmt.Printf(bright+"Testing %s\n"+clear, g.name)
+					fmt.Printf("\n"+bright+"Testing %s"+clear+"\n", g.name)
 					g.printed.Store(true)
 				}
-				const frtmp = "[" + magenta + "  " + clear + "] %s (running) "
+				const frtmp = "%s ... "
 				for _, s := range g.subs {
 					if !s.skipped.Load() && !s.printedName.Load() {
-						fmt.Printf(frtmp, s.name)
+						pref := fmt.Sprintf(frtmp, s.name)
+						nspaces := largest - len(pref) + 5
+						if nspaces < 0 {
+							nspaces = 0
+						}
+						spaces := strings.Repeat(" ", nspaces)
+						fmt.Printf("%s%s", pref, spaces)
 						s.printedName.Store(true)
 					}
 					if s.done.Load() && !s.printedResult.Load() {
-						fmt.Printf("\r")
-						msg := fmt.Sprintf(frtmp, s.name)
-						fmt.Print(strings.Repeat(" ", len(msg)))
-						fmt.Printf("\r")
 						if s.err != nil {
-							fmt.Printf("["+red+"fail"+clear+"] %s\n", s.name)
+							fmt.Printf("[" + red + "fail" + clear + "]\n")
 						} else {
-							fmt.Printf("["+green+"ok"+clear+"] %s\n", s.name)
+							fmt.Printf("[" + green + "ok" + clear + "]\n")
 						}
 						s.printedResult.Store(true)
 					}
