@@ -20,6 +20,7 @@ func subTestAOF(g *testGroup) {
 	g.regSubTest("AOF", aof_AOF_test)
 	g.regSubTest("AOFMD5", aof_AOFMD5_test)
 	g.regSubTest("AOFSHRINK", aof_AOFSHRINK_test)
+	g.regSubTest("READONLY", aof_READONLY_test)
 }
 
 func loadAOFAndClose(aof any) error {
@@ -272,4 +273,16 @@ func aof_AOFSHRINK_test(mc *mockServer) error {
 		return fmt.Errorf("expected > 0, got %d", nmsgs)
 	}
 	return err
+}
+
+func aof_READONLY_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "POINT", "10", "10").OK(),
+		Do("READONLY", "yes").OK(),
+		Do("SET", "mykey", "myid", "POINT", "10", "10").Err("read only"),
+		Do("READONLY", "no").OK(),
+		Do("SET", "mykey", "myid", "POINT", "10", "10").OK(),
+		Do("READONLY").Err("wrong number of arguments for 'readonly' command"),
+		Do("READONLY", "maybe").Err("invalid argument 'maybe'"),
+	)
 }

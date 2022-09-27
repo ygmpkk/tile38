@@ -1181,7 +1181,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "replconf":
 		res, err = s.cmdReplConf(msg, client)
 	case "readonly":
-		res, err = s.cmdReadOnly(msg)
+		res, err = s.cmdREADONLY(msg)
 	case "stats":
 		res, err = s.cmdSTATS(msg)
 	case "server":
