@@ -18,8 +18,14 @@ func subTestClient(g *testGroup) {
 func client_OUTPUT_test(mc *mockServer) error {
 	if err := mc.DoBatch(
 		// tests removal of "elapsed" member.
+		Do("OUTPUT", "json", "yaml").Err(`wrong number of arguments for 'output' command`),
 		Do("OUTPUT", "json").Str(`{"ok":true}`),
+		Do("OUTPUT").JSON().Str(`{"ok":true,"output":"json"}`),
+		Do("OUTPUT").Str(`resp`), // this is due to the internal Do test
 		Do("OUTPUT", "resp").OK(),
+		Do("OUTPUT", "yaml").Err(`invalid argument 'yaml'`),
+		Do("OUTPUT").Str(`resp`),
+		Do("OUTPUT").JSON().Str(`{"ok":true,"output":"json"}`),
 	); err != nil {
 		return err
 	}

@@ -1215,7 +1215,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "keys":
 		res, err = s.cmdKEYS(msg)
 	case "output":
-		res, err = s.cmdOutput(msg)
+		res, err = s.cmdOUTPUT(msg)
 	case "aof":
 		res, err = s.cmdAOF(msg)
 	case "aofmd5":
