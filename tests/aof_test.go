@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+
+	_ "embed"
 )
 
 func subTestAOF(g *testGroup) {
@@ -288,20 +291,57 @@ func aof_READONLY_test(mc *mockServer) error {
 	)
 }
 
+//go:embed aof_legacy
+var aofLegacy []byte
+
 func aof_migrate_test(mc *mockServer) error {
-	// var aof string
-	// aof += "set 1 2 point 10 10\r\n"
-	// aof += "set 2 3 point 30 30\r\n"
-	// mc2, err := mockOpenServer(MockServerOptions{
-	// 	AOFFileName: "aof",
-	// 	AOFData:     []byte(aof),
-	// 	Silent:      true,
-	// 	Metrics:     true,
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-	// defer mc2.Close()
+	var aof []byte
+	for i := 0; i < 10000; i++ {
+		aof = append(aof, aofLegacy...)
+	}
+	var mc2 *mockServer
+	var err error
+	defer func() {
+		mc2.Close()
+	}()
+	mc2, err = mockOpenServer(MockServerOptions{
+		AOFFileName: "aof",
+		AOFData:     aof,
+		Silent:      true,
+		Metrics:     true,
+	})
+	if err != nil {
+		return err
+	}
+	err = mc2.DoBatch(
+		Do("GET", "1", "2").Str(`{"type":"Point","coordinates":[20,10]}`),
+	)
+	if err != nil {
+		return err
+	}
+	mc2.Close()
+
+	mc2, err = mockOpenServer(MockServerOptions{
+		AOFFileName: "aof",
+		AOFData:     aofLegacy[:len(aofLegacy)-1],
+		Silent:      true,
+		Metrics:     true,
+	})
+	if err != io.ErrUnexpectedEOF {
+		return fmt.Errorf("expected '%v', got '%v'", io.ErrUnexpectedEOF, err)
+	}
+	mc2.Close()
+
+	mc2, err = mockOpenServer(MockServerOptions{
+		AOFFileName: "aof",
+		AOFData:     aofLegacy[1:],
+		Silent:      true,
+		Metrics:     true,
+	})
+	if err != io.ErrUnexpectedEOF {
+		return fmt.Errorf("expected '%v', got '%v'", io.ErrUnexpectedEOF, err)
+	}
+	mc2.Close()
 
 	return nil
 }

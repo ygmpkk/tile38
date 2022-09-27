@@ -36,6 +36,7 @@ func mockCleanup(silent bool) {
 }
 
 type mockServer struct {
+	closed   bool
 	port     int
 	mport    int
 	conn     redis.Conn
@@ -169,6 +170,10 @@ func (s *mockServer) waitForStartup(ferr *error, ferrt *int32) error {
 }
 
 func (mc *mockServer) Close() {
+	if mc == nil || mc.closed {
+		return
+	}
+	mc.closed = true
 	mc.shutdown <- true
 	if mc.conn != nil {
 		mc.conn.Close()
