@@ -322,7 +322,7 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Whether or not an AOF shrink is currently in progress
 	m["tile38_aof_rewrite_in_progress"] = s.shrinking
 	// Length of time the last AOF shrink took
-	m["tile38_aof_last_rewrite_time_sec"] = s.lastShrinkDuration.get() / int(time.Second)
+	m["tile38_aof_last_rewrite_time_sec"] = s.lastShrinkDuration.Load() / int64(time.Second)
 	// Duration of the on-going AOF rewrite operation if any
 	var currentShrinkStart time.Time
 	if currentShrinkStart.IsZero() {
@@ -335,13 +335,13 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Whether or no the HTTP transport is being served
 	m["tile38_http_transport"] = s.http
 	// Number of connections accepted by the server
-	m["tile38_total_connections_received"] = s.statsTotalConns.get()
+	m["tile38_total_connections_received"] = s.statsTotalConns.Load()
 	// Number of commands processed by the server
-	m["tile38_total_commands_processed"] = s.statsTotalCommands.get()
+	m["tile38_total_commands_processed"] = s.statsTotalCommands.Load()
 	// Number of webhook messages sent by server
-	m["tile38_total_messages_sent"] = s.statsTotalMsgsSent.get()
+	m["tile38_total_messages_sent"] = s.statsTotalMsgsSent.Load()
 	// Number of key expiration events
-	m["tile38_expired_keys"] = s.statsExpired.get()
+	m["tile38_expired_keys"] = s.statsExpired.Load()
 	// Number of connected slaves
 	m["tile38_connected_slaves"] = len(s.aofconnM)
 
@@ -410,8 +410,8 @@ func boolInt(t bool) int {
 }
 func (s *Server) writeInfoPersistence(w *bytes.Buffer) {
 	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(s.opts.AppendOnly))
-	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(s.shrinking))                          // Flag indicating a AOF rewrite operation is on-going
-	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", s.lastShrinkDuration.get()/int(time.Second)) // Duration of the last AOF rewrite operation in seconds
+	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(s.shrinking))                             // Flag indicating a AOF rewrite operation is on-going
+	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", s.lastShrinkDuration.Load()/int64(time.Second)) // Duration of the last AOF rewrite operation in seconds
 
 	var currentShrinkStart time.Time // c.currentShrinkStart.get()
 	if currentShrinkStart.IsZero() {
@@ -422,10 +422,10 @@ func (s *Server) writeInfoPersistence(w *bytes.Buffer) {
 }
 
 func (s *Server) writeInfoStats(w *bytes.Buffer) {
-	fmt.Fprintf(w, "total_connections_received:%d\r\n", s.statsTotalConns.get())  // Total number of connections accepted by the server
-	fmt.Fprintf(w, "total_commands_processed:%d\r\n", s.statsTotalCommands.get()) // Total number of commands processed by the server
-	fmt.Fprintf(w, "total_messages_sent:%d\r\n", s.statsTotalMsgsSent.get())      // Total number of commands processed by the server
-	fmt.Fprintf(w, "expired_keys:%d\r\n", s.statsExpired.get())                   // Total number of key expiration events
+	fmt.Fprintf(w, "total_connections_received:%d\r\n", s.statsTotalConns.Load())  // Total number of connections accepted by the server
+	fmt.Fprintf(w, "total_commands_processed:%d\r\n", s.statsTotalCommands.Load()) // Total number of commands processed by the server
+	fmt.Fprintf(w, "total_messages_sent:%d\r\n", s.statsTotalMsgsSent.Load())      // Total number of commands processed by the server
+	fmt.Fprintf(w, "expired_keys:%d\r\n", s.statsExpired.Load())                   // Total number of key expiration events
 }
 
 // writeInfoReplication writes all replication data to the 'info' response

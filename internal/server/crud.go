@@ -573,7 +573,7 @@ func (s *Server) cmdFLUSHDB(msg *Message) (resp.Value, commandDetails, error) {
 // (HASH geohash)|(STRING value)
 func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	if s.config.maxMemory() > 0 && s.outOfMemory.on() {
+	if s.config.maxMemory() > 0 && s.outOfMemory.Load() {
 		return retwerr(errOOM)
 	}
 
@@ -780,7 +780,7 @@ func retrerr(err error) (resp.Value, error) {
 // FSET key id [XX] field value [field value...]
 func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
-	if s.config.maxMemory() > 0 && s.outOfMemory.on() {
+	if s.config.maxMemory() > 0 && s.outOfMemory.Load() {
 		return retwerr(errOOM)
 	}
 

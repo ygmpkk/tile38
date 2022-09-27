@@ -144,7 +144,7 @@ func (s *Server) followCheckSome(addr string, followc int, auth string,
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.followc.get() != followc {
+	if int(s.followc.Load()) != followc {
 		return 0, errNoLongerFollowing
 	}
 	if s.aofsz < checksumsz {

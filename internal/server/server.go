@@ -89,15 +89,15 @@ type Server struct {
 	http500Errors bool
 
 	// atomics
-	followc            aint // counter increases when follow property changes
-	statsTotalConns    aint // counter for total connections
-	statsTotalCommands aint // counter for total commands
-	statsTotalMsgsSent aint // counter for total sent webhook messages
-	statsExpired       aint // item expiration counter
-	lastShrinkDuration aint
-	stopServer         abool
-	outOfMemory        abool
-	loadedAndReady     abool // server is loaded and ready for commands
+	followc            atomic.Int64 // counter when follow property changes
+	statsTotalConns    atomic.Int64 // counter for total connections
+	statsTotalCommands atomic.Int64 // counter for total commands
+	statsTotalMsgsSent atomic.Int64 // counter for total sent webhook messages
+	statsExpired       atomic.Int64 // item expiration counter
+	lastShrinkDuration atomic.Int64
+	stopServer         atomic.Bool
+	outOfMemory        atomic.Bool
+	loadedAndReady     atomic.Bool // server is loaded and ready for commands
 
 	connsmu sync.RWMutex
 	conns   map[int]*Client
@@ -296,7 +296,7 @@ func Serve(opts Options) error {
 
 	go func() {
 		<-opts.Shutdown
-		s.stopServer.set(true)
+		s.stopServer.Store(true)
 		log.Warnf("Shutting down...")
 		s.lnmu.Lock()
 		ln := s.ln
@@ -363,7 +363,7 @@ func Serve(opts Options) error {
 		go func() {
 			defer bgwg.Done()
 			s.follow(s.config.followHost(), s.config.followPort(),
-				s.followc.get())
+				int(s.followc.Load()))
 		}()
 	}
 
@@ -382,7 +382,7 @@ func Serve(opts Options) error {
 			smux.HandleFunc("/metrics", s.MetricsHandler)
 			err := http.Serve(mln, smux)
 			if err != nil {
-				if !s.stopServer.on() {
+				if !s.stopServer.Load() {
 					log.Fatalf("metrics server: %s", err)
 				}
 			}
@@ -404,8 +404,8 @@ func Serve(opts Options) error {
 	defer func() {
 		log.Debug("Stopping background routines")
 		// Stop background routines
-		s.followc.add(1) // this will force any follow communication to die
-		s.stopServer.set(true)
+		s.followc.Add(1) // this will force any follow communication to die
+		s.stopServer.Store(true)
 		if mln != nil {
 			mln.Close() // Stop the metrics server
 		}
@@ -413,7 +413,7 @@ func Serve(opts Options) error {
 	}()
 
 	// Server is now loaded and ready. Wait for network error messages.
-	s.loadedAndReady.set(true)
+	s.loadedAndReady.Store(true)
 	return <-nerr
 }
 
@@ -466,7 +466,7 @@ func (s *Server) netServe() error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			if s.stopServer.on() {
+			if s.stopServer.Load() {
 				return nil
 			}
 			log.Warn(err)
@@ -489,7 +489,7 @@ func (s *Server) netServe() error {
 			s.connsmu.Lock()
 			s.conns[client.id] = client
 			s.connsmu.Unlock()
-			s.statsTotalConns.add(1)
+			s.statsTotalConns.Add(1)
 
 			// set the client keep-alive, if needed
 			if s.config.keepAlive() > 0 {
@@ -568,7 +568,7 @@ func (s *Server) netServe() error {
 						client.mu.Unlock()
 
 						// update total command count
-						s.statsTotalCommands.add(1)
+						s.statsTotalCommands.Add(1)
 
 						// handle the command
 						err := s.handleInputCommand(client, msg)
@@ -728,14 +728,14 @@ func (s *Server) watchAutoGC(wg *sync.WaitGroup) {
 }
 
 func (s *Server) checkOutOfMemory() {
-	if s.stopServer.on() {
+	if s.stopServer.Load() {
 		return
 	}
-	oom := s.outOfMemory.on()
+	oom := s.outOfMemory.Load()
 	var mem runtime.MemStats
 	if s.config.maxMemory() == 0 {
 		if oom {
-			s.outOfMemory.set(false)
+			s.outOfMemory.Store(false)
 		}
 		return
 	}
@@ -743,13 +743,13 @@ func (s *Server) checkOutOfMemory() {
 		runtime.GC()
 	}
 	runtime.ReadMemStats(&mem)
-	s.outOfMemory.set(int(mem.HeapAlloc) > s.config.maxMemory())
+	s.outOfMemory.Store(int(mem.HeapAlloc) > s.config.maxMemory())
 }
 
 func (s *Server) loopUntilServerStops(dur time.Duration, op func()) {
 	var last time.Time
 	for {
-		if s.stopServer.on() {
+		if s.stopServer.Load() {
 			return
 		}
 		now := time.Now()
@@ -923,7 +923,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 		return nil
 	}
 
-	if !s.loadedAndReady.on() {
+	if !s.loadedAndReady.Load() {
 		switch msg.Command() {
 		case "output", "ping", "echo":
 		default:

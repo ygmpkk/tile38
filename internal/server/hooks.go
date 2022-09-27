@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tidwall/buntdb"
@@ -501,7 +502,7 @@ type Hook struct {
 	query      string
 	epm        *endpoint.Manager
 	expires    time.Time
-	counter    *aint // counter that grows when a message was sent
+	counter    *atomic.Int64 // counter that grows when a message was sent
 	sig        int
 }
 
@@ -701,7 +702,7 @@ func (h *Hook) proc() (ok bool) {
 			}
 			log.Debugf("Endpoint send ok: %v: %v: %v", idx, endpoint, err)
 			sent = true
-			h.counter.add(1)
+			h.counter.Add(1)
 			break
 		}
 		if !sent {
