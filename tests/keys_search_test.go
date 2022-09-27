@@ -13,26 +13,26 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func subTestSearch(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "KNN_BASIC", keys_KNN_basic_test)
-	runStep(t, mc, "KNN_RANDOM", keys_KNN_random_test)
-	runStep(t, mc, "KNN_CURSOR", keys_KNN_cursor_test)
-	runStep(t, mc, "NEARBY_SPARSE", keys_NEARBY_SPARSE_test)
-	runStep(t, mc, "WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
-	runStep(t, mc, "WITHIN_SECTOR", keys_WITHIN_SECTOR_test)
-	runStep(t, mc, "INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
-	runStep(t, mc, "INTERSECTS_SECTOR", keys_INTERSECTS_SECTOR_test)
-	runStep(t, mc, "WITHIN", keys_WITHIN_test)
-	runStep(t, mc, "WITHIN_CURSOR", keys_WITHIN_CURSOR_test)
-	runStep(t, mc, "WITHIN_CLIPBY", keys_WITHIN_CLIPBY_test)
-	runStep(t, mc, "INTERSECTS", keys_INTERSECTS_test)
-	runStep(t, mc, "INTERSECTS_CURSOR", keys_INTERSECTS_CURSOR_test)
-	runStep(t, mc, "INTERSECTS_CLIPBY", keys_INTERSECTS_CLIPBY_test)
-	runStep(t, mc, "SCAN_CURSOR", keys_SCAN_CURSOR_test)
-	runStep(t, mc, "SEARCH_CURSOR", keys_SEARCH_CURSOR_test)
-	runStep(t, mc, "MATCH", keys_MATCH_test)
-	runStep(t, mc, "FIELDS", keys_FIELDS_search_test)
-	runStep(t, mc, "BUFFER", keys_BUFFER_search_test)
+func subTestSearch(g *testGroup) {
+	g.regSubTest("KNN_BASIC", keys_KNN_basic_test)
+	g.regSubTest("KNN_RANDOM", keys_KNN_random_test)
+	g.regSubTest("KNN_CURSOR", keys_KNN_cursor_test)
+	g.regSubTest("NEARBY_SPARSE", keys_NEARBY_SPARSE_test)
+	g.regSubTest("WITHIN_CIRCLE", keys_WITHIN_CIRCLE_test)
+	g.regSubTest("WITHIN_SECTOR", keys_WITHIN_SECTOR_test)
+	g.regSubTest("INTERSECTS_CIRCLE", keys_INTERSECTS_CIRCLE_test)
+	g.regSubTest("INTERSECTS_SECTOR", keys_INTERSECTS_SECTOR_test)
+	g.regSubTest("WITHIN", keys_WITHIN_test)
+	g.regSubTest("WITHIN_CURSOR", keys_WITHIN_CURSOR_test)
+	g.regSubTest("WITHIN_CLIPBY", keys_WITHIN_CLIPBY_test)
+	g.regSubTest("INTERSECTS", keys_INTERSECTS_test)
+	g.regSubTest("INTERSECTS_CURSOR", keys_INTERSECTS_CURSOR_test)
+	g.regSubTest("INTERSECTS_CLIPBY", keys_INTERSECTS_CLIPBY_test)
+	g.regSubTest("SCAN_CURSOR", keys_SCAN_CURSOR_test)
+	g.regSubTest("SEARCH_CURSOR", keys_SEARCH_CURSOR_test)
+	g.regSubTest("MATCH", keys_MATCH_test)
+	g.regSubTest("FIELDS", keys_FIELDS_search_test)
+	g.regSubTest("BUFFER", keys_BUFFER_search_test)
 }
 
 func keys_KNN_basic_test(mc *mockServer) error {
@@ -122,9 +122,7 @@ func keys_KNN_random_test(mc *mockServer) error {
 	mc.Do("OUTPUT", "json")
 	defer mc.Do("OUTPUT", "resp")
 
-	start := time.Now()
 	res, err := redis.String(mc.Do("NEARBY", "points", "LIMIT", N, "POINT", target[1], target[0]))
-	println(time.Since(start).String())
 	if err != nil {
 		return err
 	}

@@ -3,14 +3,13 @@ package tests
 import (
 	"fmt"
 	"strings"
-	"testing"
 )
 
-func subTestScripts(t *testing.T, mc *mockServer) {
-	runStep(t, mc, "BASIC", scripts_BASIC_test)
-	runStep(t, mc, "ATOMIC", scripts_ATOMIC_test)
-	runStep(t, mc, "READONLY", scripts_READONLY_test)
-	runStep(t, mc, "NONATOMIC", scripts_NONATOMIC_test)
+func subTestScripts(g *testGroup) {
+	g.regSubTest("BASIC", scripts_BASIC_test)
+	g.regSubTest("ATOMIC", scripts_ATOMIC_test)
+	g.regSubTest("READONLY", scripts_READONLY_test)
+	g.regSubTest("NONATOMIC", scripts_NONATOMIC_test)
 }
 
 func scripts_BASIC_test(mc *mockServer) error {

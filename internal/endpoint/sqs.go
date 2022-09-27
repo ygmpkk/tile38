@@ -39,11 +39,19 @@ func (conn *SQSConn) Expired() bool {
 	defer conn.mu.Unlock()
 	if !conn.ex {
 		if time.Since(conn.t) > sqsExpiresAfter {
-			conn.ex = true
 			conn.close()
+			conn.ex = true
 		}
 	}
 	return conn.ex
+}
+
+// ExpireNow forces the connection to expire
+func (conn *SQSConn) ExpireNow() {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	conn.close()
+	conn.ex = true
 }
 
 func (conn *SQSConn) close() {
@@ -82,7 +90,7 @@ func (conn *SQSConn) Send(msg string) error {
 		sess := session.Must(session.NewSession(&aws.Config{
 			Region:                        &region,
 			Credentials:                   creds,
-			CredentialsChainVerboseErrors: aws.Bool(log.Level >= 3),
+			CredentialsChainVerboseErrors: aws.Bool(log.Level() >= 3),
 			MaxRetries:                    aws.Int(5),
 		}))
 		svc := sqs.New(sess)

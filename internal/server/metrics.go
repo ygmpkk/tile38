@@ -92,9 +92,14 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 	s.extStats(m)
 
 	for metric, descr := range metricDescriptions {
-		if val, ok := m[metric].(int); ok {
-			ch <- prometheus.MustNewConstMetric(descr, prometheus.GaugeValue, float64(val))
-		} else if val, ok := m[metric].(float64); ok {
+		val, ok := m[metric].(float64)
+		if !ok {
+			val2, ok2 := m[metric].(int)
+			if ok2 {
+				val, ok = float64(val2), true
+			}
+		}
+		if ok {
 			ch <- prometheus.MustNewConstMetric(descr, prometheus.GaugeValue, val)
 		}
 	}

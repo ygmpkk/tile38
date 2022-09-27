@@ -34,13 +34,19 @@ func (conn *KafkaConn) Expired() bool {
 	defer conn.mu.Unlock()
 	if !conn.ex {
 		if time.Since(conn.t) > kafkaExpiresAfter {
-			if conn.conn != nil {
-				conn.close()
-			}
+			conn.close()
 			conn.ex = true
 		}
 	}
 	return conn.ex
+}
+
+// ExpireNow forces the connection to expire
+func (conn *KafkaConn) ExpireNow() {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	conn.close()
+	conn.ex = true
 }
 
 func (conn *KafkaConn) close() {
@@ -62,7 +68,7 @@ func (conn *KafkaConn) Send(msg string) error {
 	}
 	conn.t = time.Now()
 
-	if log.Level > 2 {
+	if log.Level() > 2 {
 		sarama.Logger = lg.New(log.Output(), "[sarama] ", 0)
 	}
 

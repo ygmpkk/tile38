@@ -12,30 +12,29 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"testing"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/tidwall/gjson"
 )
 
-func subTestFence(t *testing.T, mc *mockServer) {
+func subTestFence(g *testGroup) {
 
 	// Standard
-	runStep(t, mc, "basic", fence_basic_test)
-	runStep(t, mc, "channel message order", fence_channel_message_order_test)
-	runStep(t, mc, "detect inside,outside", fence_detect_inside_test)
+	g.regSubTest("basic", fence_basic_test)
+	g.regSubTest("channel message order", fence_channel_message_order_test)
+	g.regSubTest("detect inside,outside", fence_detect_inside_test)
 
 	// Roaming
-	runStep(t, mc, "roaming live", fence_roaming_live_test)
-	runStep(t, mc, "roaming channel", fence_roaming_channel_test)
-	runStep(t, mc, "roaming webhook", fence_roaming_webhook_test)
+	g.regSubTest("roaming live", fence_roaming_live_test)
+	g.regSubTest("roaming channel", fence_roaming_channel_test)
+	g.regSubTest("roaming webhook", fence_roaming_webhook_test)
 
 	// channel meta
-	runStep(t, mc, "channel meta", fence_channel_meta_test)
+	g.regSubTest("channel meta", fence_channel_meta_test)
 
 	// various
-	runStep(t, mc, "detect eecio", fence_eecio_test)
+	g.regSubTest("detect eecio", fence_eecio_test)
 }
 
 type fenceReader struct {
@@ -205,7 +204,7 @@ func fence_channel_message_order_test(mc *mockServer) error {
 					break loop
 				}
 			case error:
-				fmt.Printf(err.Error())
+				fmt.Printf("%s\n", err.Error())
 			}
 		}
 
@@ -230,10 +229,10 @@ func fence_channel_message_order_test(mc *mockServer) error {
 	// Fire all setup commands on the base client
 	for _, cmd := range []string{
 		"SET points point POINT 33.412529053733444 -111.93368911743164",
-		fmt.Sprintf(`SETCHAN A WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.95205688476562,33.400491820565236],[-111.92630767822266,33.400491820565236],[-111.92630767822266,33.422272258866045],[-111.95205688476562,33.422272258866045],[-111.95205688476562,33.400491820565236]]]}`),
-		fmt.Sprintf(`SETCHAN B WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.93952560424803,33.403501285221594],[-111.92630767822266,33.403501285221594],[-111.92630767822266,33.41997983836345],[-111.93952560424803,33.41997983836345],[-111.93952560424803,33.403501285221594]]]}`),
-		fmt.Sprintf(`SETCHAN C WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.9255781173706,33.40342963251261],[-111.91201686859131,33.40342963251261],[-111.91201686859131,33.41994401881284],[-111.9255781173706,33.41994401881284],[-111.9255781173706,33.40342963251261]]]}`),
-		fmt.Sprintf(`SETCHAN D WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.92562103271484,33.40063513076968],[-111.90021514892578,33.40063513076968],[-111.90021514892578,33.42212898435788],[-111.92562103271484,33.42212898435788],[-111.92562103271484,33.40063513076968]]]}`),
+		`SETCHAN A WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.95205688476562,33.400491820565236],[-111.92630767822266,33.400491820565236],[-111.92630767822266,33.422272258866045],[-111.95205688476562,33.422272258866045],[-111.95205688476562,33.400491820565236]]]}`,
+		`SETCHAN B WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.93952560424803,33.403501285221594],[-111.92630767822266,33.403501285221594],[-111.92630767822266,33.41997983836345],[-111.93952560424803,33.41997983836345],[-111.93952560424803,33.403501285221594]]]}`,
+		`SETCHAN C WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.9255781173706,33.40342963251261],[-111.91201686859131,33.40342963251261],[-111.91201686859131,33.41994401881284],[-111.9255781173706,33.41994401881284],[-111.9255781173706,33.40342963251261]]]}`,
+		`SETCHAN D WITHIN points FENCE OBJECT {"type":"Polygon","coordinates":[[[-111.92562103271484,33.40063513076968],[-111.90021514892578,33.40063513076968],[-111.90021514892578,33.42212898435788],[-111.92562103271484,33.42212898435788],[-111.92562103271484,33.40063513076968]]]}`,
 		"SET points point POINT 33.412529053733444 -111.91909790039062",
 	} {
 		if _, err := do(bc, cmd); err != nil {

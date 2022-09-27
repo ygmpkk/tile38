@@ -11,6 +11,7 @@ import (
 
 	"github.com/tidwall/redcon"
 	"github.com/tidwall/tile38/internal/log"
+	"go.uber.org/atomic"
 )
 
 type liveBuffer struct {
@@ -21,10 +22,16 @@ type liveBuffer struct {
 	cond    *sync.Cond
 }
 
-func (s *Server) processLives() {
-	defer s.lwait.Done()
+func (s *Server) processLives(wg *sync.WaitGroup) {
+	defer wg.Done()
+	var done atomic.Bool
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
+			if done.Load() {
+				break
+			}
 			s.lcond.Broadcast()
 			time.Sleep(time.Second / 4)
 		}
@@ -32,7 +39,8 @@ func (s *Server) processLives() {
 	s.lcond.L.Lock()
 	defer s.lcond.L.Unlock()
 	for {
-		if s.stopServer.on() {
+		if s.stopServer.Load() {
+			done.Store(true)
 			return
 		}
 		for len(s.lstack) > 0 {
@@ -204,7 +212,7 @@ func (s *Server) goLive(
 					return nil // nil return is fine here
 				}
 			}
-			s.statsTotalMsgsSent.add(len(msgs))
+			s.statsTotalMsgsSent.Add(int64(len(msgs)))
 			lb.cond.L.Lock()
 
 		}

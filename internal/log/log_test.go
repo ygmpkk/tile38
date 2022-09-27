@@ -13,7 +13,7 @@ import (
 
 func TestLog(t *testing.T) {
 	f := &bytes.Buffer{}
-	LogJSON = false
+	SetLogJSON(false)
 	SetOutput(f)
 	Printf("hello %v", "everyone")
 	if !strings.HasSuffix(f.String(), "hello everyone\n") {
@@ -23,7 +23,7 @@ func TestLog(t *testing.T) {
 
 func TestLogJSON(t *testing.T) {
 
-	LogJSON = true
+	SetLogJSON(true)
 	Build("")
 
 	type tcase struct {
@@ -40,7 +40,7 @@ func TestLogJSON(t *testing.T) {
 		return func(t *testing.T) {
 			observedZapCore, observedLogs := observer.New(zap.DebugLevel)
 			Set(zap.New(observedZapCore).Sugar())
-			Level = tc.level
+			SetLevel(tc.level)
 
 			if tc.format != "" {
 				tc.fops(tc.format, tc.args)
@@ -187,8 +187,8 @@ func TestLogJSON(t *testing.T) {
 }
 
 func BenchmarkLogPrintf(t *testing.B) {
-	LogJSON = false
-	Level = 1
+	SetLogJSON(false)
+	SetLevel(1)
 	SetOutput(io.Discard)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
@@ -197,8 +197,8 @@ func BenchmarkLogPrintf(t *testing.B) {
 }
 
 func BenchmarkLogJSONPrintf(t *testing.B) {
-	LogJSON = true
-	Level = 1
+	SetLogJSON(true)
+	SetLevel(1)
 
 	ec := zap.NewProductionEncoderConfig()
 	ec.EncodeDuration = zapcore.NanosDurationEncoder

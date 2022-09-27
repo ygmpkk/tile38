@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -32,6 +31,8 @@ type Client struct {
 	name   string             // optional defined name
 	opened time.Time          // when the client was created/opened, unix nano
 	last   time.Time          // last client request/response, unix nano
+
+	closer io.Closer // used to close the connection
 }
 
 // Write ...
@@ -40,32 +41,19 @@ func (client *Client) Write(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-type byID []*Client
-
-func (arr byID) Len() int {
-	return len(arr)
-}
-func (arr byID) Less(a, b int) bool {
-	return arr[a].id < arr[b].id
-}
-func (arr byID) Swap(a, b int) {
-	arr[a], arr[b] = arr[b], arr[a]
-}
-
-func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
+// CLIENT (LIST | KILL | GETNAME | SETNAME)
+func (s *Server) cmdCLIENT(msg *Message, client *Client) (resp.Value, error) {
 	start := time.Now()
 
-	if len(msg.Args) == 1 {
-		return NOMessage, errInvalidNumberOfArguments
+	args := msg.Args
+	if len(args) == 1 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	switch strings.ToLower(msg.Args[1]) {
-	default:
-		return NOMessage, clientErrorf(
-			"Syntax error, try CLIENT (LIST | KILL | GETNAME | SETNAME)",
-		)
+
+	switch strings.ToLower(args[1]) {
 	case "list":
-		if len(msg.Args) != 2 {
-			return NOMessage, errInvalidNumberOfArguments
+		if len(args) != 2 {
+			return retrerr(errInvalidNumberOfArguments)
 		}
 		var list []*Client
 		s.connsmu.RLock()
@@ -73,7 +61,9 @@ func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 			list = append(list, cc)
 		}
 		s.connsmu.RUnlock()
-		sort.Sort(byID(list))
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].id < list[j].id
+		})
 		now := time.Now()
 		var buf []byte
 		for _, client := range list {
@@ -89,8 +79,7 @@ func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 			)
 			client.mu.Unlock()
 		}
-		switch msg.OutputType {
-		case JSON:
+		if msg.OutputType == JSON {
 			// Create a map of all key/value info fields
 			var cmap []map[string]interface{}
 			clients := strings.Split(string(buf), "\n")
@@ -110,124 +99,113 @@ func (s *Server) cmdClient(msg *Message, client *Client) (resp.Value, error) {
 				}
 			}
 
-			// Marshal the map and use the output in the JSON response
-			data, err := json.Marshal(cmap)
-			if err != nil {
-				return NOMessage, err
-			}
-			return resp.StringValue(`{"ok":true,"list":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-		case RESP:
-			return resp.BytesValue(buf), nil
-		}
-		return NOMessage, nil
-	case "getname":
-		if len(msg.Args) != 2 {
-			return NOMessage, errInvalidNumberOfArguments
-		}
-		name := ""
-		switch msg.OutputType {
-		case JSON:
-			client.mu.Lock()
-			name := client.name
-			client.mu.Unlock()
-			return resp.StringValue(`{"ok":true,"name":` +
-				jsonString(name) +
+			data, _ := json.Marshal(cmap)
+			return resp.StringValue(`{"ok":true,"list":` + string(data) +
 				`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-		case RESP:
-			return resp.StringValue(name), nil
 		}
+		return resp.BytesValue(buf), nil
+	case "getname":
+		if len(args) != 2 {
+			return retrerr(errInvalidNumberOfArguments)
+		}
+		client.mu.Lock()
+		name := client.name
+		client.mu.Unlock()
+		if msg.OutputType == JSON {
+			return resp.StringValue(`{"ok":true,"name":` + jsonString(name) +
+				`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
+		}
+		return resp.StringValue(name), nil
 	case "setname":
-		if len(msg.Args) != 3 {
-			return NOMessage, errInvalidNumberOfArguments
+		if len(args) != 3 {
+			return retrerr(errInvalidNumberOfArguments)
 		}
 		name := msg.Args[2]
 		for i := 0; i < len(name); i++ {
 			if name[i] < '!' || name[i] > '~' {
-				return NOMessage, clientErrorf(
+				return retrerr(clientErrorf(
 					"Client names cannot contain spaces, newlines or special characters.",
-				)
+				))
 			}
 		}
 		client.mu.Lock()
 		client.name = name
 		client.mu.Unlock()
-		switch msg.OutputType {
-		case JSON:
-			return resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}"), nil
-		case RESP:
-			return resp.SimpleStringValue("OK"), nil
+		if msg.OutputType == JSON {
+			return resp.StringValue(`{"ok":true,"elapsed":"` +
+				time.Since(start).String() + "\"}"), nil
 		}
+		return resp.SimpleStringValue("OK"), nil
 	case "kill":
-		if len(msg.Args) < 3 {
-			return NOMessage, errInvalidNumberOfArguments
+		if len(args) < 3 {
+			return retrerr(errInvalidNumberOfArguments)
 		}
 		var useAddr bool
 		var addr string
 		var useID bool
 		var id string
-		for i := 2; i < len(msg.Args); i++ {
-			arg := msg.Args[i]
+		for i := 2; i < len(args); i++ {
+			if useAddr || useID {
+				return retrerr(errInvalidNumberOfArguments)
+			}
+			arg := args[i]
 			if strings.Contains(arg, ":") {
 				addr = arg
 				useAddr = true
-				break
-			}
-			switch strings.ToLower(arg) {
-			default:
-				return NOMessage, clientErrorf("No such client")
-			case "addr":
-				i++
-				if i == len(msg.Args) {
-					return NOMessage, errors.New("syntax error")
+			} else {
+				switch strings.ToLower(arg) {
+				case "addr":
+					i++
+					if i == len(args) {
+						return retrerr(errInvalidNumberOfArguments)
+					}
+					addr = args[i]
+					useAddr = true
+				case "id":
+					i++
+					if i == len(args) {
+						return retrerr(errInvalidNumberOfArguments)
+					}
+					id = args[i]
+					useID = true
+				default:
+					return retrerr(clientErrorf("No such client"))
 				}
-				addr = msg.Args[i]
-				useAddr = true
-			case "id":
-				i++
-				if i == len(msg.Args) {
-					return NOMessage, errors.New("syntax error")
-				}
-				id = msg.Args[i]
-				useID = true
 			}
 		}
-		var cclose *Client
+		var closing []io.Closer
 		s.connsmu.RLock()
 		for _, cc := range s.conns {
 			if useID && fmt.Sprintf("%d", cc.id) == id {
-				cclose = cc
-				break
-			} else if useAddr && client.remoteAddr == addr {
-				cclose = cc
-				break
+				if cc.closer != nil {
+					closing = append(closing, cc.closer)
+				}
+			} else if useAddr {
+				if cc.remoteAddr == addr {
+					if cc.closer != nil {
+						closing = append(closing, cc.closer)
+					}
+				}
 			}
 		}
 		s.connsmu.RUnlock()
-		if cclose == nil {
-			return NOMessage, clientErrorf("No such client")
+		if len(closing) == 0 {
+			return retrerr(clientErrorf("No such client"))
 		}
-
-		var res resp.Value
-		switch msg.OutputType {
-		case JSON:
-			res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
-		case RESP:
-			res = resp.SimpleStringValue("OK")
+		// go func() {
+		// close the connections behind the scene
+		for _, closer := range closing {
+			closer.Close()
 		}
-
-		client.conn.Close()
-		// closing self, return response now
-		// NOTE: This is the only exception where we do convert response to a string
-		var outBytes []byte
-		switch msg.OutputType {
-		case JSON:
-			outBytes = res.Bytes()
-		case RESP:
-			outBytes, _ = res.MarshalRESP()
+		// }()
+		if msg.OutputType == JSON {
+			return resp.StringValue(`{"ok":true,"elapsed":"` +
+				time.Since(start).String() + "\"}"), nil
 		}
-		cclose.conn.Write(outBytes)
-		cclose.conn.Close()
-		return res, nil
+		return resp.SimpleStringValue("OK"), nil
+	default:
+		return retrerr(clientErrorf(
+			"Syntax error, try CLIENT (LIST | KILL | GETNAME | SETNAME)",
+		))
 	}
-	return NOMessage, errors.New("invalid output type")
 }

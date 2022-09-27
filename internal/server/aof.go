@@ -41,10 +41,7 @@ func (s *Server) loadAOF() (err error) {
 		ps := float64(count) / (float64(d) / float64(time.Second))
 		suf := []string{"bytes/s", "KB/s", "MB/s", "GB/s", "TB/s"}
 		bps := float64(fi.Size()) / (float64(d) / float64(time.Second))
-		for i := 0; bps > 1024; i++ {
-			if len(suf) == 1 {
-				break
-			}
+		for i := 0; bps > 1024 && len(suf) > 1; i++ {
 			bps /= 1024
 			suf = suf[1:]
 		}
@@ -123,11 +120,7 @@ func commandErrIsFatal(err error) bool {
 	// FSET (and other writable commands) may return errors that we need
 	// to ignore during the loading process. These errors may occur (though unlikely)
 	// due to the aof rewrite operation.
-	switch err {
-	case errKeyNotFound, errIDNotFound:
-		return false
-	}
-	return true
+	return !(err == errKeyNotFound || err == errIDNotFound)
 }
 
 // flushAOF flushes all aof buffer data to disk. Set sync to true to sync the
@@ -406,73 +399,80 @@ func (s liveAOFSwitches) Error() string {
 	return goingLive
 }
 
-func (s *Server) cmdAOFMD5(msg *Message) (res resp.Value, err error) {
+// AOFMD5 pos size
+func (s *Server) cmdAOFMD5(msg *Message) (resp.Value, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ok bool
-	var spos, ssize string
 
-	if vs, spos, ok = tokenval(vs); !ok || spos == "" {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 3 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	if vs, ssize, ok = tokenval(vs); !ok || ssize == "" {
-		return NOMessage, errInvalidNumberOfArguments
-	}
-	if len(vs) != 0 {
-		return NOMessage, errInvalidNumberOfArguments
-	}
-	pos, err := strconv.ParseInt(spos, 10, 64)
+	pos, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil || pos < 0 {
-		return NOMessage, errInvalidArgument(spos)
+		return retrerr(errInvalidArgument(args[1]))
 	}
-	size, err := strconv.ParseInt(ssize, 10, 64)
+	size, err := strconv.ParseInt(args[2], 10, 64)
 	if err != nil || size < 0 {
-		return NOMessage, errInvalidArgument(ssize)
+		return retrerr(errInvalidArgument(args[2]))
 	}
+
+	// >> Operation
+
 	sum, err := s.checksum(pos, size)
 	if err != nil {
-		return NOMessage, err
+		return retrerr(err)
 	}
-	switch msg.OutputType {
-	case JSON:
-		res = resp.StringValue(
-			fmt.Sprintf(`{"ok":true,"md5":"%s","elapsed":"%s"}`, sum, time.Since(start)))
-	case RESP:
-		res = resp.SimpleStringValue(sum)
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.StringValue(fmt.Sprintf(
+			`{"ok":true,"md5":"%s","elapsed":"%s"}`,
+			sum, time.Since(start))), nil
 	}
-	return res, nil
+	return resp.SimpleStringValue(sum), nil
 }
 
-func (s *Server) cmdAOF(msg *Message) (res resp.Value, err error) {
+// AOF pos
+func (s *Server) cmdAOF(msg *Message) (resp.Value, error) {
 	if s.aof == nil {
-		return NOMessage, errors.New("aof disabled")
+		return retrerr(errors.New("aof disabled"))
 	}
-	vs := msg.Args[1:]
 
-	var ok bool
-	var spos string
-	if vs, spos, ok = tokenval(vs); !ok || spos == "" {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 2 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
-	if len(vs) != 0 {
-		return NOMessage, errInvalidNumberOfArguments
-	}
-	pos, err := strconv.ParseInt(spos, 10, 64)
+
+	pos, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil || pos < 0 {
-		return NOMessage, errInvalidArgument(spos)
+		return retrerr(errInvalidArgument(args[1]))
 	}
+
+	// >> Operation
+
 	f, err := os.Open(s.aof.Name())
 	if err != nil {
-		return NOMessage, err
+		return retrerr(err)
 	}
 	defer f.Close()
+
 	n, err := f.Seek(0, 2)
 	if err != nil {
-		return NOMessage, err
+		return retrerr(err)
 	}
+
 	if n < pos {
-		return NOMessage, errors.New("pos is too big, must be less that the aof_size of leader")
+		return retrerr(errors.New(
+			"pos is too big, must be less that the aof_size of leader"))
 	}
+
+	// >> Response
+
 	var ls liveAOFSwitches
 	ls.pos = pos
 	return NOMessage, ls
@@ -485,8 +485,6 @@ func (s *Server) liveAOF(pos int64, conn net.Conn, rd *PipelineReader, msg *Mess
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
 	s.mu.Lock()
 	s.aofconnM[conn] = f
 	s.mu.Unlock()
@@ -495,91 +493,42 @@ func (s *Server) liveAOF(pos int64, conn net.Conn, rd *PipelineReader, msg *Mess
 		delete(s.aofconnM, conn)
 		s.mu.Unlock()
 		conn.Close()
+		f.Close()
 	}()
 
 	if _, err := conn.Write([]byte("+OK\r\n")); err != nil {
 		return err
 	}
-
 	if _, err := f.Seek(pos, 0); err != nil {
 		return err
 	}
-	cond := sync.NewCond(&sync.Mutex{})
-	var mustQuit bool
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		defer func() {
-			cond.L.Lock()
-			mustQuit = true
-			cond.Broadcast()
-			cond.L.Unlock()
+			f.Close()
+			conn.Close()
+			wg.Done()
 		}()
-		for {
-			vs, err := rd.ReadMessages()
-			if err != nil {
-				if err != io.EOF {
-					log.Error(err)
-				}
-				return
-			}
-			for _, v := range vs {
-				switch v.Command() {
-				default:
-					log.Error("received a live command that was not QUIT")
-					return
-				case "quit", "":
-					return
-				}
-			}
-		}
+		// Any incoming message should end the connection
+		rd.ReadMessages()
 	}()
-	go func() {
-		defer func() {
-			cond.L.Lock()
-			mustQuit = true
-			cond.Broadcast()
-			cond.L.Unlock()
-		}()
-		err := func() error {
-			_, err := io.Copy(conn, f)
-			if err != nil {
+	_, err = io.Copy(conn, f)
+	if err != nil {
+		return err
+	}
+	b := make([]byte, 4096*2)
+	for {
+		n, err := f.Read(b)
+		if n > 0 {
+			if _, err := conn.Write(b[:n]); err != nil {
 				return err
 			}
-
-			b := make([]byte, 4096)
-			// The reader needs to be OK with the eof not
-			for {
-				n, err := f.Read(b)
-				if n > 0 {
-					if _, err := conn.Write(b[:n]); err != nil {
-						return err
-					}
-				}
-				if err != io.EOF {
-					if err != nil {
-						return err
-					}
-					continue
-				}
-				s.fcond.L.Lock()
-				s.fcond.Wait()
-				s.fcond.L.Unlock()
-			}
-		}()
-		if err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") &&
-				!strings.Contains(err.Error(), "bad file descriptor") {
-				log.Error(err)
-			}
-			return
 		}
-	}()
-	for {
-		cond.L.Lock()
-		if mustQuit {
-			cond.L.Unlock()
-			return nil
+		if err == io.EOF {
+			time.Sleep(time.Second / 4)
+		} else if err != nil {
+			return err
 		}
-		cond.Wait()
-		cond.L.Unlock()
 	}
 }

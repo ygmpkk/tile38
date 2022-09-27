@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tidwall/resp"
-	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/log"
 )
 
@@ -84,10 +83,11 @@ func (s *Server) cmdFollow(msg *Message) (res resp.Value, err error) {
 	}
 	s.config.write(false)
 	if update {
-		s.followc.add(1)
+		s.followc.Add(1)
 		if s.config.followHost() != "" {
 			log.Infof("following new host '%s' '%s'.", host, sport)
-			go s.follow(s.config.followHost(), s.config.followPort(), s.followc.get())
+			go s.follow(s.config.followHost(), s.config.followPort(),
+				int(s.followc.Load()))
 		} else {
 			log.Infof("following no one")
 		}
@@ -153,7 +153,7 @@ func doServer(conn *RESPConn) (map[string]string, error) {
 func (s *Server) followHandleCommand(args []string, followc int, w io.Writer) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.followc.get() != followc {
+	if int(s.followc.Load()) != followc {
 		return s.aofsz, errNoLongerFollowing
 	}
 	msg := &Message{Args: args}
@@ -188,7 +188,7 @@ func (s *Server) followDoLeaderAuth(conn *RESPConn, auth string) error {
 }
 
 func (s *Server) followStep(host string, port int, followc int) error {
-	if s.followc.get() != followc {
+	if int(s.followc.Load()) != followc {
 		return errNoLongerFollowing
 	}
 	s.mu.Lock()
@@ -240,7 +240,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	if v.String() != "OK" {
 		return errors.New("invalid response to replconf request")
 	}
-	if core.ShowDebugMessages {
+	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":replconf")
 	}
 
@@ -254,7 +254,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	if v.String() != "OK" {
 		return errors.New("invalid response to aof live request")
 	}
-	if core.ShowDebugMessages {
+	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":read aof")
 	}
 

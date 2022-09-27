@@ -23,6 +23,10 @@ func (conn *LocalConn) Expired() bool {
 	return false
 }
 
+// ExpireNow forces the connection to expire
+func (conn *LocalConn) ExpireNow() {
+}
+
 // Send sends a message
 func (conn *LocalConn) Send(msg string) error {
 	conn.publisher.Publish(conn.ep.Local.Channel, msg)

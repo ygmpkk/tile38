@@ -141,10 +141,31 @@ Developer Options:
 	}
 
 	var (
-		devMode             bool
 		nohup               bool
 		showEvioDisabled    bool
 		showThreadsDisabled bool
+	)
+
+	var (
+		// use to be in core/options.go
+
+		// DevMode puts application in to dev mode
+		devMode = false
+
+		// ShowDebugMessages allows for log.Debug to print to console.
+		showDebugMessages = false
+
+		// ProtectedMode forces Tile38 to default in protected mode.
+		protectedMode = "no"
+
+		// AppendOnly allows for disabling the appendonly file.
+		appendOnly = true
+
+		// AppendFileName allows for custom appendonly file path
+		appendFileName = ""
+
+		// QueueFileName allows for custom queue.db file path
+		queueFileName = ""
 	)
 
 	// parse non standard args.
@@ -163,10 +184,10 @@ Developer Options:
 			if i < len(os.Args) {
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
-					core.ProtectedMode = "no"
+					protectedMode = "no"
 					continue
 				case "yes":
-					core.ProtectedMode = "yes"
+					protectedMode = "yes"
 					continue
 				}
 			}
@@ -183,10 +204,10 @@ Developer Options:
 			if i < len(os.Args) {
 				switch strings.ToLower(os.Args[i]) {
 				case "no":
-					core.AppendOnly = false
+					appendOnly = false
 					continue
 				case "yes":
-					core.AppendOnly = true
+					appendOnly = true
 					continue
 				}
 			}
@@ -198,14 +219,14 @@ Developer Options:
 				fmt.Fprintf(os.Stderr, "appendfilename must have a value\n")
 				os.Exit(1)
 			}
-			core.AppendFileName = os.Args[i]
+			appendFileName = os.Args[i]
 		case "--queuefilename", "-queuefilename":
 			i++
 			if i == len(os.Args) || os.Args[i] == "" {
 				fmt.Fprintf(os.Stderr, "queuefilename must have a value\n")
 				os.Exit(1)
 			}
-			core.QueueFileName = os.Args[i]
+			queueFileName = os.Args[i]
 		case "--http-transport", "-http-transport":
 			i++
 			if i < len(os.Args) {
@@ -281,7 +302,7 @@ Developer Options:
 	flag.Parse()
 
 	if logEncoding == "json" {
-		log.LogJSON = true
+		log.SetLogJSON(true)
 		data, _ := os.ReadFile(filepath.Join(dir, "config"))
 		if gjson.GetBytes(data, "logconfig.encoding").String() == "json" {
 			c := gjson.GetBytes(data, "logconfig").String()
@@ -299,17 +320,16 @@ Developer Options:
 	log.SetOutput(logw)
 
 	if quiet {
-		log.Level = 0
+		log.SetLevel(0)
 	} else if veryVerbose {
-		log.Level = 3
+		log.SetLevel(3)
 	} else if verbose {
-		log.Level = 2
+		log.SetLevel(2)
 	} else {
-		log.Level = 1
+		log.SetLevel(1)
 	}
 
-	core.DevMode = devMode
-	core.ShowDebugMessages = veryVerbose
+	showDebugMessages = veryVerbose
 
 	hostd := ""
 	if host != "" {
@@ -425,7 +445,7 @@ Developer Options:
 		saddr = fmt.Sprintf("Port: %d", port)
 	}
 
-	if log.LogJSON {
+	if log.LogJSON() {
 		log.Printf(`Tile38 %s%s %d bit (%s/%s) %s%s, PID: %d. Visit tile38.com/sponsor to support the project`,
 			core.Version, gitsha, strconv.IntSize, runtime.GOARCH, runtime.GOOS, hostd, saddr, os.Getpid())
 	} else {
@@ -449,12 +469,18 @@ Developer Options:
 		log.Warnf("thread flag is deprecated use GOMAXPROCS to set number of threads instead")
 	}
 	opts := server.Options{
-		Host:           host,
-		Port:           port,
-		Dir:            dir,
-		UseHTTP:        httpTransport,
-		MetricsAddr:    *metricsAddr,
-		UnixSocketPath: unixSocket,
+		Host:              host,
+		Port:              port,
+		Dir:               dir,
+		UseHTTP:           httpTransport,
+		MetricsAddr:       *metricsAddr,
+		UnixSocketPath:    unixSocket,
+		DevMode:           devMode,
+		ShowDebugMessages: showDebugMessages,
+		ProtectedMode:     protectedMode,
+		AppendOnly:        appendOnly,
+		AppendFileName:    appendFileName,
+		QueueFileName:     queueFileName,
 	}
 	if err := server.Serve(opts); err != nil {
 		log.Fatal(err)

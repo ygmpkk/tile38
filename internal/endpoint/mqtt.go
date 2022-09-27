@@ -40,12 +40,19 @@ func (conn *MQTTConn) Expired() bool {
 	return conn.ex
 }
 
+// ExpireNow forces the connection to expire
+func (conn *MQTTConn) ExpireNow() {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	conn.close()
+	conn.ex = true
+}
+
 func (conn *MQTTConn) close() {
 	if conn.conn != nil {
 		if conn.conn.IsConnected() {
 			conn.conn.Disconnect(250)
 		}
-
 		conn.conn = nil
 	}
 }

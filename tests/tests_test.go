@@ -5,11 +5,16 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"runtime"
+	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/tidwall/limiter"
+	"go.uber.org/atomic"
 )
 
 const (
@@ -26,11 +31,12 @@ const (
 	white   = "\x1b[37m"
 )
 
-func TestAll(t *testing.T) {
-	mockCleanup(false)
-	defer mockCleanup(false)
+func TestIntegration(t *testing.T) {
 
-	ch := make(chan os.Signal)
+	mockCleanup(true)
+	defer mockCleanup(true)
+
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
@@ -38,62 +44,190 @@ func TestAll(t *testing.T) {
 		os.Exit(1)
 	}()
 
-	mc, err := mockOpenServer(false)
-	if err != nil {
-		t.Fatal(err)
+	regTestGroup("keys", subTestKeys)
+	regTestGroup("json", subTestJSON)
+	regTestGroup("search", subTestSearch)
+	regTestGroup("testcmd", subTestTestCmd)
+	regTestGroup("client", subTestClient)
+	regTestGroup("scripts", subTestScripts)
+	regTestGroup("fence", subTestFence)
+	regTestGroup("info", subTestInfo)
+	regTestGroup("timeouts", subTestTimeout)
+	regTestGroup("metrics", subTestMetrics)
+	regTestGroup("follower", subTestFollower)
+	regTestGroup("aof", subTestAOF)
+	regTestGroup("monitor", subTestMonitor)
+	runTestGroups(t)
+}
+
+var allGroups []*testGroup
+
+func runTestGroups(t *testing.T) {
+	limit := runtime.NumCPU()
+	if limit > 16 {
+		limit = 16
 	}
-	defer mc.Close()
-	runSubTest(t, "keys", mc, subTestKeys)
-	runSubTest(t, "json", mc, subTestJSON)
-	runSubTest(t, "search", mc, subTestSearch)
-	runSubTest(t, "testcmd", mc, subTestTestCmd)
-	runSubTest(t, "fence", mc, subTestFence)
-	runSubTest(t, "scripts", mc, subTestScripts)
-	runSubTest(t, "info", mc, subTestInfo)
-	runSubTest(t, "client", mc, subTestClient)
-	runSubTest(t, "timeouts", mc, subTestTimeout)
-	runSubTest(t, "metrics", mc, subTestMetrics)
-}
+	l := limiter.New(limit)
 
-func runSubTest(t *testing.T, name string, mc *mockServer, test func(t *testing.T, mc *mockServer)) {
-	t.Run(name, func(t *testing.T) {
-		fmt.Printf(bright+"Testing %s\n"+clear, name)
-		test(t, mc)
-	})
-}
-
-func runStep(t *testing.T, mc *mockServer, name string, step func(mc *mockServer) error) {
-	t.Helper()
-	t.Run(name, func(t *testing.T) {
-		t.Helper()
-		if err := func() error {
-			// reset the current server
-			mc.ResetConn()
-			defer mc.ResetConn()
-			// clear the database so the test is consistent
-			if err := mc.DoBatch([][]interface{}{
-				{"OUTPUT", "resp"}, {"OK"},
-				{"FLUSHDB"}, {"OK"},
-			}); err != nil {
-				return err
-			}
-			if err := step(mc); err != nil {
-				return err
-			}
-			return nil
-		}(); err != nil {
-			fmt.Printf("["+red+"fail"+clear+"]: %s\n", name)
-			t.Fatal(err)
+	// Initialize all stores as "skipped", but they'll be unset if the test is
+	// not actually skipped.
+	for _, g := range allGroups {
+		for _, s := range g.subs {
+			s.skipped.Store(true)
 		}
-		fmt.Printf("["+green+"ok"+clear+"]: %s\n", name)
-	})
+	}
+	for _, g := range allGroups {
+		func(g *testGroup) {
+			t.Run(g.name, func(t *testing.T) {
+				for _, s := range g.subs {
+					func(s *testGroupSub) {
+						t.Run(s.name, func(t *testing.T) {
+							s.skipped.Store(false)
+							var wg sync.WaitGroup
+							wg.Add(1)
+							var err error
+							go func() {
+								l.Begin()
+								defer func() {
+									l.End()
+									wg.Done()
+								}()
+								err = s.run()
+							}()
+							if false {
+								t.Parallel()
+								t.Run("bg", func(t *testing.T) {
+									wg.Wait()
+									if err != nil {
+										t.Fatal(err)
+									}
+								})
+							}
+						})
+					}(s)
+				}
+			})
+		}(g)
+	}
+
+	done := make(chan bool)
+	go func() {
+		defer func() { done <- true }()
+		for {
+			finished := true
+			for _, g := range allGroups {
+				skipped := true
+				for _, s := range g.subs {
+					if !s.skipped.Load() {
+						skipped = false
+						break
+					}
+				}
+				if !skipped && !g.printed.Load() {
+					fmt.Printf(bright+"Testing %s\n"+clear, g.name)
+					g.printed.Store(true)
+				}
+				const frtmp = "[" + magenta + "  " + clear + "] %s (running) "
+				for _, s := range g.subs {
+					if !s.skipped.Load() && !s.printedName.Load() {
+						fmt.Printf(frtmp, s.name)
+						s.printedName.Store(true)
+					}
+					if s.done.Load() && !s.printedResult.Load() {
+						fmt.Printf("\r")
+						msg := fmt.Sprintf(frtmp, s.name)
+						fmt.Print(strings.Repeat(" ", len(msg)))
+						fmt.Printf("\r")
+						if s.err != nil {
+							fmt.Printf("["+red+"fail"+clear+"] %s\n", s.name)
+						} else {
+							fmt.Printf("["+green+"ok"+clear+"] %s\n", s.name)
+						}
+						s.printedResult.Store(true)
+					}
+					if !s.skipped.Load() && !s.done.Load() {
+						finished = false
+						break
+					}
+				}
+				if !finished {
+					break
+				}
+			}
+			if finished {
+				break
+			}
+			time.Sleep(time.Second / 4)
+		}
+	}()
+	<-done
+	var fail bool
+	for _, g := range allGroups {
+		for _, s := range g.subs {
+			if s.err != nil {
+				t.Errorf("%s/%s/%s\n%s", t.Name(), g.name, s.name, s.err)
+				fail = true
+			}
+		}
+	}
+	if fail {
+		t.Fail()
+	}
+
+}
+
+type testGroup struct {
+	name    string
+	subs    []*testGroupSub
+	printed atomic.Bool
+}
+
+type testGroupSub struct {
+	g             *testGroup
+	name          string
+	fn            func(mc *mockServer) error
+	err           error
+	skipped       atomic.Bool
+	done          atomic.Bool
+	printedName   atomic.Bool
+	printedResult atomic.Bool
+}
+
+func regTestGroup(name string, fn func(g *testGroup)) {
+	g := &testGroup{name: name}
+	allGroups = append(allGroups, g)
+	fn(g)
+}
+
+func (g *testGroup) regSubTest(name string, fn func(mc *mockServer) error) {
+	s := &testGroupSub{g: g, name: name, fn: fn}
+	g.subs = append(g.subs, s)
+}
+
+func (s *testGroupSub) run() (err error) {
+	// This all happens in a background routine.
+	defer func() {
+		s.err = err
+		s.done.Store(true)
+	}()
+	return func() error {
+		mc, err := mockOpenServer(MockServerOptions{
+			Silent:  true,
+			Metrics: true,
+		})
+		if err != nil {
+			return err
+		}
+		defer mc.Close()
+		return s.fn(mc)
+	}()
 }
 
 func BenchmarkAll(b *testing.B) {
 	mockCleanup(true)
 	defer mockCleanup(true)
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
@@ -101,7 +235,9 @@ func BenchmarkAll(b *testing.B) {
 		os.Exit(1)
 	}()
 
-	mc, err := mockOpenServer(true)
+	mc, err := mockOpenServer(MockServerOptions{
+		Silent: true, Metrics: true,
+	})
 	if err != nil {
 		b.Fatal(err)
 	}

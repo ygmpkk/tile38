@@ -50,7 +50,7 @@ func (s *Server) parseArea(ovs []string, doClip bool) (vs []string, o geojson.Ob
 		o = geojson.NewPoint(geometry.Point{X: lon, Y: lat})
 	case "sector":
 		if doClip {
-			err = errInvalidArgument("cannot clip with " + ltyp)
+			err = fmt.Errorf("invalid clip type '%s'", typ)
 			return
 		}
 		var slat, slon, smeters, sb1, sb2 string
@@ -288,8 +288,15 @@ func (s *Server) parseArea(ovs []string, doClip bool) (vs []string, o geojson.Ob
 	return
 }
 
-func (s *Server) cmdTest(msg *Message) (res resp.Value, err error) {
+// TEST (POINT lat lon)|(GET key id)|(BOUNDS minlat minlon maxlat maxlon)|
+// (OBJECT geojson)|(CIRCLE lat lon meters)|(TILE x y z)|(QUADKEY quadkey)|
+// (HASH geohash) INTERSECTS|WITHIN [CLIP] (POINT lat lon)|(GET key id)|
+// (BOUNDS minlat minlon maxlat maxlon)|(OBJECT geojson)|
+// (CIRCLE lat lon meters)|(TILE x y z)|(QUADKEY quadkey)|(HASH geohash)|
+// (SECTOR lat lon meters bearing1 bearing2)
+func (s *Server) cmdTEST(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
+
 	vs := msg.Args[1:]
 
 	var ok bool
@@ -348,8 +355,7 @@ func (s *Server) cmdTest(msg *Message) (res resp.Value, err error) {
 			}
 		}
 	}
-	switch msg.OutputType {
-	case JSON:
+	if msg.OutputType == JSON {
 		var buf bytes.Buffer
 		buf.WriteString(`{"ok":true`)
 		if result != 0 {
@@ -362,13 +368,11 @@ func (s *Server) cmdTest(msg *Message) (res resp.Value, err error) {
 		}
 		buf.WriteString(`,"elapsed":"` + time.Since(start).String() + "\"}")
 		return resp.StringValue(buf.String()), nil
-	case RESP:
-		if clipped != nil {
-			return resp.ArrayValue([]resp.Value{
-				resp.IntegerValue(result),
-				resp.StringValue(clipped.JSON())}), nil
-		}
-		return resp.IntegerValue(result), nil
 	}
-	return NOMessage, nil
+	if clipped != nil {
+		return resp.ArrayValue([]resp.Value{
+			resp.IntegerValue(result),
+			resp.StringValue(clipped.JSON())}), nil
+	}
+	return resp.IntegerValue(result), nil
 }

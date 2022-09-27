@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/tidwall/btree"
-	"github.com/tidwall/tile38/core"
 	"github.com/tidwall/tile38/internal/collection"
 	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/log"
@@ -20,12 +19,9 @@ const maxids = 32
 const maxchunk = 4 * 1024 * 1024
 
 func (s *Server) aofshrink() {
-	if s.aof == nil {
-		return
-	}
 	start := time.Now()
 	s.mu.Lock()
-	if s.shrinking {
+	if s.aof == nil || s.shrinking {
 		s.mu.Unlock()
 		return
 	}
@@ -42,7 +38,7 @@ func (s *Server) aofshrink() {
 	}()
 
 	err := func() error {
-		f, err := os.Create(core.AppendFileName + "-shrink")
+		f, err := os.Create(s.opts.AppendFileName + "-shrink")
 		if err != nil {
 			return err
 		}
@@ -279,13 +275,13 @@ func (s *Server) aofshrink() {
 			if err := f.Close(); err != nil {
 				log.Fatalf("shrink new aof close fatal operation: %v", err)
 			}
-			if err := os.Rename(core.AppendFileName, core.AppendFileName+"-bak"); err != nil {
+			if err := os.Rename(s.opts.AppendFileName, s.opts.AppendFileName+"-bak"); err != nil {
 				log.Fatalf("shrink backup fatal operation: %v", err)
 			}
-			if err := os.Rename(core.AppendFileName+"-shrink", core.AppendFileName); err != nil {
+			if err := os.Rename(s.opts.AppendFileName+"-shrink", s.opts.AppendFileName); err != nil {
 				log.Fatalf("shrink rename fatal operation: %v", err)
 			}
-			s.aof, err = os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
+			s.aof, err = os.OpenFile(s.opts.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 			if err != nil {
 				log.Fatalf("shrink openfile fatal operation: %v", err)
 			}
@@ -296,7 +292,7 @@ func (s *Server) aofshrink() {
 			}
 			s.aofsz = int(n)
 
-			os.Remove(core.AppendFileName + "-bak") // ignore error
+			os.Remove(s.opts.AppendFileName + "-bak") // ignore error
 
 			return nil
 		}()

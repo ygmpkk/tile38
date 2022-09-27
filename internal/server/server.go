@@ -80,21 +80,24 @@ type Server struct {
 	config  *Config
 	epc     *endpoint.Manager
 
+	lnmu sync.Mutex
+	ln   net.Listener // server listener
+
 	// env opts
 	geomParseOpts geojson.ParseOptions
 	geomIndexOpts geometry.IndexOptions
 	http500Errors bool
 
 	// atomics
-	followc            aint // counter increases when follow property changes
-	statsTotalConns    aint // counter for total connections
-	statsTotalCommands aint // counter for total commands
-	statsTotalMsgsSent aint // counter for total sent webhook messages
-	statsExpired       aint // item expiration counter
-	lastShrinkDuration aint
-	stopServer         abool
-	outOfMemory        abool
-	loadedAndReady     abool // server is loaded and ready for commands
+	followc            atomic.Int64 // counter when follow property changes
+	statsTotalConns    atomic.Int64 // counter for total connections
+	statsTotalCommands atomic.Int64 // counter for total commands
+	statsTotalMsgsSent atomic.Int64 // counter for total sent webhook messages
+	statsExpired       atomic.Int64 // item expiration counter
+	lastShrinkDuration atomic.Int64
+	stopServer         atomic.Bool
+	outOfMemory        atomic.Bool
+	loadedAndReady     atomic.Bool // server is loaded and ready for commands
 
 	connsmu sync.RWMutex
 	conns   map[int]*Client
@@ -114,7 +117,6 @@ type Server struct {
 	lstack       []*commandDetails
 	lives        map[*liveBuffer]bool
 	lcond        *sync.Cond
-	lwait        sync.WaitGroup
 	fcup         bool         // follow caught up
 	fcuponce     bool         // follow caught up once
 	shrinking    bool         // aof shrinking flag
@@ -135,6 +137,8 @@ type Server struct {
 
 	monconnsMu sync.RWMutex
 	monconns   map[net.Conn]bool // monitor connections
+
+	opts Options
 }
 
 // Options for Serve()
@@ -145,18 +149,51 @@ type Options struct {
 	UseHTTP        bool
 	MetricsAddr    string
 	UnixSocketPath string // path for unix socket
+
+	// DevMode puts application in to dev mode
+	DevMode bool
+
+	// ShowDebugMessages allows for log.Debug to print to console.
+	ShowDebugMessages bool
+
+	// ProtectedMode forces Tile38 to default in protected mode.
+	ProtectedMode string
+
+	// AppendOnly allows for disabling the appendonly file.
+	AppendOnly bool
+
+	// AppendFileName allows for custom appendonly file path
+	AppendFileName string
+
+	// QueueFileName allows for custom queue.db file path
+	QueueFileName string
+
+	// Shutdown allows for shutting down the server.
+	Shutdown <-chan bool
 }
 
 // Serve starts a new tile38 server
 func Serve(opts Options) error {
-	if core.AppendFileName == "" {
-		core.AppendFileName = path.Join(opts.Dir, "appendonly.aof")
+	if opts.AppendFileName == "" {
+		opts.AppendFileName = path.Join(opts.Dir, "appendonly.aof")
 	}
-	if core.QueueFileName == "" {
-		core.QueueFileName = path.Join(opts.Dir, "queue.db")
+	if opts.QueueFileName == "" {
+		opts.QueueFileName = path.Join(opts.Dir, "queue.db")
+	}
+	if opts.ProtectedMode == "" {
+		opts.ProtectedMode = "no"
 	}
 
 	log.Infof("Server started, Tile38 version %s, git %s", core.Version, core.GitSHA)
+	defer func() {
+		log.Warn("Server has shutdown, bye now")
+		if false {
+			// prints the stack, looking for running goroutines.
+			buf := make([]byte, 10000)
+			n := runtime.Stack(buf, true)
+			println(string(buf[:n]))
+		}
+	}()
 
 	// Initialize the s
 	s := &Server{
@@ -183,9 +220,11 @@ func Serve(opts Options) error {
 		groupHooks:   btree.NewNonConcurrent(byGroupHook),
 		groupObjects: btree.NewNonConcurrent(byGroupObject),
 		hookExpires:  btree.NewNonConcurrent(byHookExpires),
+		opts:         opts,
 	}
 
 	s.epc = endpoint.NewManager(s)
+	defer s.epc.Shutdown()
 	s.luascripts = s.newScriptMap()
 	s.luapool = s.newPool()
 	defer s.luapool.Shutdown()
@@ -255,8 +294,25 @@ func Serve(opts Options) error {
 		nerr <- s.netServe()
 	}()
 
+	go func() {
+		<-opts.Shutdown
+		s.stopServer.Store(true)
+		log.Warnf("Shutting down...")
+		s.lnmu.Lock()
+		ln := s.ln
+		s.ln = nil
+		s.lnmu.Unlock()
+		if ln != nil {
+			ln.Close()
+		}
+		for conn, f := range s.aofconnM {
+			conn.Close()
+			f.Close()
+		}
+	}()
+
 	// Load the queue before the aof
-	qdb, err := buntdb.Open(core.QueueFileName)
+	qdb, err := buntdb.Open(opts.QueueFileName)
 	if err != nil {
 		return err
 	}
@@ -284,8 +340,8 @@ func Serve(opts Options) error {
 	if err := s.migrateAOF(); err != nil {
 		return err
 	}
-	if core.AppendOnly {
-		f, err := os.OpenFile(core.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
+	if opts.AppendOnly {
+		f, err := os.OpenFile(opts.AppendFileName, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			return err
 		}
@@ -300,41 +356,69 @@ func Serve(opts Options) error {
 	}
 
 	// Start background routines
-	if s.config.followHost() != "" {
-		go s.follow(s.config.followHost(), s.config.followPort(),
-			s.followc.get())
-	}
+	var bgwg sync.WaitGroup
 
-	if opts.MetricsAddr != "" {
-		log.Infof("Listening for metrics at: %s", opts.MetricsAddr)
+	if s.config.followHost() != "" {
+		bgwg.Add(1)
 		go func() {
-			http.HandleFunc("/", s.MetricsIndexHandler)
-			http.HandleFunc("/metrics", s.MetricsHandler)
-			log.Fatal(http.ListenAndServe(opts.MetricsAddr, nil))
+			defer bgwg.Done()
+			s.follow(s.config.followHost(), s.config.followPort(),
+				int(s.followc.Load()))
 		}()
 	}
 
-	s.lwait.Add(1)
-	go s.processLives()
-	go s.watchOutOfMemory()
-	go s.watchLuaStatePool()
-	go s.watchAutoGC()
-	go s.backgroundExpiring()
-	go s.backgroundSyncAOF()
+	var mln net.Listener
+	if opts.MetricsAddr != "" {
+		log.Infof("Listening for metrics at: %s", opts.MetricsAddr)
+		mln, err = net.Listen("tcp", opts.MetricsAddr)
+		if err != nil {
+			return err
+		}
+		bgwg.Add(1)
+		go func() {
+			defer bgwg.Done()
+			smux := http.NewServeMux()
+			smux.HandleFunc("/", s.MetricsIndexHandler)
+			smux.HandleFunc("/metrics", s.MetricsHandler)
+			err := http.Serve(mln, smux)
+			if err != nil {
+				if !s.stopServer.Load() {
+					log.Fatalf("metrics server: %s", err)
+				}
+			}
+		}()
+	}
+
+	bgwg.Add(1)
+	go s.processLives(&bgwg)
+	bgwg.Add(1)
+	go s.watchOutOfMemory(&bgwg)
+	bgwg.Add(1)
+	go s.watchLuaStatePool(&bgwg)
+	bgwg.Add(1)
+	go s.watchAutoGC(&bgwg)
+	bgwg.Add(1)
+	go s.backgroundExpiring(&bgwg)
+	bgwg.Add(1)
+	go s.backgroundSyncAOF(&bgwg)
 	defer func() {
+		log.Debug("Stopping background routines")
 		// Stop background routines
-		s.followc.add(1) // this will force any follow communication to die
-		s.stopServer.set(true)
-		s.lwait.Wait()
+		s.followc.Add(1) // this will force any follow communication to die
+		s.stopServer.Store(true)
+		if mln != nil {
+			mln.Close() // Stop the metrics server
+		}
+		bgwg.Wait()
 	}()
 
 	// Server is now loaded and ready. Wait for network error messages.
-	s.loadedAndReady.set(true)
+	s.loadedAndReady.Store(true)
 	return <-nerr
 }
 
 func (s *Server) isProtected() bool {
-	if core.ProtectedMode == "no" {
+	if s.opts.ProtectedMode == "no" {
 		// --protected-mode no
 		return false
 	}
@@ -360,28 +444,52 @@ func (s *Server) netServe() error {
 	if err != nil {
 		return err
 	}
-	defer ln.Close()
+	s.lnmu.Lock()
+	s.ln = ln
+	s.lnmu.Unlock()
+
+	var wg sync.WaitGroup
+	defer func() {
+		log.Debug("Closing client connections...")
+		s.connsmu.RLock()
+		for _, c := range s.conns {
+			c.closer.Close()
+		}
+		s.connsmu.RUnlock()
+		wg.Wait()
+		ln.Close()
+		log.Debug("Client connection closed")
+	}()
+
 	log.Infof("Ready to accept connections at %s", ln.Addr())
 	var clientID int64
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			return err
+			if s.stopServer.Load() {
+				return nil
+			}
+			log.Warn(err)
+			time.Sleep(time.Second / 5)
+			continue
 		}
-
+		wg.Add(1)
 		go func(conn net.Conn) {
+			defer wg.Done()
+
 			// open connection
 			// create the client
 			client := new(Client)
 			client.id = int(atomic.AddInt64(&clientID, 1))
 			client.opened = time.Now()
 			client.remoteAddr = conn.RemoteAddr().String()
+			client.closer = conn
 
 			// add client to server map
 			s.connsmu.Lock()
 			s.conns[client.id] = client
 			s.connsmu.Unlock()
-			s.statsTotalConns.add(1)
+			s.statsTotalConns.Add(1)
 
 			// set the client keep-alive, if needed
 			if s.config.keepAlive() > 0 {
@@ -460,7 +568,7 @@ func (s *Server) netServe() error {
 						client.mu.Unlock()
 
 						// update total command count
-						s.statsTotalCommands.add(1)
+						s.statsTotalCommands.Add(1)
 
 						// handle the command
 						err := s.handleInputCommand(client, msg)
@@ -592,20 +700,16 @@ func (conn *liveConn) SetWriteDeadline(deadline time.Time) error {
 	panic("not supported")
 }
 
-func (s *Server) watchAutoGC() {
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
+func (s *Server) watchAutoGC(wg *sync.WaitGroup) {
+	defer wg.Done()
 	start := time.Now()
-	for range t.C {
-		if s.stopServer.on() {
-			return
-		}
+	s.loopUntilServerStops(time.Second, func() {
 		autoGC := s.config.autoGC()
 		if autoGC == 0 {
-			continue
+			return
 		}
 		if time.Since(start) < time.Second*time.Duration(autoGC) {
-			continue
+			return
 		}
 		var mem1, mem2 runtime.MemStats
 		runtime.ReadMemStats(&mem1)
@@ -620,58 +724,65 @@ func (s *Server) watchAutoGC() {
 			"alloc: %v, heap_alloc: %v, heap_released: %v",
 			mem2.Alloc, mem2.HeapAlloc, mem2.HeapReleased)
 		start = time.Now()
-	}
+	})
 }
 
-func (s *Server) watchOutOfMemory() {
-	t := time.NewTicker(time.Second * 2)
-	defer t.Stop()
+func (s *Server) checkOutOfMemory() {
+	if s.stopServer.Load() {
+		return
+	}
+	oom := s.outOfMemory.Load()
 	var mem runtime.MemStats
-	for range t.C {
-		func() {
-			if s.stopServer.on() {
-				return
-			}
-			oom := s.outOfMemory.on()
-			if s.config.maxMemory() == 0 {
-				if oom {
-					s.outOfMemory.set(false)
-				}
-				return
-			}
-			if oom {
-				runtime.GC()
-			}
-			runtime.ReadMemStats(&mem)
-			s.outOfMemory.set(int(mem.HeapAlloc) > s.config.maxMemory())
-		}()
+	if s.config.maxMemory() == 0 {
+		if oom {
+			s.outOfMemory.Store(false)
+		}
+		return
+	}
+	if oom {
+		runtime.GC()
+	}
+	runtime.ReadMemStats(&mem)
+	s.outOfMemory.Store(int(mem.HeapAlloc) > s.config.maxMemory())
+}
+
+func (s *Server) loopUntilServerStops(dur time.Duration, op func()) {
+	var last time.Time
+	for {
+		if s.stopServer.Load() {
+			return
+		}
+		now := time.Now()
+		if now.Sub(last) > dur {
+			op()
+			last = now
+		}
+		time.Sleep(time.Second / 5)
 	}
 }
 
-func (s *Server) watchLuaStatePool() {
-	t := time.NewTicker(time.Second * 10)
-	defer t.Stop()
-	for range t.C {
-		func() {
-			s.luapool.Prune()
-		}()
-	}
+func (s *Server) watchOutOfMemory(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second*4, func() {
+		s.checkOutOfMemory()
+	})
+}
+
+func (s *Server) watchLuaStatePool(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second*10, func() {
+		s.luapool.Prune()
+	})
 }
 
 // backgroundSyncAOF ensures that the aof buffer is does not grow too big.
-func (s *Server) backgroundSyncAOF() {
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
-	for range t.C {
-		if s.stopServer.on() {
-			return
-		}
-		func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			s.flushAOF(true)
-		}()
-	}
+func (s *Server) backgroundSyncAOF(wg *sync.WaitGroup) {
+	defer wg.Done()
+	s.loopUntilServerStops(time.Second, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.flushAOF(true)
+	})
 }
 
 func isReservedFieldName(field string) bool {
@@ -812,7 +923,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 		return nil
 	}
 
-	if !s.loadedAndReady.on() {
+	if !s.loadedAndReady.Load() {
 		switch msg.Command() {
 		case "output", "ping", "echo":
 		default:
@@ -1014,17 +1125,17 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "fset":
 		res, d, err = s.cmdFSET(msg)
 	case "del":
-		res, d, err = s.cmdDel(msg)
+		res, d, err = s.cmdDEL(msg)
 	case "pdel":
-		res, d, err = s.cmdPdel(msg)
+		res, d, err = s.cmdPDEL(msg)
 	case "drop":
-		res, d, err = s.cmdDrop(msg)
+		res, d, err = s.cmdDROP(msg)
 	case "flushdb":
 		res, d, err = s.cmdFLUSHDB(msg)
 	case "rename":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "renamenx":
-		res, d, err = s.cmdRename(msg)
+		res, d, err = s.cmdRENAME(msg)
 	case "sethook":
 		res, d, err = s.cmdSetHook(msg)
 	case "delhook":
@@ -1048,19 +1159,19 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "ttl":
 		res, err = s.cmdTTL(msg)
 	case "shutdown":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}
 		log.Fatal("shutdown requested by developer")
 	case "massinsert":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}
 		res, err = s.cmdMassInsert(msg)
 	case "sleep":
-		if !core.DevMode {
+		if !s.opts.DevMode {
 			err = fmt.Errorf("unknown command '%s'", msg.Args[0])
 			return
 		}
@@ -1070,15 +1181,15 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "replconf":
 		res, err = s.cmdReplConf(msg, client)
 	case "readonly":
-		res, err = s.cmdReadOnly(msg)
+		res, err = s.cmdREADONLY(msg)
 	case "stats":
-		res, err = s.cmdStats(msg)
+		res, err = s.cmdSTATS(msg)
 	case "server":
-		res, err = s.cmdServer(msg)
+		res, err = s.cmdSERVER(msg)
 	case "healthz":
-		res, err = s.cmdHealthz(msg)
+		res, err = s.cmdHEALTHZ(msg)
 	case "info":
-		res, err = s.cmdInfo(msg)
+		res, err = s.cmdINFO(msg)
 	case "scan":
 		res, err = s.cmdScan(msg)
 	case "nearby":
@@ -1090,9 +1201,9 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "search":
 		res, err = s.cmdSearch(msg)
 	case "bounds":
-		res, err = s.cmdBounds(msg)
+		res, err = s.cmdBOUNDS(msg)
 	case "get":
-		res, err = s.cmdGet(msg)
+		res, err = s.cmdGET(msg)
 	case "jget":
 		res, err = s.cmdJget(msg)
 	case "jset":
@@ -1100,11 +1211,11 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "jdel":
 		res, d, err = s.cmdJdel(msg)
 	case "type":
-		res, err = s.cmdType(msg)
+		res, err = s.cmdTYPE(msg)
 	case "keys":
-		res, err = s.cmdKeys(msg)
+		res, err = s.cmdKEYS(msg)
 	case "output":
-		res, err = s.cmdOutput(msg)
+		res, err = s.cmdOUTPUT(msg)
 	case "aof":
 		res, err = s.cmdAOF(msg)
 	case "aofmd5":
@@ -1132,7 +1243,7 @@ func (s *Server) command(msg *Message, client *Client) (
 			return s.command(msg, client)
 		}
 	case "client":
-		res, err = s.cmdClient(msg, client)
+		res, err = s.cmdCLIENT(msg, client)
 	case "eval", "evalro", "evalna":
 		res, err = s.cmdEvalUnified(false, msg)
 	case "evalsha", "evalrosha", "evalnasha":
@@ -1150,10 +1261,11 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "publish":
 		res, err = s.cmdPublish(msg)
 	case "test":
-		res, err = s.cmdTest(msg)
+		res, err = s.cmdTEST(msg)
 	case "monitor":
 		res, err = s.cmdMonitor(msg)
 	}
+
 	s.sendMonitor(err, msg, client, false)
 	return
 }

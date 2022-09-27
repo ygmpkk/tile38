@@ -1,42 +1,55 @@
 package tests
 
 import (
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
-	"testing"
 )
 
-func downloadURLWithStatusCode(t *testing.T, u string) (int, string) {
-	resp, err := http.Get(u)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return resp.StatusCode, string(body)
+func subTestMetrics(g *testGroup) {
+	g.regSubTest("basic", metrics_basic_test)
 }
 
-func subTestMetrics(t *testing.T, mc *mockServer) {
+func downloadURLWithStatusCode(u string) (int, string, error) {
+	resp, err := http.Get(u)
+	if err != nil {
+		return 0, "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "", err
+	}
+	return resp.StatusCode, string(body), nil
+}
+
+func metrics_basic_test(mc *mockServer) error {
+
+	maddr := fmt.Sprintf("http://127.0.0.1:%d/", mc.metricsPort())
+
 	mc.Do("SET", "metrics_test_1", "1", "FIELD", "foo", 5.5, "POINT", 5, 5)
 	mc.Do("SET", "metrics_test_2", "2", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "3", "FIELD", "foo", 19.19, "POINT", 19, 19)
 	mc.Do("SET", "metrics_test_2", "truck1:driver", "STRING", "John Denton")
 
-	status, index := downloadURLWithStatusCode(t, "http://127.0.0.1:4321/")
+	status, index, err := downloadURLWithStatusCode(maddr)
+	if err != nil {
+		return err
+	}
 	if status != 200 {
-		t.Fatalf("Expected status code 200, got: %d", status)
+		return fmt.Errorf("Expected status code 200, got: %d", status)
 	}
 	if !strings.Contains(index, "<a href") {
-		t.Fatalf("missing link on index page")
+		return fmt.Errorf("missing link on index page")
 	}
 
-	status, metrics := downloadURLWithStatusCode(t, "http://127.0.0.1:4321/metrics")
+	status, metrics, err := downloadURLWithStatusCode(maddr + "metrics")
+	if err != nil {
+		return err
+	}
 	if status != 200 {
-		t.Fatalf("Expected status code 200, got: %d", status)
+		return fmt.Errorf("Expected status code 200, got: %d", status)
 	}
 	for _, want := range []string{
 		`tile38_connected_clients`,
@@ -50,7 +63,8 @@ func subTestMetrics(t *testing.T, mc *mockServer) {
 		`role="leader"`,
 	} {
 		if !strings.Contains(metrics, want) {
-			t.Fatalf("wanted metric: %s, got: %s", want, metrics)
+			return fmt.Errorf("wanted metric: %s, got: %s", want, metrics)
 		}
 	}
+	return nil
 }

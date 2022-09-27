@@ -45,22 +45,23 @@ func readMemStats() runtime.MemStats {
 	return ms
 }
 
-func (s *Server) cmdStats(msg *Message) (res resp.Value, err error) {
+// STATS key [key...]
+func (s *Server) cmdSTATS(msg *Message) (resp.Value, error) {
 	start := time.Now()
-	vs := msg.Args[1:]
-	var ms = []map[string]interface{}{}
 
-	if len(vs) == 0 {
-		return NOMessage, errInvalidNumberOfArguments
+	// >> Args
+
+	args := msg.Args
+	if len(args) < 2 {
+		return retrerr(errInvalidNumberOfArguments)
 	}
+
+	// >> Operation
+
 	var vals []resp.Value
-	var key string
-	var ok bool
-	for {
-		vs, key, ok = tokenval(vs)
-		if !ok {
-			break
-		}
+	var ms = []map[string]interface{}{}
+	for i := 1; i < len(args); i++ {
+		key := args[i]
 		col, _ := s.cols.Get(key)
 		if col != nil {
 			m := make(map[string]interface{})
@@ -83,67 +84,82 @@ func (s *Server) cmdStats(msg *Message) (res resp.Value, err error) {
 			}
 		}
 	}
-	switch msg.OutputType {
-	case JSON:
 
-		data, err := json.Marshal(ms)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"stats":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		res = resp.ArrayValue(vals)
+	// >> Response
+
+	if msg.OutputType == JSON {
+		data, _ := json.Marshal(ms)
+		return resp.StringValue(`{"ok":true,"stats":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.ArrayValue(vals), nil
 }
 
-func (s *Server) cmdHealthz(msg *Message) (res resp.Value, err error) {
+// HEALTHZ
+func (s *Server) cmdHEALTHZ(msg *Message) (resp.Value, error) {
 	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 1 {
+		return retrerr(errInvalidNumberOfArguments)
+	}
+
+	// >> Operation
+
 	if s.config.followHost() != "" {
 		m := make(map[string]interface{})
 		s.basicStats(m)
 		if fmt.Sprintf("%v", m["caught_up"]) != "true" {
-			return NOMessage, errors.New("not caught up")
+			return retrerr(errors.New("not caught up"))
 		}
 	}
-	switch msg.OutputType {
-	case JSON:
-		res = resp.StringValue(`{"ok":true,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		res = resp.SimpleStringValue("OK")
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.StringValue(`{"ok":true,"elapsed":"` +
+			time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.SimpleStringValue("OK"), nil
 }
 
-func (s *Server) cmdServer(msg *Message) (res resp.Value, err error) {
+// SERVER [ext]
+func (s *Server) cmdSERVER(msg *Message) (resp.Value, error) {
 	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	var ext bool
+	for i := 1; i < len(args); i++ {
+		switch strings.ToLower(args[i]) {
+		case "ext":
+			ext = true
+		default:
+			return retrerr(errInvalidArgument(args[i]))
+		}
+	}
+
+	// >> Operation
+
 	m := make(map[string]interface{})
-	args := msg.Args[1:]
 
-	// Switch on the type of stats requested
-	switch len(args) {
-	case 0:
+	if ext {
+		s.extStats(m)
+	} else {
 		s.basicStats(m)
-	case 1:
-		if strings.ToLower(args[0]) == "ext" {
-			s.extStats(m)
-		}
-	default:
-		return NOMessage, errInvalidNumberOfArguments
 	}
 
-	switch msg.OutputType {
-	case JSON:
-		data, err := json.Marshal(m)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"stats":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		vals := respValuesSimpleMap(m)
-		res = resp.ArrayValue(vals)
+	// >> Response
+
+	if msg.OutputType == JSON {
+		data, _ := json.Marshal(m)
+		return resp.StringValue(`{"ok":true,"stats":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.ArrayValue(respValuesSimpleMap(m)), nil
 }
 
 // basicStats populates the passed map with basic system/go/tile38 statistics
@@ -302,11 +318,11 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Whether or not a cluster is enabled
 	m["tile38_cluster_enabled"] = false
 	// Whether or not the Tile38 AOF is enabled
-	m["tile38_aof_enabled"] = core.AppendOnly
+	m["tile38_aof_enabled"] = s.opts.AppendOnly
 	// Whether or not an AOF shrink is currently in progress
 	m["tile38_aof_rewrite_in_progress"] = s.shrinking
 	// Length of time the last AOF shrink took
-	m["tile38_aof_last_rewrite_time_sec"] = s.lastShrinkDuration.get() / int(time.Second)
+	m["tile38_aof_last_rewrite_time_sec"] = s.lastShrinkDuration.Load() / int64(time.Second)
 	// Duration of the on-going AOF rewrite operation if any
 	var currentShrinkStart time.Time
 	if currentShrinkStart.IsZero() {
@@ -319,13 +335,13 @@ func (s *Server) extStats(m map[string]interface{}) {
 	// Whether or no the HTTP transport is being served
 	m["tile38_http_transport"] = s.http
 	// Number of connections accepted by the server
-	m["tile38_total_connections_received"] = s.statsTotalConns.get()
+	m["tile38_total_connections_received"] = s.statsTotalConns.Load()
 	// Number of commands processed by the server
-	m["tile38_total_commands_processed"] = s.statsTotalCommands.get()
+	m["tile38_total_commands_processed"] = s.statsTotalCommands.Load()
 	// Number of webhook messages sent by server
-	m["tile38_total_messages_sent"] = s.statsTotalMsgsSent.get()
+	m["tile38_total_messages_sent"] = s.statsTotalMsgsSent.Load()
 	// Number of key expiration events
-	m["tile38_expired_keys"] = s.statsExpired.get()
+	m["tile38_expired_keys"] = s.statsExpired.Load()
 	// Number of connected slaves
 	m["tile38_connected_slaves"] = len(s.aofconnM)
 
@@ -393,9 +409,9 @@ func boolInt(t bool) int {
 	return 0
 }
 func (s *Server) writeInfoPersistence(w *bytes.Buffer) {
-	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(core.AppendOnly))
-	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(s.shrinking))                          // Flag indicating a AOF rewrite operation is on-going
-	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", s.lastShrinkDuration.get()/int(time.Second)) // Duration of the last AOF rewrite operation in seconds
+	fmt.Fprintf(w, "aof_enabled:%d\r\n", boolInt(s.opts.AppendOnly))
+	fmt.Fprintf(w, "aof_rewrite_in_progress:%d\r\n", boolInt(s.shrinking))                             // Flag indicating a AOF rewrite operation is on-going
+	fmt.Fprintf(w, "aof_last_rewrite_time_sec:%d\r\n", s.lastShrinkDuration.Load()/int64(time.Second)) // Duration of the last AOF rewrite operation in seconds
 
 	var currentShrinkStart time.Time // c.currentShrinkStart.get()
 	if currentShrinkStart.IsZero() {
@@ -406,10 +422,10 @@ func (s *Server) writeInfoPersistence(w *bytes.Buffer) {
 }
 
 func (s *Server) writeInfoStats(w *bytes.Buffer) {
-	fmt.Fprintf(w, "total_connections_received:%d\r\n", s.statsTotalConns.get())  // Total number of connections accepted by the server
-	fmt.Fprintf(w, "total_commands_processed:%d\r\n", s.statsTotalCommands.get()) // Total number of commands processed by the server
-	fmt.Fprintf(w, "total_messages_sent:%d\r\n", s.statsTotalMsgsSent.get())      // Total number of commands processed by the server
-	fmt.Fprintf(w, "expired_keys:%d\r\n", s.statsExpired.get())                   // Total number of key expiration events
+	fmt.Fprintf(w, "total_connections_received:%d\r\n", s.statsTotalConns.Load())  // Total number of connections accepted by the server
+	fmt.Fprintf(w, "total_commands_processed:%d\r\n", s.statsTotalCommands.Load()) // Total number of commands processed by the server
+	fmt.Fprintf(w, "total_messages_sent:%d\r\n", s.statsTotalMsgsSent.Load())      // Total number of commands processed by the server
+	fmt.Fprintf(w, "expired_keys:%d\r\n", s.statsExpired.Load())                   // Total number of key expiration events
 }
 
 // writeInfoReplication writes all replication data to the 'info' response
@@ -441,27 +457,52 @@ func (s *Server) writeInfoCluster(w *bytes.Buffer) {
 	fmt.Fprintf(w, "cluster_enabled:0\r\n")
 }
 
-func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
+// INFO [section ...]
+func (s *Server) cmdINFO(msg *Message) (res resp.Value, err error) {
 	start := time.Now()
 
-	sections := []string{"server", "clients", "memory", "persistence", "stats", "replication", "cpu", "cluster", "keyspace"}
-	switch len(msg.Args) {
-	default:
-		return NOMessage, errInvalidNumberOfArguments
-	case 1:
-	case 2:
-		section := strings.ToLower(msg.Args[1])
+	// >> Args
+
+	args := msg.Args
+
+	msects := make(map[string]bool)
+	allsects := []string{
+		"server", "clients", "memory", "persistence", "stats",
+		"replication", "cpu", "cluster", "keyspace",
+	}
+
+	if len(args) == 1 {
+		for _, s := range allsects {
+			msects[s] = true
+		}
+	}
+	for i := 1; i < len(args); i++ {
+		section := strings.ToLower(args[i])
 		switch section {
+		case "all", "default":
+			for _, s := range allsects {
+				msects[s] = true
+			}
 		default:
-			sections = []string{section}
-		case "all":
-			sections = []string{"server", "clients", "memory", "persistence", "stats", "replication", "cpu", "commandstats", "cluster", "keyspace"}
-		case "default":
+			for _, s := range allsects {
+				if s == section {
+					msects[section] = true
+				}
+			}
+		}
+	}
+
+	// >> Operation
+
+	var sects []string
+	for _, s := range allsects {
+		if msects[s] {
+			sects = append(sects, s)
 		}
 	}
 
 	w := &bytes.Buffer{}
-	for i, section := range sections {
+	for i, section := range sects {
 		if i > 0 {
 			w.WriteString("\r\n")
 		}
@@ -495,8 +536,9 @@ func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 		}
 	}
 
-	switch msg.OutputType {
-	case JSON:
+	// >> Response
+
+	if msg.OutputType == JSON {
 		// Create a map of all key/value info fields
 		m := make(map[string]interface{})
 		for _, kv := range strings.Split(w.String(), "\r\n") {
@@ -509,15 +551,11 @@ func (s *Server) cmdInfo(msg *Message) (res resp.Value, err error) {
 		}
 
 		// Marshal the map and use the output in the JSON response
-		data, err := json.Marshal(m)
-		if err != nil {
-			return NOMessage, err
-		}
-		res = resp.StringValue(`{"ok":true,"info":` + string(data) + `,"elapsed":"` + time.Since(start).String() + "\"}")
-	case RESP:
-		res = resp.BytesValue(w.Bytes())
+		data, _ := json.Marshal(m)
+		return resp.StringValue(`{"ok":true,"info":` + string(data) +
+			`,"elapsed":"` + time.Since(start).String() + "\"}"), nil
 	}
-	return res, nil
+	return resp.BytesValue(w.Bytes()), nil
 }
 
 // tryParseType attempts to parse the passed string as an integer, float64 and
