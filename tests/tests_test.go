@@ -54,8 +54,9 @@ func TestIntegration(t *testing.T) {
 	regTestGroup("info", subTestInfo)
 	regTestGroup("timeouts", subTestTimeout)
 	regTestGroup("metrics", subTestMetrics)
-	regTestGroup("aof", subTestAOF)
 	regTestGroup("follower", subTestFollower)
+	regTestGroup("aof", subTestAOF)
+	regTestGroup("monitor", subTestMonitor)
 	runTestGroups(t)
 }
 
