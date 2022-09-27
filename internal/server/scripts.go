@@ -638,7 +638,7 @@ func (s *Server) commandInScript(msg *Message) (
 	case "keys":
 		res, err = s.cmdKEYS(msg)
 	case "test":
-		res, err = s.cmdTest(msg)
+		res, err = s.cmdTEST(msg)
 	case "server":
 		res, err = s.cmdSERVER(msg)
 	}

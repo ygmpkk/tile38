@@ -1261,7 +1261,7 @@ func (s *Server) command(msg *Message, client *Client) (
 	case "publish":
 		res, err = s.cmdPublish(msg)
 	case "test":
-		res, err = s.cmdTest(msg)
+		res, err = s.cmdTEST(msg)
 	case "monitor":
 		res, err = s.cmdMonitor(msg)
 	}
