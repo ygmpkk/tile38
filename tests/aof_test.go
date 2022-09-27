@@ -17,6 +17,7 @@ import (
 
 func subTestAOF(g *testGroup) {
 	g.regSubTest("loading", aof_loading_test)
+	g.regSubTest("migrate", aof_migrate_test)
 	g.regSubTest("AOF", aof_AOF_test)
 	g.regSubTest("AOFMD5", aof_AOFMD5_test)
 	g.regSubTest("AOFSHRINK", aof_AOFSHRINK_test)
@@ -285,4 +286,22 @@ func aof_READONLY_test(mc *mockServer) error {
 		Do("READONLY").Err("wrong number of arguments for 'readonly' command"),
 		Do("READONLY", "maybe").Err("invalid argument 'maybe'"),
 	)
+}
+
+func aof_migrate_test(mc *mockServer) error {
+	// var aof string
+	// aof += "set 1 2 point 10 10\r\n"
+	// aof += "set 2 3 point 30 30\r\n"
+	// mc2, err := mockOpenServer(MockServerOptions{
+	// 	AOFFileName: "aof",
+	// 	AOFData:     []byte(aof),
+	// 	Silent:      true,
+	// 	Metrics:     true,
+	// })
+	// if err != nil {
+	// 	return err
+	// }
+	// defer mc2.Close()
+
+	return nil
 }
