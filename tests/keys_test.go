@@ -438,18 +438,28 @@ func keys_SET_EX_test(mc *mockServer) (err error) {
 }
 
 func keys_FIELDS_test(mc *mockServer) error {
-	return mc.DoBatch([][]interface{}{
-		{"SET", "mykey", "myid1a", "FIELD", "a", 1, "POINT", 33, -115}, {"OK"},
-		{"GET", "mykey", "myid1a", "WITHFIELDS"}, {`[{"type":"Point","coordinates":[-115,33]} [a 1]]`},
-		{"SET", "mykey", "myid1a", "FIELD", "a", "a", "POINT", 33, -115}, {"OK"},
-		{"GET", "mykey", "myid1a", "WITHFIELDS"}, {`[{"type":"Point","coordinates":[-115,33]} [a a]]`},
-		{"SET", "mykey", "myid1a", "FIELD", "a", 1, "FIELD", "b", 2, "POINT", 33, -115}, {"OK"},
-		{"GET", "mykey", "myid1a", "WITHFIELDS"}, {`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2]]`},
-		{"SET", "mykey", "myid1a", "FIELD", "b", 2, "POINT", 33, -115}, {"OK"},
-		{"GET", "mykey", "myid1a", "WITHFIELDS"}, {`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2]]`},
-		{"SET", "mykey", "myid1a", "FIELD", "b", 2, "FIELD", "a", "1", "FIELD", "c", 3, "POINT", 33, -115}, {"OK"},
-		{"GET", "mykey", "myid1a", "WITHFIELDS"}, {`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2 c 3]]`},
-	})
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid1a", "FIELD", "a", 1, "POINT", 33, -115).OK(),
+		Do("GET", "mykey", "myid1a", "WITHFIELDS").Str(`[{"type":"Point","coordinates":[-115,33]} [a 1]]`),
+		Do("SET", "mykey", "myid1a", "FIELD", "a", "a", "POINT", 33, -115).OK(),
+		Do("GET", "mykey", "myid1a", "WITHFIELDS").Str(`[{"type":"Point","coordinates":[-115,33]} [a a]]`),
+		Do("SET", "mykey", "myid1a", "FIELD", "a", 1, "FIELD", "b", 2, "POINT", 33, -115).OK(),
+		Do("GET", "mykey", "myid1a", "WITHFIELDS").Str(`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2]]`),
+		Do("SET", "mykey", "myid1a", "FIELD", "b", 2, "POINT", 33, -115).OK(),
+		Do("GET", "mykey", "myid1a", "WITHFIELDS").Str(`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2]]`),
+		Do("SET", "mykey", "myid1a", "FIELD", "b", 2, "FIELD", "a", "1", "FIELD", "c", 3, "POINT", 33, -115).OK(),
+		Do("GET", "mykey", "myid1a", "WITHFIELDS").Str(`[{"type":"Point","coordinates":[-115,33]} [a 1 b 2 c 3]]`),
+
+		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Err("key not found"),
+		Do("SET", "fleet", "truck1", "FIELD", "speed", "0", "POINT", "-112", "33").JSON().OK(),
+		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]}}`),
+		Do("SET", "fleet", "truck1", "FIELD", "speed", "1", "POINT", "-112", "33").JSON().OK(),
+		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]},"fields":{"speed":1}}`),
+		Do("SET", "fleet", "truck1", "FIELD", "speed", "0", "POINT", "-112", "33").JSON().OK(),
+		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]}}`),
+		Do("SET", "fleet", "truck1", "FIELD", "speed", "2", "POINT", "-112", "33").JSON().OK(),
+		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]},"fields":{"speed":2}}`),
+	)
 }
 
 func keys_PDEL_test(mc *mockServer) error {

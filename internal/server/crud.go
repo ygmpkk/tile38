@@ -745,8 +745,20 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 		}
 	}
 
-	obj := object.New(id, oobj, ex, field.MakeList(fields))
-	old, obj := col.SetMerged(obj)
+	var flist field.List
+	if len(fields) > 0 {
+		old := col.Get(id)
+		if old != nil {
+			flist = old.Fields()
+		}
+		for _, f := range fields {
+			flist = flist.Set(f)
+		}
+	} else {
+		flist = field.MakeList(fields)
+	}
+	obj := object.New(id, oobj, ex, flist)
+	old := col.Set(obj)
 
 	// >> Response
 

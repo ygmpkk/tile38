@@ -166,37 +166,6 @@ func (c *Collection) Set(obj *object.Object) (prev *object.Object) {
 	return prev
 }
 
-// SetMerged works just like Set but it will merge the new object fields and
-// the previous object fields and create a newer object that is then set into
-// the collection. The newer object is returned.
-func (c *Collection) SetMerged(obj *object.Object,
-) (prev, newObj *object.Object) {
-	prev, _ = c.objs.Set(obj.ID(), obj)
-	if prev != nil {
-		// Check if at least one field exists from the previous object and
-		// merge the two field lists, then re-set the new object. Otherwise,
-		// we stick with the current object.
-		// TODO: check if the old object has fields that new object does not
-		// and only reset those.
-		ofields := prev.Fields()
-		var reset bool
-		ofields.Scan(func(f field.Field) bool {
-			reset = true
-			return false
-		})
-		if reset {
-			obj.Fields().Scan(func(f field.Field) bool {
-				ofields = ofields.Set(f)
-				return true
-			})
-			obj = object.New(obj.ID(), obj.Geo(), obj.Expires(), ofields)
-			c.objs.Set(obj.ID(), obj)
-		}
-	}
-	c.setFill(prev, obj)
-	return prev, obj
-}
-
 func (c *Collection) setFill(prev, obj *object.Object) {
 	if prev != nil {
 		if prev.IsSpatial() {
