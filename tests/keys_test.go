@@ -459,6 +459,22 @@ func keys_FIELDS_test(mc *mockServer) error {
 		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]}}`),
 		Do("SET", "fleet", "truck1", "FIELD", "speed", "2", "POINT", "-112", "33").JSON().OK(),
 		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]},"fields":{"speed":2}}`),
+
+		// Do some GJSON queries.
+		Do("SET", "fleet", "truck2", "FIELD", "hello", `{"world":"tom"}`, "POINT", "-112", "33").JSON().OK(),
+		Do("SCAN", "fleet", "WHERE", "hello", `{"world":"tom"}`, `{"world":"tom"}`, "COUNT").JSON().Str(`{"ok":true,"count":1,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", `tom`, `tom`, "COUNT").JSON().Str(`{"ok":true,"count":1,"cursor":0}`),
+		// The next scan does not match on anything, but since we're matching
+		// on zeros, which is the default, then all (two) objects are returned.
+		Do("SCAN", "fleet", "WHERE", "hello.world.1", `0`, `0`, "IDS").JSON().Str(`{"ok":true,"ids":["truck1","truck2"],"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", ">", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":[],"count":0,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", ">=", `Tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck2"],"count":1,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", ">=", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck2"],"count":1,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", "==", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck2"],"count":1,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", "<", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck1"],"count":1,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", "<=", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck1","truck2"],"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", "<", `uom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck1","truck2"],"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHERE", "hello.world", "!=", `tom`, "IDS").JSON().Str(`{"ok":true,"ids":["truck1"],"count":1,"cursor":0}`),
 	)
 }
 

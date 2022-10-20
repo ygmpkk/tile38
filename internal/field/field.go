@@ -34,7 +34,7 @@ func (v Value) IsZero() bool {
 }
 
 func (v Value) Equals(b Value) bool {
-	return v.kind == b.kind && v.data == b.data
+	return !v.Less(b) && !b.Less(v)
 }
 
 func (v Value) Kind() Kind {

@@ -179,3 +179,54 @@ func TestRandom(t *testing.T) {
 	}
 
 }
+
+func TestJSONGet(t *testing.T) {
+
+	var list List
+	list = list.Set(Make("hello", "world"))
+	list = list.Set(Make("hello", `"world"`))
+	list = list.Set(Make("jello", "planet"))
+	list = list.Set(Make("telly", `{"a":[1,2,3],"b":null,"c":true,"d":false}`))
+	list = list.Set(Make("belly", `{"a":{"b":{"c":"fancy"}}}`))
+	json := list.String()
+	exp := `{"belly":{"a":{"b":{"c":"fancy"}}},"hello":"world","jello":` +
+		`"planet","telly":{"a":[1,2,3],"b":null,"c":true,"d":false}}`
+	if json != exp {
+		t.Fatalf("expected '%s', got '%s'", exp, json)
+	}
+	data := list.Get("hello").Value().Data()
+	if data != "world" {
+		t.Fatalf("expected '%s', got '%s'", "world", data)
+	}
+	data = list.Get("telly").Value().Data()
+	if data != `{"a":[1,2,3],"b":null,"c":true,"d":false}` {
+		t.Fatalf("expected '%s', got '%s'",
+			`{"a":[1,2,3],"b":null,"c":true,"d":false}`, data)
+	}
+	data = list.Get("belly").Value().Data()
+	if data != `{"a":{"b":{"c":"fancy"}}}` {
+		t.Fatalf("expected '%s', got '%s'",
+			`{"a":{"b":{"c":"fancy"}}}`, data)
+	}
+	data = list.Get("belly.a").Value().Data()
+	if data != `{"b":{"c":"fancy"}}` {
+		t.Fatalf("expected '%s', got '%s'",
+			`{"b":{"c":"fancy"}}`, data)
+	}
+	data = list.Get("belly.a.b").Value().Data()
+	if data != `{"c":"fancy"}` {
+		t.Fatalf("expected '%s', got '%s'",
+			`{"c":"fancy"}`, data)
+	}
+	data = list.Get("belly.a.b.c").Value().Data()
+	if data != `fancy` {
+		t.Fatalf("expected '%s', got '%s'",
+			`fancy`, data)
+	}
+	// Tile38 defaults non-existent fields to zero.
+	data = list.Get("belly.a.b.c.d").Value().Data()
+	if data != `0` {
+		t.Fatalf("expected '%s', got '%s'",
+			`0`, data)
+	}
+}

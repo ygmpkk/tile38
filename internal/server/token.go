@@ -77,6 +77,20 @@ func mGTE(a, b field.Value) bool { return !mLT(a, b) }
 func mEQ(a, b field.Value) bool  { return a.Equals(b) }
 
 func (where whereT) match(value field.Value) bool {
+	switch where.min.Data() {
+	case "<":
+		return mLT(value, where.max)
+	case "<=":
+		return mLTE(value, where.max)
+	case ">":
+		return mGT(value, where.max)
+	case ">=":
+		return mGTE(value, where.max)
+	case "==":
+		return mEQ(value, where.max)
+	case "!=":
+		return !mEQ(value, where.max)
+	}
 	if !where.minx {
 		if mLT(value, where.min) { // if value < where.min {
 			return false
@@ -276,18 +290,17 @@ func (s *Server) parseSearchScanBaseTokens(
 				}
 				var minx, maxx bool
 				smin = strings.ToLower(smin)
-				if smin == "-inf" {
-					smin = "-inf"
-				} else {
+				smax = strings.ToLower(smax)
+				if smax == "+inf" || smax == "inf" {
+					smax = "inf"
+				}
+				switch smin {
+				case "<", "<=", ">", ">=", "==", "!=":
+				default:
 					if strings.HasPrefix(smin, "(") {
 						minx = true
 						smin = smin[1:]
 					}
-				}
-				smax = strings.ToLower(smax)
-				if smax == "+inf" || smax == "inf" {
-					smax = "inf"
-				} else {
 					if strings.HasPrefix(smax, "(") {
 						maxx = true
 						smax = smax[1:]

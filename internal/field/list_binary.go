@@ -3,8 +3,11 @@ package field
 import (
 	"encoding/binary"
 	"strconv"
+	"strings"
 	"unsafe"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/pretty"
 	"github.com/tidwall/tile38/internal/sstring"
 )
 
@@ -250,6 +253,15 @@ func putfield(b []byte, f Field, s, e int) *byte {
 
 // Get a field from the list. Or returns ZeroField if not found.
 func (fields List) Get(name string) Field {
+	var isj bool
+	var jname string
+	var jpath string
+	dot := strings.IndexByte(name, '.')
+	if dot != -1 {
+		isj = true
+		jname = name[:dot]
+		jpath = name[dot+1:]
+	}
 	b := ptob(fields.p)
 	var i int
 	for {
@@ -274,11 +286,23 @@ func (fields List) Get(name string) Field {
 			data = btoa(b[i+n : i+n+x])
 			i += n + x
 		}
-		if name < fname {
-			break
-		}
-		if fname == name {
-			return bfield(fname, kind, data)
+		if kind == JSON && isj {
+			if jname < fname {
+				break
+			}
+			if fname == jname {
+				res := gjson.Get(data, jpath)
+				if res.Exists() {
+					return bfield(name, Kind(res.Type), res.String())
+				}
+			}
+		} else {
+			if name < fname {
+				break
+			}
+			if fname == name {
+				return bfield(name, kind, data)
+			}
 		}
 	}
 	return ZeroField
@@ -359,4 +383,22 @@ func MakeList(fields []Field) List {
 		list = list.Set(f)
 	}
 	return list
+}
+
+func (fields List) String() string {
+	var dst []byte
+	dst = append(dst, '{')
+	var i int
+	fields.Scan(func(f Field) bool {
+		if i > 0 {
+			dst = append(dst, ',')
+		}
+		dst = gjson.AppendJSONString(dst, f.Name())
+		dst = append(dst, ':')
+		dst = append(dst, f.Value().JSON()...)
+		i++
+		return true
+	})
+	dst = append(dst, '}')
+	return string(pretty.UglyInPlace(dst))
 }
