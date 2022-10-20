@@ -5,10 +5,12 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/mmcloughlin/geohash"
 	"github.com/tidwall/btree"
 	"github.com/tidwall/geojson"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/resp"
 	"github.com/tidwall/tile38/internal/clip"
 	"github.com/tidwall/tile38/internal/collection"
@@ -200,7 +202,24 @@ func extractZCoordinate(o geojson.Object) float64 {
 	}
 }
 
+func isPathKey(s string, key string) bool {
+	return strings.HasPrefix(s, key) && (s == key || s[len(key)] == '.')
+}
+
 func getFieldValue(o *object.Object, name string) field.Value {
+	if isPathKey(name, "properties") {
+		if g := o.Geo(); g != nil {
+			if res := gjson.Get(g.Members(), "properties"); res.Exists() {
+				if name != "properties" {
+					// We have a dot path suffix.
+					res = res.Get(name[len("properties")+1:])
+				}
+				if res.Exists() {
+					return field.ValueOf(res.Raw)
+				}
+			}
+		}
+	}
 	if name == "z" {
 		z := extractZCoordinate(o.Geo())
 		return field.ValueOf(strconv.FormatFloat(z, 'f', -1, 64))

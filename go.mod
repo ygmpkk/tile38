@@ -19,7 +19,7 @@ require (
 	github.com/tidwall/assert v0.1.0
 	github.com/tidwall/btree v1.4.4
 	github.com/tidwall/buntdb v1.2.9
-	github.com/tidwall/geojson v1.3.6
+	github.com/tidwall/geojson v1.4.0
 	github.com/tidwall/gjson v1.14.3
 	github.com/tidwall/hashmap v1.6.1
 	github.com/tidwall/limiter v0.4.0
