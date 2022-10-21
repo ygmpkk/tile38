@@ -79,6 +79,7 @@ type Server struct {
 	started time.Time
 	config  *Config
 	epc     *endpoint.Manager
+	epool   *exprPool
 
 	lnmu sync.Mutex
 	ln   net.Listener // server listener
@@ -222,7 +223,7 @@ func Serve(opts Options) error {
 		hookExpires:  btree.NewNonConcurrent(byHookExpires),
 		opts:         opts,
 	}
-
+	s.epool = newExprPool(s)
 	s.epc = endpoint.NewManager(s)
 	defer s.epc.Shutdown()
 	s.luascripts = s.newScriptMap()

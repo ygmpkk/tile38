@@ -63,6 +63,7 @@ func lc(s1, s2 string) bool {
 }
 
 type whereT struct {
+	expr bool
 	name string
 	minx bool
 	min  field.Value
@@ -76,7 +77,7 @@ func mGT(a, b field.Value) bool  { return mLT(b, a) }
 func mGTE(a, b field.Value) bool { return !mLT(a, b) }
 func mEQ(a, b field.Value) bool  { return a.Equals(b) }
 
-func (where whereT) match(value field.Value) bool {
+func (where whereT) matchField(value field.Value) bool {
 	switch where.min.Data() {
 	case "<":
 		return mLT(value, where.max)
@@ -275,45 +276,59 @@ func (s *Server) parseSearchScanBaseTokens(
 				continue
 			case "where":
 				vs = nvs
-				var name, smin, smax string
-				if vs, name, ok = tokenval(vs); !ok {
-					err = errInvalidNumberOfArguments
-					return
-				}
-				if vs, smin, ok = tokenval(vs); !ok {
-					err = errInvalidNumberOfArguments
-					return
-				}
-				if vs, smax, ok = tokenval(vs); !ok {
-					err = errInvalidNumberOfArguments
-					return
-				}
-				var minx, maxx bool
-				smin = strings.ToLower(smin)
-				smax = strings.ToLower(smax)
-				if smax == "+inf" || smax == "inf" {
-					smax = "inf"
-				}
-				switch smin {
-				case "<", "<=", ">", ">=", "==", "!=":
-				default:
-					if strings.HasPrefix(smin, "(") {
-						minx = true
-						smin = smin[1:]
+				if detectExprToken(vs) {
+					// using expressions
+					// WHERE expr
+					var expr string
+					if vs, expr, ok = tokenval(vs); !ok {
+						err = errInvalidNumberOfArguments
+						return
 					}
-					if strings.HasPrefix(smax, "(") {
-						maxx = true
-						smax = smax[1:]
+					t.wheres = append(t.wheres, whereT{name: expr, expr: true})
+					continue
+				} else {
+					// using field filter
+					// WHERE min max
+					var name, smin, smax string
+					if vs, name, ok = tokenval(vs); !ok {
+						err = errInvalidNumberOfArguments
+						return
 					}
+					if vs, smin, ok = tokenval(vs); !ok {
+						err = errInvalidNumberOfArguments
+						return
+					}
+					if vs, smax, ok = tokenval(vs); !ok {
+						err = errInvalidNumberOfArguments
+						return
+					}
+					var minx, maxx bool
+					smin = strings.ToLower(smin)
+					smax = strings.ToLower(smax)
+					if smax == "+inf" || smax == "inf" {
+						smax = "inf"
+					}
+					switch smin {
+					case "<", "<=", ">", ">=", "==", "!=":
+					default:
+						if strings.HasPrefix(smin, "(") {
+							minx = true
+							smin = smin[1:]
+						}
+						if strings.HasPrefix(smax, "(") {
+							maxx = true
+							smax = smax[1:]
+						}
+					}
+					t.wheres = append(t.wheres, whereT{
+						name: strings.ToLower(name),
+						minx: minx,
+						min:  field.ValueOf(smin),
+						maxx: maxx,
+						max:  field.ValueOf(smax),
+					})
+					continue
 				}
-				t.wheres = append(t.wheres, whereT{
-					name: strings.ToLower(name),
-					minx: minx,
-					min:  field.ValueOf(smin),
-					maxx: maxx,
-					max:  field.ValueOf(smax),
-				})
-				continue
 			case "wherein":
 				vs = nvs
 				var name, nvalsStr, valStr string
@@ -673,6 +688,25 @@ func (s *Server) parseSearchScanBaseTokens(
 	vsout = vs
 	tout = t
 	return
+}
+
+func detectExprToken(vs []string) bool {
+	// Detect the kind of where, either:
+	// - expr
+	// - name min max
+	if len(vs) == 0 {
+		return false
+	} else if len(vs) == 1 || (len(vs) == 2 && len(vs[1]) == 0) {
+		return true
+	}
+	v := vs[1]
+	if (v[0] >= 'a' && v[0] <= 'z') || (v[0] >= 'A' && v[0] <= 'Z') {
+		if (v[0] == 'i' || v[0] == 'I') && strings.ToLower(v) == "inf" {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 type parentStack []*areaExpression

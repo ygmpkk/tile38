@@ -229,8 +229,14 @@ func getFieldValue(o *object.Object, name string) field.Value {
 
 func (sw *scanWriter) fieldMatch(o *object.Object) (bool, error) {
 	for _, where := range sw.wheres {
-		if !where.match(getFieldValue(o, where.name)) {
-			return false, nil
+		if where.expr {
+			if !where.matchExpr(sw.s, o) {
+				return false, nil
+			}
+		} else {
+			if !where.matchField(getFieldValue(o, where.name)) {
+				return false, nil
+			}
 		}
 	}
 	for _, wherein := range sw.whereins {

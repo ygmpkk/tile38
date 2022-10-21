@@ -36,8 +36,8 @@ func BenchmarkFieldMatch(t *testing.B) {
 	}
 	sw := &scanWriter{
 		wheres: []whereT{
-			{"foo", false, field.ValueOf("1"), false, field.ValueOf("3")},
-			{"bar", false, field.ValueOf("10"), false, field.ValueOf("30")},
+			{false, "foo", false, field.ValueOf("1"), false, field.ValueOf("3")},
+			{false, "bar", false, field.ValueOf("10"), false, field.ValueOf("30")},
 		},
 		whereins: []whereinT{
 			{"foo", []field.Value{field.ValueOf("1"), field.ValueOf("2")}},
