@@ -6,6 +6,7 @@ import (
 	"github.com/tidwall/expr"
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/match"
 	"github.com/tidwall/tile38/internal/field"
 	"github.com/tidwall/tile38/internal/object"
 )
@@ -53,7 +54,7 @@ func resultToValue(r gjson.Result) expr.Value {
 	case gjson.Number:
 		return expr.Number(r.Float())
 	case gjson.JSON:
-		return expr.String(r.String())
+		return expr.Object(r)
 	default:
 		return expr.Null
 	}
@@ -91,17 +92,32 @@ func newExprPool(s *Server) *exprPool {
 					}
 				}
 			} else {
-				switch info.Value.Value().(type) {
-				case string:
-					r := gjson.Get(info.Value.String(), info.Ident)
-					return resultToValue(r), nil
+				switch v := info.Value.Value().(type) {
+				case gjson.Result:
+					return resultToValue(v.Get(info.Ident)), nil
+				default:
+					// object methods
+					switch info.Ident {
+					case "match":
+						return expr.Function("match"), nil
+					}
 				}
 			}
 			return expr.Undefined, nil
 		},
 		// call
 		func(info expr.CallInfo, ctx *expr.Context) (expr.Value, error) {
-			// No custom calls
+			if info.Chain {
+				switch info.Ident {
+				case "match":
+					args, err := info.Args.Compute()
+					if err != nil {
+						return expr.Undefined, err
+					}
+					t := match.Match(info.Value.String(), args.Get(0).String())
+					return expr.Bool(t), nil
+				}
+			}
 			return expr.Undefined, nil
 		},
 		// op
