@@ -17,8 +17,9 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/streadway/amqp v1.0.0
 	github.com/tidwall/assert v0.1.0
-	github.com/tidwall/btree v1.4.4
+	github.com/tidwall/btree v1.5.0
 	github.com/tidwall/buntdb v1.2.9
+	github.com/tidwall/expr v0.8.3
 	github.com/tidwall/geojson v1.4.0
 	github.com/tidwall/gjson v1.14.3
 	github.com/tidwall/hashmap v1.6.1
@@ -91,7 +92,6 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/tidwall/expr v0.8.3 // indirect
 	github.com/tidwall/geoindex v1.7.0 // indirect
 	github.com/tidwall/grect v0.1.4 // indirect
 	github.com/tidwall/rtred v0.1.2 // indirect
