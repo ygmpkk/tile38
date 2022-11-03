@@ -70,6 +70,9 @@ type commandDetails struct {
 
 // Server is a tile38 controller
 type Server struct {
+	// user defined options
+	opts Options
+
 	// static values
 	unix    string
 	host    string
@@ -103,25 +106,22 @@ type Server struct {
 	connsmu sync.RWMutex
 	conns   map[int]*Client
 
-	mu       sync.RWMutex
-	aof      *os.File   // active aof file
-	aofdirty int32      // mark the aofbuf as having data
-	aofbuf   []byte     // prewrite buffer
-	aofsz    int        // active size of the aof file
-	qdb      *buntdb.DB // hook queue log
-	qidx     uint64     // hook queue log last idx
+	mu sync.RWMutex
+
+	// aof
+	aof       *os.File    // active aof file
+	aofdirty  atomic.Bool // mark the aofbuf as having data
+	aofbuf    []byte      // prewrite buffer
+	aofsz     int         // active size of the aof file
+	shrinking bool        // aof shrinking flag
+	shrinklog [][]string  // aof shrinking log
+
+	// database
+	qdb  *buntdb.DB // hook queue log
+	qidx uint64     // hook queue log last idx
 
 	cols *btree.Map[string, *collection.Collection] // data collections
 
-	follows      map[*bytes.Buffer]bool
-	fcond        *sync.Cond
-	lstack       []*commandDetails
-	lives        map[*liveBuffer]bool
-	lcond        *sync.Cond
-	fcup         bool         // follow caught up
-	fcuponce     bool         // follow caught up once
-	shrinking    bool         // aof shrinking flag
-	shrinklog    [][]string   // aof shrinking log
 	hooks        *btree.BTree // hook name -- [string]*Hook
 	hookCross    *rtree.RTree // hook spatial tree for "cross" geofences
 	hookTree     *rtree.RTree // hook spatial tree for all
@@ -130,16 +130,26 @@ type Server struct {
 	groupObjects *btree.BTree // objects that are connected to hooks
 	hookExpires  *btree.BTree // queue of all hooks marked for expiration
 
-	aofconnM   map[net.Conn]io.Closer
+	// followers (external aof readers)
+	follows  map[*bytes.Buffer]bool
+	fcond    *sync.Cond
+	lstack   []*commandDetails
+	lives    map[*liveBuffer]bool
+	lcond    *sync.Cond
+	fcup     bool // follow caught up
+	fcuponce bool // follow caught up once
+	aofconnM map[net.Conn]io.Closer
+
+	// lua scripts
 	luascripts *lScriptMap
 	luapool    *lStatePool
 
+	// pubsub system (SUBSCRIBE, PUBLISH, and SETCHAN)
 	pubsub *pubsub
 
+	// monitor connections (using the MONITOR command)
 	monconnsMu sync.RWMutex
-	monconns   map[net.Conn]bool // monitor connections
-
-	opts Options
+	monconns   map[net.Conn]bool
 }
 
 // Options for Serve()
@@ -629,14 +639,14 @@ func (s *Server) netServe() error {
 
 				// write to client
 				if len(client.out) > 0 {
-					if atomic.LoadInt32(&s.aofdirty) != 0 {
+					if s.aofdirty.Load() {
 						func() {
 							// prewrite
 							s.mu.Lock()
 							defer s.mu.Unlock()
 							s.flushAOF(false)
 						}()
-						atomic.StoreInt32(&s.aofdirty, 0)
+						s.aofdirty.Store(false)
 					}
 					conn.Write(client.out)
 					client.out = nil

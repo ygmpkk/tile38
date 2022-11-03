@@ -108,8 +108,7 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 	if opts.Metrics {
 		s.mport = getNextPort()
 	}
-	var ferrt int32 // atomic flag for when ferr has been set
-	var ferr error  // ferr for when the server fails to start
+	var ferr atomic.Pointer[error] // ferr for when the server fails to start
 	go func() {
 		sopts := server.Options{
 			Host:              "localhost",
@@ -126,23 +125,22 @@ func mockOpenServer(opts MockServerOptions) (*mockServer, error) {
 		}
 		err := server.Serve(sopts)
 		if err != nil {
-			ferr = err
-			atomic.StoreInt32(&ferrt, 1)
+			ferr.CompareAndSwap(nil, &err)
 		}
 	}()
-	if err := s.waitForStartup(&ferr, &ferrt); err != nil {
+	if err := s.waitForStartup(&ferr); err != nil {
 		s.Close()
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s *mockServer) waitForStartup(ferr *error, ferrt *int32) error {
+func (s *mockServer) waitForStartup(ferr *atomic.Pointer[error]) error {
 	var lerr error
 	start := time.Now()
 	for {
-		if atomic.LoadInt32(ferrt) != 0 {
-			return *ferr
+		if perr := ferr.Load(); perr != nil {
+			return *perr
 		}
 		if time.Since(start) > time.Second*5 {
 			if lerr != nil {

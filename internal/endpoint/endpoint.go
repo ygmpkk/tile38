@@ -147,7 +147,7 @@ type Manager struct {
 	mu        sync.RWMutex
 	conns     map[string]Conn
 	publisher LocalPublisher
-	shutdown  int32          // atomic bool
+	shutdown  atomic.Bool    // atomic bool
 	wg        sync.WaitGroup // run wait group
 }
 
@@ -164,7 +164,7 @@ func NewManager(publisher LocalPublisher) *Manager {
 
 func (epc *Manager) Shutdown() {
 	defer epc.wg.Wait()
-	atomic.StoreInt32(&epc.shutdown, 1)
+	epc.shutdown.Store(true)
 	// expire the connections
 	epc.mu.Lock()
 	defer epc.mu.Unlock()
@@ -177,7 +177,7 @@ func (epc *Manager) Shutdown() {
 func (epc *Manager) run() {
 	defer epc.wg.Done()
 	for {
-		if atomic.LoadInt32(&epc.shutdown) != 0 {
+		if epc.shutdown.Load() {
 			return
 		}
 		time.Sleep(time.Second)

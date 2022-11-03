@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/tidwall/buntdb"
@@ -157,7 +156,7 @@ func (s *Server) writeAOF(args []string, d *commandDetails) error {
 	}
 
 	if s.aof != nil {
-		atomic.StoreInt32(&s.aofdirty, 1) // prewrite optimization flag
+		s.aofdirty.Store(true) // prewrite optimization flag
 		n := len(s.aofbuf)
 		s.aofbuf = redcon.AppendArray(s.aofbuf, len(args))
 		for _, arg := range args {

@@ -90,7 +90,7 @@ func (s *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 	}
 	rand.Seed(time.Now().UnixNano())
 	objs = int(n)
-	var k uint64
+	var k atomic.Uint64
 	for i := 0; i < cols; i++ {
 		key := "mi:" + strconv.FormatInt(int64(i), 10)
 		func(key string) {
@@ -137,15 +137,14 @@ func (s *Server) cmdMassInsert(msg *Message) (res resp.Value, err error) {
 					log.Fatal(err)
 					return
 				}
-				atomic.AddUint64(&k, 1)
+				k.Add(1)
 				if j%1000 == 1000-1 {
-					log.Debugf("massinsert: %s %d/%d",
-						key, atomic.LoadUint64(&k), cols*objs)
+					log.Debugf("massinsert: %s %d/%d", key, k.Load(), cols*objs)
 				}
 			}
 		}(key)
 	}
-	log.Infof("massinsert: done %d objects", atomic.LoadUint64(&k))
+	log.Infof("massinsert: done %d objects", k.Load())
 	return OKMessage(msg, start), nil
 }
 

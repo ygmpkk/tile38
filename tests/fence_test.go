@@ -473,15 +473,15 @@ func fence_eecio_test(mc *mockServer) error {
 			return nil
 		}()
 	}()
-	var timeok int32
+	var timeok atomic.Bool
 	go func() {
 		time.Sleep(time.Second * 30)
-		if atomic.LoadInt32(&timeok) == 0 {
+		if !timeok.Load() {
 			panic("timeout")
 		}
 	}()
 	wg.Wait()
-	atomic.StoreInt32(&timeok, 1)
+	timeok.Store(true)
 	if err3 != nil {
 		return err3
 	}
