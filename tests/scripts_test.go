@@ -10,6 +10,7 @@ func subTestScripts(g *testGroup) {
 	g.regSubTest("ATOMIC", scripts_ATOMIC_test)
 	g.regSubTest("READONLY", scripts_READONLY_test)
 	g.regSubTest("NONATOMIC", scripts_NONATOMIC_test)
+	g.regSubTest("VULN", scripts_VULN_test)
 }
 
 func scripts_BASIC_test(mc *mockServer) error {
@@ -59,5 +60,17 @@ func scripts_NONATOMIC_test(mc *mockServer) error {
 		{"EVALNA", "return tile38.call('get', KEYS[1], ARGV[1])", "1", "mykey", "myid"}, {nil},
 		{"EVALNA", "return tile38.call('set', KEYS[1], ARGV[1], 'point', 33, -115)", "1", "mykey", "myid1"}, {"OK"},
 		{"EVALNA", "return tile38.call('get', KEYS[1], ARGV[1], ARGV[2])", "1", "mykey", "myid1", "point"}, {"[33 -115]"},
+	})
+}
+
+func scripts_VULN_test(mc *mockServer) error {
+	return mc.DoBatch([][]interface{}{
+		{"EVAL", "return io", "0"}, {nil},
+		{"EVAL", "return file", "0"}, {nil},
+		{"EVAL", "return os.execute", "0"}, {nil},
+		{"EVAL", "return os.getenv", "0"}, {nil},
+		{"EVAL", "return os.clock", "0"}, {"ERR Unsupported lua type: function"},
+		{"EVAL", "return loadfile", "0"}, {nil},
+		{"EVAL", "return tonumber", "0"}, {"ERR Unsupported lua type: function"},
 	})
 }
