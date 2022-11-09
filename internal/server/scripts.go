@@ -124,6 +124,9 @@ func (pl *lStatePool) New() *lua.LState {
 		}
 	}
 
+	// Set package module to Nil so loaders can't be accessed
+	L.SetGlobal("package", lua.LNil)
+
 	getArgs := func(ls *lua.LState) (evalCmd string, args []string) {
 		evalCmd = ls.GetGlobal("EVAL_CMD").String()
 

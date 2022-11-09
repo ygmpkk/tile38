@@ -71,6 +71,7 @@ func scripts_VULN_test(mc *mockServer) error {
 		{"EVAL", "return os.getenv", "0"}, {nil},
 		{"EVAL", "return os.clock", "0"}, {"ERR Unsupported lua type: function"},
 		{"EVAL", "return loadfile", "0"}, {nil},
-		{"EVAL", "return tonumber", "0"}, {"ERR Unsupported lua type: function"},
+		{"EVAL", "return tonumber(ARGV[1])", "0", "38"}, {"38"},
+		{"EVAL", "return package", "0"}, {nil},
 	})
 }
