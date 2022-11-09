@@ -105,7 +105,6 @@ func (pl *lStatePool) New() *lua.LState {
 		moduleName string
 		moduleFn   lua.LGFunction
 	}{
-		{lua.LoadLibName, lua.OpenPackage},
 		{lua.BaseLibName, openBaseSubset},
 		{lua.TabLibName, lua.OpenTable},
 		{lua.MathLibName, lua.OpenMath},
@@ -123,9 +122,6 @@ func (pl *lStatePool) New() *lua.LState {
 			panic(err)
 		}
 	}
-
-	// Set package module to Nil so loaders can't be accessed
-	L.SetGlobal("package", lua.LNil)
 
 	getArgs := func(ls *lua.LState) (evalCmd string, args []string) {
 		evalCmd = ls.GetGlobal("EVAL_CMD").String()
