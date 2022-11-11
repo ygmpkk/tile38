@@ -27,7 +27,7 @@ const (
 )
 
 // For Lua os.clock() impl
-var startedAt time.Time = time.Now()
+var startedAt = time.Now()
 
 var errShaNotFound = errors.New("sha not found")
 var errCmdNotSupported = errors.New("command not supported in scripts")
