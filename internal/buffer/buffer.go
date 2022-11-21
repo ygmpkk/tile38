@@ -47,7 +47,7 @@ func Simple(g geojson.Object, meters float64) (geojson.Object, error) {
 		}
 		return geojson.NewFeature(bg, g.Members()), nil
 	case *geojson.Circle:
-		return Simple(g.Primative(), meters)
+		return Simple(g.Polygon(), meters)
 	case nil:
 		return nil, errors.New("cannot buffer nil object")
 	default:
