@@ -66,6 +66,7 @@ func client_CLIENT_test(mc *mockServer) error {
 		if err != nil {
 			return err
 		}
+		conn.Do("PING")
 		conns = append(conns, conn)
 	}
 
