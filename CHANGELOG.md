@@ -2,18 +2,31 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.29.2] = 2022-11-11
+## [1.30.0] = 2022-11-21
+### Added
+- bdc80a7: Add WHERE expressions ([more info](https://tile38.com/topics/filter-expressions))
+- f24c251: Allow for multiple MATCH patterns
+- #652: Allow WHERE for geofence detection
+- #657: Add distance to NEARBY IDS response (@iwpnd)
+- #663: Lua Sanitization (@program--)
 
+### Fixed
+- 023433a: Fix server hang on shared address
+- #655: fix: allow host ca sets for SASL and TLS connections
+
+### Updated
+- 7f2ce23: Upgrade to Go 1.19
+- cbfb271: Updated data structures to use Go generics
+
+## [1.29.2] = 2022-11-11
 ### Fixed
 - #664: Fix bad line in inner ring response
 
 ## [1.29.1] = 2022-09-21
-
 ### Fixed
 - fe180dc: Fix follower not authenticating after aofshink
 
 ## [1.29.0] = 2022-07-14
-
 ### Added
 - b883f35: Add pending_events stat
 - #643: Expose config and INFO response for replia-priorty (@rave-eserating)
