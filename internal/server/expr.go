@@ -141,6 +141,7 @@ func newExprPool(s *Server) *exprPool {
 func (p *exprPool) Get(o *object.Object) *expr.Context {
 	ctx := p.pool.Get().(*expr.Context)
 	ctx.UserData = o
+	ctx.NoCase = true
 	return ctx
 }
 
