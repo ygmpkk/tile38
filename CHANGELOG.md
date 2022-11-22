@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.30.0] = 2022-11-21
+## [1.30.0] = 2022-11-22
 ### Added
 - bdc80a7: Add WHERE expressions ([more info](https://tile38.com/topics/filter-expressions))
 - f24c251: Allow for multiple MATCH patterns
@@ -12,7 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - 023433a: Fix server hang on shared address
-- #655: fix: allow host ca sets for SASL and TLS connections
+- #655: fix: allow host ca sets for SASL and TLS connections (@iwpnd)
 
 ### Updated
 - 7f2ce23: Upgrade to Go 1.19
