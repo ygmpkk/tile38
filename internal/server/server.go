@@ -135,9 +135,9 @@ type Server struct {
 	fcond    *sync.Cond
 	lstack   []*commandDetails
 	lives    map[*liveBuffer]bool
-	lcond    *sync.Cond
-	fcup     bool // follow caught up
-	fcuponce bool // follow caught up once
+	lcond    *sync.Cond // live geofence signal
+	fcup     bool       // follow caught up
+	fcuponce bool       // follow caught up once
 	aofconnM map[net.Conn]io.Closer
 
 	// lua scripts
@@ -305,10 +305,19 @@ func Serve(opts Options) error {
 		nerr <- s.netServe()
 	}()
 
+	var fstop atomic.Bool
+	go func() {
+		for !fstop.Load() {
+			s.fcond.Broadcast()
+			time.Sleep(time.Second / 4)
+		}
+	}()
+
 	go func() {
 		<-opts.Shutdown
 		s.stopServer.Store(true)
 		log.Warnf("Shutting down...")
+		fstop.Store(true)
 		s.lnmu.Lock()
 		ln := s.ln
 		s.ln = nil

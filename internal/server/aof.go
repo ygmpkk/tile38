@@ -130,6 +130,8 @@ func (s *Server) flushAOF(sync bool) {
 		if err != nil {
 			panic(err)
 		}
+		// send a broadcast to all sleeping followers
+		s.fcond.Broadcast()
 		if sync {
 			if err := s.aof.Sync(); err != nil {
 				panic(err)
@@ -164,11 +166,6 @@ func (s *Server) writeAOF(args []string, d *commandDetails) error {
 		}
 		s.aofsz += len(s.aofbuf) - n
 	}
-
-	// notify aof live connections that we have new data
-	s.fcond.L.Lock()
-	s.fcond.Broadcast()
-	s.fcond.L.Unlock()
 
 	// process geofences
 	if d != nil {
@@ -516,6 +513,7 @@ func (s *Server) liveAOF(pos int64, conn net.Conn, rd *PipelineReader, msg *Mess
 	if err != nil {
 		return err
 	}
+
 	b := make([]byte, 4096*2)
 	for {
 		n, err := f.Read(b)
@@ -525,7 +523,9 @@ func (s *Server) liveAOF(pos int64, conn net.Conn, rd *PipelineReader, msg *Mess
 			}
 		}
 		if err == io.EOF {
-			time.Sleep(time.Second / 4)
+			s.fcond.L.Lock()
+			s.fcond.Wait()
+			s.fcond.L.Unlock()
 		} else if err != nil {
 			return err
 		}
