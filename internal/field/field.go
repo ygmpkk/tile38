@@ -226,7 +226,7 @@ func ValueOf(data string) Value {
 
 func Make(name, data string) Field {
 	return Field{
-		strings.ToLower(strings.TrimSpace(name)),
+		strings.TrimSpace(name),
 		ValueOf(data),
 	}
 }

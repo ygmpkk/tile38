@@ -119,7 +119,7 @@ func TestJSON(t *testing.T) {
 
 func TestField(t *testing.T) {
 	assert.Assert(Make("hello", "123").Name() == "hello")
-	assert.Assert(Make("HELLO", "123").Name() == "hello")
+	assert.Assert(Make("HELLO", "123").Name() == "HELLO")
 	assert.Assert(Make("HELLO", "123").Value().Num() == 123)
 	assert.Assert(Make("HELLO", "123").Value().JSON() == "123")
 	assert.Assert(Make("HELLO", "123").Value().Num() == 123)

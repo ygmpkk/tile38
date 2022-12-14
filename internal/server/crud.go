@@ -600,7 +600,7 @@ func (s *Server) cmdSET(msg *Message) (resp.Value, commandDetails, error) {
 			if i+2 >= len(args) {
 				return retwerr(errInvalidNumberOfArguments)
 			}
-			fkey := strings.ToLower(args[i+1])
+			fkey := args[i+1]
 			fval := args[i+2]
 			i += 2
 			if isReservedFieldName(fkey) {

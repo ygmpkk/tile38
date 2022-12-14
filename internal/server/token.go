@@ -321,7 +321,7 @@ func (s *Server) parseSearchScanBaseTokens(
 						}
 					}
 					t.wheres = append(t.wheres, whereT{
-						name: strings.ToLower(name),
+						name: name,
 						minx: minx,
 						min:  field.ValueOf(smin),
 						maxx: maxx,
