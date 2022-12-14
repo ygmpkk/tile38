@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.30.1] = 2022-12-14
+### Fixed
+- a8c92a0: Speed up leader/follower replication
+- e60ea70: Fix field names converting to lowercase
+
 ## [1.30.0] = 2022-11-22
 ### Added
 - bdc80a7: Add WHERE expressions ([more info](https://tile38.com/topics/filter-expressions))
