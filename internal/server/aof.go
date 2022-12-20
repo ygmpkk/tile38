@@ -527,6 +527,11 @@ func (s *Server) liveAOF(pos int64, conn net.Conn, rd *PipelineReader, msg *Mess
 			s.fcond.Wait()
 			s.fcond.L.Unlock()
 		} else if err != nil {
+			if errors.Is(err, os.ErrClosed) {
+				// The live aof file can be closed when a client (follower) has
+				// closed their connection or following an AOFSHRINK operation.
+				err = nil
+			}
 			return err
 		}
 	}
