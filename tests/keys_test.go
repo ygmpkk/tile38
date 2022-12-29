@@ -189,6 +189,7 @@ func keys_FSET_test(mc *mockServer) error {
 		Do("SET", "mykey", "myid", "HASH", "9my5xp7").OK(),
 		Do("DEL", "mykey", "myid").Str("1"),
 		Do("GET", "mykey", "myid").Str("<nil>"),
+		Do("SET", "mykey", "myid", "HASH", "9my5xp7").OK(),
 		Do("CONFIG", "SET", "maxmemory", "1").OK(),
 		Do("FSET", "mykey", "myid", "xx", "f1", 1.1, "f2", 2.2).Err(`OOM command not allowed when used memory > 'maxmemory'`),
 		Do("CONFIG", "SET", "maxmemory", "0").OK(),
