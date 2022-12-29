@@ -34,9 +34,9 @@ It supports a variety of object types including lat/lon points, bounding boxes, 
 - In-memory database that persists on disk.
 
 ## Components
-- `tile38-server    ` - The server
-- `tile38-cli       ` - Command line interface tool
-- `tile38-benchmark ` - Server benchmark tool
+- tile38-server: The server
+- tile38-cli: Command line interface tool
+- tile38-benchmark: Server benchmark tool
 
 ## Getting Started
 
