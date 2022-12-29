@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.30.2] = 2022-12-29
+### Fixed
+- #668: Fixed fields not persisting (@DucPhan2997)
+
 ## [1.30.1] = 2022-12-14
 ### Fixed
 - a8c92a0: Speed up leader/follower replication
