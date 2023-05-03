@@ -16,12 +16,12 @@ if [ "$(which go)" == "" ]; then
 fi
 
 # Hardcode some values to the core package.
-if [ -d ".git" ]; then
-	VERSION=$(git describe --tags --abbrev=0)
-	GITSHA=$(git rev-parse --short HEAD)
-	LDFLAGS="$LDFLAGS -X github.com/tidwall/tile38/core.Version=${VERSION}"
-	LDFLAGS="$LDFLAGS -X github.com/tidwall/tile38/core.GitSHA=${GITSHA}"
-fi
+#if [ -d ".git" ]; then
+#	VERSION=$(git describe --tags --abbrev=0)
+#	GITSHA=$(git rev-parse --short HEAD)
+#	LDFLAGS="$LDFLAGS -X github.com/tidwall/tile38/core.Version=${VERSION}"
+#	LDFLAGS="$LDFLAGS -X github.com/tidwall/tile38/core.GitSHA=${GITSHA}"
+#fi
 LDFLAGS="$LDFLAGS -X github.com/tidwall/tile38/core.BuildTime=$(date +%FT%T%z)"
 
 # Generate the core package
