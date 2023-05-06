@@ -93,7 +93,7 @@ func (conn *AMQPConn) Send(msg string) error {
 		); err != nil {
 			return err
 		}
-                if conn.ep.AMQP.Type != "topic" {
+		if conn.ep.AMQP.Type != "topic" {
 			// Create queue if queue don't exists
 			if _, err := channel.QueueDeclare(
 				conn.ep.AMQP.QueueName,
@@ -117,7 +117,6 @@ func (conn *AMQPConn) Send(msg string) error {
 				return err
 			}
 		}
-
 		conn.conn = c
 		conn.channel = channel
 	}
