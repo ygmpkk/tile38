@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.31.0] = 2023-05-09
+### Added
+- #682: Enables cross platform building and pushing of docker images (arm64/amd64) (@eelcocramer)
+- #680: Add hostname, port, output, and password env variables to tile38-cli (@ptsilva)
+
+### Fixed
+- #606: Only create AMQP queue and bindings for non-topic exchanges (@pacaj2am, @uwer)
+- #672: Add graceful shutdown on SIGTERM (@dmitri-zganiaiko)
+
+### Updated
+e9a0500: Upgrade to Go 1.20
+05b2fb9: Security updates
+
 ## [1.30.2] = 2022-12-29
 ### Fixed
 - #668: Fixed fields not persisting (@DucPhan2997)
