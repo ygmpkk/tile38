@@ -413,6 +413,7 @@ Developer Options:
 	}
 
 	c := make(chan os.Signal, 1)
+	shutdown := make (chan bool, 1)
 
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
@@ -433,7 +434,7 @@ Developer Options:
 			case s == syscall.SIGQUIT:
 				os.Exit(3)
 			case s == syscall.SIGTERM:
-				os.Exit(0xf)
+				shutdown <- true
 			}
 		}
 	}()
@@ -481,6 +482,7 @@ Developer Options:
 		AppendOnly:        appendOnly,
 		AppendFileName:    appendFileName,
 		QueueFileName:     queueFileName,
+		Shutdown:          shutdown,
 	}
 	if err := server.Serve(opts); err != nil {
 		log.Fatal(err)
