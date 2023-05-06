@@ -12,8 +12,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - #672: Add graceful shutdown on SIGTERM (@dmitri-zganiaiko)
 
 ### Updated
-e9a0500: Upgrade to Go 1.20
-05b2fb9: Security updates
+- e9a0500: Upgrade to Go 1.20
+- 05b2fb9: Security updates
 
 ## [1.30.2] = 2022-12-29
 ### Fixed
