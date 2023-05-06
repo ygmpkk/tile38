@@ -93,28 +93,29 @@ func (conn *AMQPConn) Send(msg string) error {
 		); err != nil {
 			return err
 		}
+                if conn.ep.AMQP.Type != "topic" {
+			// Create queue if queue don't exists
+			if _, err := channel.QueueDeclare(
+				conn.ep.AMQP.QueueName,
+				conn.ep.AMQP.Durable,
+				conn.ep.AMQP.AutoDelete,
+				false,
+				conn.ep.AMQP.NoWait,
+				nil,
+			); err != nil {
+				return err
+			}
 
-		// Create queue if queue don't exists
-		if _, err := channel.QueueDeclare(
-			conn.ep.AMQP.QueueName,
-			conn.ep.AMQP.Durable,
-			conn.ep.AMQP.AutoDelete,
-			false,
-			conn.ep.AMQP.NoWait,
-			nil,
-		); err != nil {
-			return err
-		}
-
-		// Binding exchange to queue
-		if err := channel.QueueBind(
-			conn.ep.AMQP.QueueName,
-			conn.ep.AMQP.RouteKey,
-			conn.ep.AMQP.QueueName,
-			conn.ep.AMQP.NoWait,
-			nil,
-		); err != nil {
-			return err
+			// Binding exchange to queue
+			if err := channel.QueueBind(
+				conn.ep.AMQP.QueueName,
+				conn.ep.AMQP.RouteKey,
+				conn.ep.AMQP.QueueName,
+				conn.ep.AMQP.NoWait,
+				nil,
+			); err != nil {
+				return err
+			}
 		}
 
 		conn.conn = c
