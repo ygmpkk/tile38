@@ -426,7 +426,7 @@ func (s *Server) parseSearchScanBaseTokens(
 						err = makeSafeErr(err)
 						return
 					}
-					s.luascripts.Put(shaSum, fn.Proto)
+					s.luascripts.PutLRU(shaSum, fn.Proto)
 				}
 				t.whereevals = append(t.whereevals, whereevalT{
 					c: s, luaState: luaState, fn: fn,
