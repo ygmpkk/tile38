@@ -302,6 +302,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 		if !caughtUp {
 			if aofsz >= int(aofSize) {
 				caughtUp = true
+				s.mu.Lock()
 				s.flushAOF(false)
 				s.fcup = true
 				s.fcuponce = true
