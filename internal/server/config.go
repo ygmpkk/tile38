@@ -34,9 +34,11 @@ const (
 	AutoGC          = "autogc"
 	KeepAlive       = "keepalive"
 	LogConfig       = "logconfig"
+	AnnounceIP      = "replica_announce_ip"
+	AnnouncePort    = "replica_announce_port"
 )
 
-var validProperties = []string{RequirePass, LeaderAuth, ProtectedMode, MaxMemory, AutoGC, KeepAlive, LogConfig, ReplicaPriority}
+var validProperties = []string{RequirePass, LeaderAuth, ProtectedMode, MaxMemory, AutoGC, KeepAlive, LogConfig, ReplicaPriority, AnnouncePort, AnnounceIP}
 
 // Config is a tile38 config
 type Config struct {
@@ -66,6 +68,10 @@ type Config struct {
 	_keepAlive      int64
 	_logConfigP     interface{}
 	_logConfig      string
+	_announceIPP    string
+	_announceIP     string
+	_announcePortP  string
+	_announcePort   int64
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -94,6 +100,8 @@ func loadConfig(path string) (*Config, error) {
 		_autoGCP:        gjson.Get(json, AutoGC).String(),
 		_keepAliveP:     gjson.Get(json, KeepAlive).String(),
 		_logConfig:      gjson.Get(json, LogConfig).String(),
+		_announceIPP:    gjson.Get(json, AnnounceIP).String(),
+		_announcePortP:  gjson.Get(json, AnnouncePort).String(),
 	}
 
 	if config._serverID == "" {
@@ -131,6 +139,12 @@ func loadConfig(path string) (*Config, error) {
 	if err := config.setProperty(LogConfig, config._logConfig, true); err != nil {
 		return nil, err
 	}
+	if err := config.setProperty(AnnounceIP, config._announceIPP, true); err != nil {
+		return nil, err
+	}
+	if err := config.setProperty(AnnouncePort, config._announcePortP, true); err != nil {
+		return nil, err
+	}
 	config.write(false)
 	return config, nil
 }
@@ -161,6 +175,14 @@ func (config *Config) write(writeProperties bool) {
 		}
 		if config._logConfig != "" {
 			config._logConfigP = config._logConfig
+		}
+		if config._announceIP != "" {
+			config._announceIPP = config._announceIP
+		}
+		if config._announcePort == 0 {
+			config._announcePortP = ""
+		} else {
+			config._announcePortP = strconv.FormatUint(uint64(config._announcePort), 10)
 		}
 	}
 
@@ -210,6 +232,12 @@ func (config *Config) write(writeProperties bool) {
 		if len(lcfg) > 0 {
 			m[LogConfig] = lcfg
 		}
+	}
+	if config._announceIPP != "" {
+		m[AutoGC] = config._announceIPP
+	}
+	if config._announcePortP != "" {
+		m[AutoGC] = config._announcePortP
 	}
 	data, err := json.MarshalIndent(m, "", "\t")
 	if err != nil {
@@ -332,6 +360,18 @@ func (config *Config) setProperty(name, value string, fromLoad bool) error {
 		} else {
 			config._replicaPriority = replicaPriority
 		}
+	case AnnounceIP:
+		config._announceIP = value
+	case AnnouncePort:
+		if value == "" {
+			config._announcePort = 0
+		} else {
+			announcePort, err := strconv.ParseUint(value, 10, 64)
+			if err != nil {
+				invalid = true
+			}
+			config._announcePort = int64(announcePort)
+		}
 	}
 
 	if invalid {
@@ -377,6 +417,10 @@ func (config *Config) getProperty(name string) string {
 		} else {
 			return strconv.FormatUint(uint64(config._replicaPriority), 10)
 		}
+	case AnnounceIP:
+		return config._announceIP
+	case AnnouncePort:
+		return strconv.FormatUint(uint64(config._announcePort), 10)
 	}
 }
 
@@ -508,6 +552,18 @@ func (config *Config) keepAlive() int64 {
 	v := config._keepAlive
 	config.mu.RUnlock()
 	return v
+}
+func (config *Config) announceIP() string {
+	config.mu.RLock()
+	v := config._announceIP
+	config.mu.RUnlock()
+	return v
+}
+func (config *Config) announcePort() int {
+	config.mu.RLock()
+	v := config._announcePort
+	config.mu.RUnlock()
+	return int(v)
 }
 func (config *Config) setFollowHost(v string) {
 	config.mu.Lock()
