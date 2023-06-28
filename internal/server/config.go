@@ -234,10 +234,10 @@ func (config *Config) write(writeProperties bool) {
 		}
 	}
 	if config._announceIPP != "" {
-		m[AutoGC] = config._announceIPP
+		m[AnnounceIP] = config._announceIPP
 	}
 	if config._announcePortP != "" {
-		m[AutoGC] = config._announcePortP
+		m[AnnouncePort] = config._announcePortP
 	}
 	data, err := json.MarshalIndent(m, "", "\t")
 	if err != nil {
