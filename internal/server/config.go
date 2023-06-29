@@ -369,8 +369,9 @@ func (config *Config) setProperty(name, value string, fromLoad bool) error {
 			announcePort, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
 				invalid = true
+			} else {
+				config._announcePort = int64(announcePort)
 			}
-			config._announcePort = int64(announcePort)
 		}
 	}
 
