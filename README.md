@@ -70,7 +70,6 @@ Tile38 can be compiled and used on Linux, OSX, Windows, FreeBSD, and probably ot
 
 To build everything simply:
 ```
-$ git tag <major>.<minor>.<fix>
 $ make
 ```
 
