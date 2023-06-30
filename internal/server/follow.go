@@ -130,6 +130,18 @@ func (s *Server) cmdReplConf(msg *Message, client *Client) (res resp.Value, err 
 				return OKMessage(msg, start), nil
 			}
 		}
+	case "ip-address":
+		// Apply the replication ip to the client and return
+		s.connsmu.RLock()
+		defer s.connsmu.RUnlock()
+		for _, c := range s.conns {
+			if c.remoteAddr == client.remoteAddr {
+				c.mu.Lock()
+				c.replAddr = val
+				c.mu.Unlock()
+				return OKMessage(msg, start), nil
+			}
+		}
 	}
 	return NOMessage, fmt.Errorf("cannot find follower")
 }
@@ -231,7 +243,11 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	}
 
 	// Send the replication port to the leader
-	v, err := conn.Do("replconf", "listening-port", s.port)
+	p := s.config.announcePort()
+	if p == 0 {
+		p = s.port
+	}
+	v, err := conn.Do("replconf", "listening-port", p)
 	if err != nil {
 		return err
 	}
@@ -240,6 +256,21 @@ func (s *Server) followStep(host string, port int, followc int) error {
 	}
 	if v.String() != "OK" {
 		return errors.New("invalid response to replconf request")
+	}
+
+	// Send the replication ip to the leader
+	ip := s.config.announceIP()
+	if ip != "" {
+		v, err := conn.Do("replconf", "ip-address", ip)
+		if err != nil {
+			return err
+		}
+		if v.Error() != nil {
+			return v.Error()
+		}
+		if v.String() != "OK" {
+			return errors.New("invalid response to replconf request")
+		}
 	}
 	if s.opts.ShowDebugMessages {
 		log.Debug("follow:", addr, ":replconf")

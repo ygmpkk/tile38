@@ -16,6 +16,7 @@ import (
 type Client struct {
 	id         int            // unique id
 	replPort   int            // the known replication port for follower connections
+	replAddr   string         // the known replication addr for follower connections
 	authd      bool           // client has been authenticated
 	outputType Type           // Null, JSON, or RESP
 	remoteAddr string         // original remote address

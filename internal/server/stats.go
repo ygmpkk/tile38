@@ -430,6 +430,9 @@ func (s *Server) writeInfoStats(w *bytes.Buffer) {
 
 func replicaIPAndPort(cc *Client) (ip string, port int) {
 	ip = cc.remoteAddr
+	if cc.replAddr != "" {
+		ip = cc.replAddr
+	}
 	i := strings.LastIndex(ip, ":")
 	if i != -1 {
 		ip = ip[:i]
