@@ -205,6 +205,23 @@ func (s *Server) liveSubscription(
 			write([]byte("+OK\r\n"))
 		}
 	}
+	writePing := func() {
+		switch msg.OutputType {
+		case JSON:
+			if len(msg.Args) > 1 {
+				write([]byte(`{"ok":true,"ping":` + jsonString(msg.Args[1]) + `,"elapsed":"` + time.Since(start).String() + `"}`))
+			} else {
+				write([]byte(`{"ok":true,"ping":"pong","elapsed":"` + time.Since(start).String() + `"}`))
+			}
+		case RESP:
+			if len(msg.Args) > 1 {
+				data := redcon.AppendBulkString(nil, msg.Args[1])
+				write(data)
+			} else {
+				write([]byte("+PONG\r\n"))
+			}
+		}
+	}
 	writeWrongNumberOfArgsErr := func(command string) {
 		switch outputType {
 		case JSON:
@@ -335,6 +352,9 @@ func (s *Server) liveSubscription(
 			case "quit":
 				writeOK()
 				return nil
+			case "ping":
+				writePing()
+				continue
 			case "psubscribe":
 				kind, un = pubsubPattern, false
 			case "punsubscribe":
