@@ -206,7 +206,7 @@ func (s *Server) liveSubscription(
 		}
 	}
 	writePing := func() {
-		switch msg.OutputType {
+		switch outputType {
 		case JSON:
 			if len(msg.Args) > 1 {
 				write([]byte(`{"ok":true,"ping":` + jsonString(msg.Args[1]) + `,"elapsed":"` + time.Since(start).String() + `"}`))
