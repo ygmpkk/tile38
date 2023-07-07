@@ -215,7 +215,9 @@ func (s *Server) liveSubscription(
 			}
 		case RESP:
 			if len(msg.Args) > 1 {
-				data := redcon.AppendBulkString(nil, msg.Args[1])
+				data := redcon.AppendArray(nil, 2)
+				data = redcon.AppendBulkString(data, "PONG")
+				data = redcon.AppendBulkString(data, msg.Args[1])
 				write(data)
 			} else {
 				write([]byte("+PONG\r\n"))
