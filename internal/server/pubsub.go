@@ -205,23 +205,23 @@ func (s *Server) liveSubscription(
 			write([]byte("+OK\r\n"))
 		}
 	}
-	writePing := func() {
+	writePing := func(m *Message) {
 		switch outputType {
 		case JSON:
-			if len(msg.Args) > 1 {
-				write([]byte(`{"ok":true,"ping":` + jsonString(msg.Args[1]) + `,"elapsed":"` + time.Since(start).String() + `"}`))
+			if len(m.Args) > 1 {
+				write([]byte(`{"ok":true,"ping":` + jsonString(m.Args[1]) + `,"elapsed":"` + time.Since(start).String() + `"}`))
 			} else {
 				write([]byte(`{"ok":true,"ping":"pong","elapsed":"` + time.Since(start).String() + `"}`))
 			}
 		case RESP:
-			if len(msg.Args) > 1 {
-				data := redcon.AppendArray(nil, 2)
-				data = redcon.AppendBulkString(data, "PONG")
-				data = redcon.AppendBulkString(data, msg.Args[1])
-				write(data)
+			data := redcon.AppendArray(nil, 2)
+			data = redcon.AppendBulkString(data, "PONG")
+			if len(m.Args) > 1 {
+				data = redcon.AppendBulkString(data, m.Args[1])
 			} else {
-				write([]byte("+PONG\r\n"))
+				data = redcon.AppendBulkString(data, "")
 			}
+			write(data)
 		}
 	}
 	writeWrongNumberOfArgsErr := func(command string) {
@@ -355,7 +355,7 @@ func (s *Server) liveSubscription(
 				writeOK()
 				return nil
 			case "ping":
-				writePing()
+				writePing(msg)
 				continue
 			case "psubscribe":
 				kind, un = pubsubPattern, false
