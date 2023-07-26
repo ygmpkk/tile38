@@ -946,7 +946,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 
 	if !s.loadedAndReady.Load() {
 		switch msg.Command() {
-		case "output", "ping", "echo":
+		case "output", "ping", "echo", "auth":
 		default:
 			return writeErr("LOADING Tile38 is loading the dataset in memory")
 		}
