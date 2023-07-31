@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.32.0] = 2023-07-31
+### Added
+- #686: Support the ROLE command (@Kilowhisky)
+
+### Fixed
+- #698: Allow AUTH while loading data (@Kilowhisky)
+- #694: Allow PING in pubsub (@Kilowhisky)
+- #692: Properly support replica_announce properties (@Kilowhisky)
+- #691: HEALTHZ should not be AUTH protected (@Kilowhisky)
+- #685: Heap size not coming down after objects are removed (@Mukund2900, @iwpnd)
+- 0144ca6: Fix missing lock
+
+
 ## [1.31.0] = 2023-05-09
 ### Added
 - #682: Enables cross platform building and pushing of docker images (arm64/amd64) (@eelcocramer)
