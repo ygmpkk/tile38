@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.32.1] = 2023-11-20
+### Fixed
+- #711: Updated dependencies to address security vulnerabilities (@hcmf-wice)
+- #706: Add support for 'none' authentication for kafka while still allowing SSL (@Kilowhisky)
+- #702: Fix AWS SQS base domain parsing for China region (@LLluma)
+
 ## [1.32.0] = 2023-07-31
 ### Added
 - #686: Support the ROLE command (@Kilowhisky)
