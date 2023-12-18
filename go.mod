@@ -20,7 +20,7 @@ require (
 	github.com/tidwall/btree v1.5.0
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/expr v0.9.0
-	github.com/tidwall/geojson v1.4.3
+	github.com/tidwall/geojson v1.4.5
 	github.com/tidwall/gjson v1.14.3
 	github.com/tidwall/hashmap v1.6.1
 	github.com/tidwall/limiter v0.4.0
