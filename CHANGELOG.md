@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.32.2] = 2024-02-14
+### Fixed
+- #714: Fix crash when mixing z-coord dimensionality in a geometry (@prathik)
+- #717: Metric expired_keys never incremented (@undeadcat)
+- Updated Go runtime to 1.22
+
 ## [1.32.1] = 2023-11-20
 ### Fixed
 - #711: Updated dependencies to address security vulnerabilities (@hcmf-wice)
