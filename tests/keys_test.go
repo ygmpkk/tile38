@@ -25,6 +25,8 @@ func subTestKeys(g *testGroup) {
 	g.regSubTest("SET", keys_SET_test)
 	g.regSubTest("STATS", keys_STATS_test)
 	g.regSubTest("TTL", keys_TTL_test)
+	g.regSubTest("EXIST", keys_EXISTS_test)
+	g.regSubTest("FEXIST", keys_FEXISTS_test)
 	g.regSubTest("SET EX", keys_SET_EX_test)
 	g.regSubTest("PDEL", keys_PDEL_test)
 	g.regSubTest("FIELDS", keys_FIELDS_test)
@@ -407,6 +409,29 @@ func keys_TTL_test(mc *mockServer) error {
 		Do("TTL", "mykey", "myid").Str("-1"),
 		Do("TTL", "mykey2", "myid").JSON().Err("key not found"),
 		Do("TTL", "mykey", "myid2").JSON().Err("id not found"),
+	)
+}
+func keys_EXISTS_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "STRING", "value").OK(),
+		Do("EXISTS", "mykey", "myid").Str("1"),
+		Do("EXISTS", "mykey", "myid").JSON().Str(`{"ok":true,"exists":true}`),
+		Do("EXISTS", "mykey", "myid2").Str("0"),
+		Do("EXISTS", "mykey", "myid2").JSON().Str(`{"ok":true,"exists":false}`),
+		Do("EXISTS", "mykey").Err("wrong number of arguments for 'exists' command"),
+		Do("EXISTS", "mykey2", "myid").JSON().Err("key not found"),
+	)
+}
+func keys_FEXISTS_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "FIELD", "f1", "123", "STRING", "value").OK(),
+		Do("FEXISTS", "mykey", "myid", "f1").Str("1"),
+		Do("FEXISTS", "mykey", "myid", "f1").JSON().Str(`{"ok":true,"exists":true}`),
+		Do("FEXISTS", "mykey", "myid", "f2").Str("0"),
+		Do("FEXISTS", "mykey", "myid", "f2").JSON().Str(`{"ok":true,"exists":false}`),
+		Do("FEXISTS", "mykey", "myid").Err("wrong number of arguments for 'fexists' command"),
+		Do("FEXISTS", "mykey2", "myid", "f2").JSON().Err("key not found"),
+		Do("FEXISTS", "mykey", "myid2", "f2").JSON().Err("id not found"),
 	)
 }
 
