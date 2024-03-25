@@ -1024,7 +1024,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 		}
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks",
 		"chans", "search", "ttl", "bounds", "server", "info", "type", "jget",
-		"evalro", "evalrosha", "healthz", "role", "exists", "fexists":
+		"evalro", "evalrosha", "healthz", "role", "fget", "exists", "fexists":
 		// read operations
 
 		s.mu.RLock()
@@ -1227,6 +1227,8 @@ func (s *Server) command(msg *Message, client *Client) (
 		res, err = s.cmdBOUNDS(msg)
 	case "get":
 		res, err = s.cmdGET(msg)
+	case "fget":
+		res, err = s.cmdFGET(msg)
 	case "jget":
 		res, err = s.cmdJget(msg)
 	case "jset":

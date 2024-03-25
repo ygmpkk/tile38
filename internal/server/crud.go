@@ -907,6 +907,46 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 	return res, d, nil
 }
 
+// FGET key id field
+func (s *Server) cmdFGET(msg *Message) (resp.Value, error) {
+	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+
+	if len(args) < 4 {
+		return retrerr(errInvalidNumberOfArguments)
+	}
+	key, id, field := args[1], args[2], args[3]
+
+	// >> Operation
+
+	col, _ := s.cols.Get(key)
+	if col == nil {
+		return retrerr(errKeyNotFound)
+	}
+	o := col.Get(id)
+	if o == nil {
+		return retrerr(errIDNotFound)
+	}
+	f := o.Fields().Get(field)
+
+	// >> Response
+
+	var buf bytes.Buffer
+	switch msg.OutputType {
+	case JSON:
+		buf.WriteString(`{"ok":true`)
+		buf.WriteString(`,"value":` + f.Value().JSON())
+		buf.WriteString(`,"elapsed":"` + time.Since(start).String() + "\"}")
+		return resp.StringValue(buf.String()), nil
+	case RESP:
+		return resp.StringValue(f.Value().Data()), nil
+	}
+	return NOMessage, nil
+}
+
 // EXPIRE key id seconds
 func (s *Server) cmdEXPIRE(msg *Message) (resp.Value, commandDetails, error) {
 	start := time.Now()
