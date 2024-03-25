@@ -19,6 +19,7 @@ func subTestKeys(g *testGroup) {
 	g.regSubTest("RENAMENX", keys_RENAMENX_test)
 	g.regSubTest("EXPIRE", keys_EXPIRE_test)
 	g.regSubTest("FSET", keys_FSET_test)
+	g.regSubTest("FGET", keys_FGET_test)
 	g.regSubTest("GET", keys_GET_test)
 	g.regSubTest("KEYS", keys_KEYS_test)
 	g.regSubTest("PERSIST", keys_PERSIST_test)
@@ -199,6 +200,25 @@ func keys_FSET_test(mc *mockServer) error {
 		Do("FSET", "mykey2", "myid", "a", "b").Err("key not found"),
 		Do("FSET", "mykey", "myid2", "a", "b").Err("id not found"),
 		Do("FSET", "mykey", "myid", "f2", 0).JSON().OK(),
+	)
+}
+func keys_FGET_test(mc *mockServer) error {
+	return mc.DoBatch(
+		Do("SET", "mykey", "myid", "HASH", "9my5xp7").OK(),
+		Do("GET", "mykey", "myid", "WITHFIELDS", "HASH", 7).Str("[9my5xp7]"),
+		Do("FSET", "mykey", "myid", "f1", 105.6).Str("1"),
+		Do("FGET", "mykey", "myid", "f1").Str("105.6"),
+		Do("FSET", "mykey", "myid", "f1", 1.1, "f2", 2.2).Str("2"),
+		Do("FGET", "mykey", "myid", "f2").Str("2.2"),
+		Do("FGET", "mykey", "myid", "f1").Str("1.1"),
+		Do("FGET", "mykey", "myid", "f1").JSON().Str(`{"ok":true,"value":1.1}`),
+		Do("FSET", "mykey", "myid", "f3", "a").Str("1"),
+		Do("FGET", "mykey", "myid", "f3").Str("a"),
+		Do("FGET", "mykey", "myid", "f4").Str("0"),
+		Do("FGET", "mykey", "myid", "f4").JSON().Str(`{"ok":true,"value":0}`),
+		Do("FGET", "mykey", "myid").Err("wrong number of arguments for 'fget' command"),
+		Do("FGET", "mykey2", "myid", "a", "b").Err("key not found"),
+		Do("FGET", "mykey", "myid2", "a", "b").Err("id not found"),
 	)
 }
 func keys_GET_test(mc *mockServer) error {

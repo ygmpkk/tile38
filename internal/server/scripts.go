@@ -665,6 +665,8 @@ func (s *Server) commandInScript(msg *Message) (
 		res, err = s.cmdBOUNDS(msg)
 	case "get":
 		res, err = s.cmdGET(msg)
+	case "fget":
+		res, err = s.cmdFGET(msg)
 	case "jget":
 		res, err = s.cmdJget(msg)
 	case "jset":
@@ -735,7 +737,7 @@ func (s *Server) luaTile38AtomicRW(msg *Message) (resp.Value, error) {
 			return resp.NullValue(), errReadOnly
 		}
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks", "search",
-		"ttl", "bounds", "server", "info", "type", "jget", "test":
+		"ttl", "bounds", "server", "info", "type", "jget", "fget", "test":
 		// read operations
 		if s.config.followHost() != "" && !s.fcuponce {
 			return resp.NullValue(), errCatchingUp
@@ -788,7 +790,7 @@ func (s *Server) luaTile38AtomicRO(msg *Message) (resp.Value, error) {
 		return resp.NullValue(), errReadOnly
 
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks", "search",
-		"ttl", "bounds", "server", "info", "type", "jget", "test":
+		"ttl", "bounds", "server", "info", "type", "jget", "fget", "test":
 		// read operations
 		if s.config.followHost() != "" && !s.fcuponce {
 			return resp.NullValue(), errCatchingUp
@@ -839,7 +841,7 @@ func (s *Server) luaTile38NonAtomic(msg *Message) (resp.Value, error) {
 			return resp.NullValue(), errReadOnly
 		}
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks", "search",
-		"ttl", "bounds", "server", "info", "type", "jget", "test":
+		"ttl", "bounds", "server", "info", "type", "jget", "fget", "test":
 		// read operations
 		s.mu.RLock()
 		defer s.mu.RUnlock()

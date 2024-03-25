@@ -144,6 +144,11 @@ To set a field when an object already exists:
 > fset fleet truck1 speed 90
 ```
 
+To get a field when an object already exists:
+```
+> fget fleet truck1 speed
+```
+
 ## Searching
 
 Tile38 has support to search for objects and points that are within or intersects other objects. All object types can be searched including Polygons, MultiPolygons, GeometryCollections, etc.
