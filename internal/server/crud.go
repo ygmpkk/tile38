@@ -1120,3 +1120,72 @@ func (s *Server) cmdTTL(msg *Message) (resp.Value, error) {
 	}
 	return resp.IntegerValue(int(ttl)), nil
 }
+
+// EXISTS key id
+func (s *Server) cmdEXISTS(msg *Message) (resp.Value, error) {
+	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 3 {
+		return retrerr(errInvalidNumberOfArguments)
+	}
+	key, id := args[1], args[2]
+
+	// >> Operation
+
+	col, _ := s.cols.Get(key)
+	if col == nil {
+		return retrerr(errKeyNotFound)
+	}
+
+	o := col.Get(id)
+	exists := o != nil
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.SimpleStringValue(
+			`{"ok":true,"exists":` + strconv.FormatBool(exists) + `,"elapsed":"` +
+				time.Since(start).String() + "\"}"), nil
+	}
+	return resp.BoolValue(exists), nil
+}
+
+// FEXISTS key id field
+func (s *Server) cmdFEXISTS(msg *Message) (resp.Value, error) {
+	start := time.Now()
+
+	// >> Args
+
+	args := msg.Args
+	if len(args) != 4 {
+		return retrerr(errInvalidNumberOfArguments)
+	}
+	key, id, field := args[1], args[2], args[3]
+
+	// >> Operation
+
+	col, _ := s.cols.Get(key)
+	if col == nil {
+		return retrerr(errKeyNotFound)
+	}
+
+	o := col.Get(id)
+	if o == nil {
+		return retrerr(errIDNotFound)
+	}
+
+	f := o.Fields().Get(field)
+	exists := f.Name() != ""
+
+	// >> Response
+
+	if msg.OutputType == JSON {
+		return resp.SimpleStringValue(
+			`{"ok":true,"exists":` + strconv.FormatBool(exists) + `,"elapsed":"` +
+				time.Since(start).String() + "\"}"), nil
+	}
+	return resp.BoolValue(exists), nil
+}
