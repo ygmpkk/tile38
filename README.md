@@ -1,13 +1,14 @@
 <p align="center">
-  <a href="https://tile38.com"><img 
-    src="/.github/images/logo-light.svg" 
-    width="284" border="0" alt="Tile38"></a>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="/.github/images/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="/.github/images/logo-light.svg">
+  <img alt="Tile38" src="/.github/images/logo-light.svg" width="284">
+</picture>
 </p>
 <p align="center">
 <a href="https://tile38.com/slack/"><img src="https://img.shields.io/badge/slack-channel-orange.svg" alt="Slack Channel"></a>
 <a href="https://hub.docker.com/r/tile38/tile38"><img src="https://img.shields.io/docker/pulls/tile38/tile38.svg" alt="Docker Pulls"></a>
 </p>
-
 
 Tile38 is an open source (MIT licensed), in-memory geolocation data store, spatial index, and realtime geofencing server.
 It supports a variety of object types including lat/lon points, bounding boxes, XYZ tiles, Geohashes, and GeoJSON. 
