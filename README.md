@@ -229,7 +229,7 @@ These can be used when establishing a geofence, to pre-filter responses. For ins
 
 ### Pub/sub channels
 
-Tile38 supports delivering geofence notications over pub/sub channels. 
+Tile38 supports delivering geofence notifications over pub/sub channels. 
 
 To create a static geofence that sends notifications when a bus is within 200 meters of a point and sends to the `busstop` channel:
 

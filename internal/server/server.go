@@ -62,7 +62,7 @@ type commandDetails struct {
 	old *object.Object // previous object, if any
 
 	updated   bool              // object was updated
-	timestamp time.Time         // timestamp when the update occured
+	timestamp time.Time         // timestamp when the update occurred
 	parent    bool              // when true, only children are forwarded
 	pattern   string            // PDEL key pattern
 	children  []*commandDetails // for multi actions such as "PDEL"
