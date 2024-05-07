@@ -31,11 +31,15 @@ func proto_HTTP_CORS_test(mc *mockServer) error {
 	}
 	origin := resp.Header.Get("Access-Control-Allow-Origin")
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	headers := resp.Header.Get("Access-Control-Allow-Headers")
 	if !(origin == "*" || origin == morigin) {
 		return fmt.Errorf("expected http access-control-allow-origin value '*', got '%s'", origin)
 	}
 	if methods != "POST, GET, OPTIONS" {
 		return fmt.Errorf("expected http access-control-allow-Methods value 'POST, GET, OPTIONS', got '%s'", methods)
+	}
+	if headers != "*, Authorization" {
+		return fmt.Errorf("expected http access-control-allow-headers value '*, Authorization', got '%s'", headers)
 	}
 
 	// Make the actual request now

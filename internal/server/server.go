@@ -1450,9 +1450,10 @@ func readNextHTTPCommand(packet []byte, argsIn [][]byte, msg *Message, wr io.Wri
 			if wr == nil {
 				return false, errors.New("connection is nil")
 			}
-			corshead := "HTTP/1.1 204 No Content\r\n"+
-				"Connection: close\r\n"+
-				"Access-Control-Allow-Origin: *\r\n"+
+			corshead := "HTTP/1.1 204 No Content\r\n" +
+				"Connection: close\r\n" +
+				"Access-Control-Allow-Origin: *\r\n" +
+				"Access-Control-Allow-Headers: *, Authorization\r\n" +
 				"Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n\r\n"
 
 			if _, err = wr.Write([]byte(corshead)); err != nil {
