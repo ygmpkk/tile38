@@ -841,8 +841,8 @@ func (s *Server) cmdFSET(msg *Message) (resp.Value, commandDetails, error) {
 	}
 	key, id = args[1], args[2]
 	for i := 3; i < len(args); i++ {
-		arg := strings.ToLower(args[i])
-		switch arg {
+		arg := args[i]
+		switch strings.ToLower(arg) {
 		case "xx":
 			xx = true
 		default:
