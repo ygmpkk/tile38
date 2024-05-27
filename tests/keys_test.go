@@ -514,6 +514,15 @@ func keys_FIELDS_test(mc *mockServer) error {
 		Do("SET", "fleet", "truck1", "FIELD", "speed", "2", "POINT", "-112", "33").JSON().OK(),
 		Do("GET", "fleet", "truck1", "WITHFIELDS").JSON().Str(`{"ok":true,"object":{"type":"Point","coordinates":[33,-112]},"fields":{"speed":2}}`),
 
+		// Do some whereins queries
+		Do("SET", "whereins", "id1", "FIELD", "test", "2", "POINT", "-112", "33").JSON().OK(),
+		Do("SET", "whereins", "id2", "FIELD", "TEST", "3", "POINT", "-111", "32").JSON().OK(),
+		Do("SET", "whereins", "id3", "FIELD", "teSt", "4", "POINT", "-110", "31").JSON().OK(),
+		Do("SCAN", "whereins", "WHEREIN", "test", "1", "2", "OBJECTS").JSON().Str(`{"ok":true,"fields":["test"],"objects":[{"id":"id1","object":{"type":"Point","coordinates":[33,-112]},"fields":[2]}],"count":1,"cursor":0}`),
+		Do("SCAN", "whereins", "WHEREIN", "TEST", "1", "3", "OBJECTS").JSON().Str(`{"ok":true,"fields":["TEST"],"objects":[{"id":"id2","object":{"type":"Point","coordinates":[32,-111]},"fields":[3]}],"count":1,"cursor":0}`),
+		Do("SCAN", "whereins", "WHEREIN", "teSt", "1", "4", "OBJECTS").JSON().Str(`{"ok":true,"fields":["teSt"],"objects":[{"id":"id3","object":{"type":"Point","coordinates":[31,-110]},"fields":[4]}],"count":1,"cursor":0}`),
+		Do("SCAN", "whereins", "OBJECTS").JSON().Str(`{"ok":true,"fields":["TEST","teSt","test"],"objects":[{"id":"id1","object":{"type":"Point","coordinates":[33,-112]},"fields":[0,0,2]},{"id":"id2","object":{"type":"Point","coordinates":[32,-111]},"fields":[3,0,0]},{"id":"id3","object":{"type":"Point","coordinates":[31,-110]},"fields":[0,4,0]}],"count":3,"cursor":0}`),
+
 		// Do some GJSON queries.
 		Do("SET", "fleet", "truck2", "FIELD", "hello", `{"world":"tom"}`, "POINT", "-112", "33").JSON().OK(),
 		Do("SCAN", "fleet", "WHERE", "hello", `{"world":"tom"}`, `{"world":"tom"}`, "COUNT").JSON().Str(`{"ok":true,"count":1,"cursor":0}`),
