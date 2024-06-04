@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.33.0] = 2024-05-03
+## Added
+- #726: Add EXIST and FEXIST command (@Kilowhisky)
+
+## Fixed
+- #738: Add support for CORS in http requests (@Kilowhisky)
+- #741: FSET transforms field names to lowercase (@unendingblue, @iwpnd)
+- #736: Fix field floating point parsing misrepresentation (@Kilowhisky)
+
+
+## Updated
+- #733: golang.org/x/net
+- #724: google.golang.org/protobuf
+
 ## [1.32.2] = 2024-02-14
 ### Fixed
 - #714: Fix crash when mixing z-coord dimensionality in a geometry (@prathik)
