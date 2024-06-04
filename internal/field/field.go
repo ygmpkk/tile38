@@ -116,7 +116,7 @@ func stringLessInsensitive(a, b string) bool {
 }
 
 // Less return true if a value is less than another value.
-// The caseSensitive paramater is used when the value are Strings.
+// The caseSensitive parameter is used when the value are Strings.
 // The order when comparing two different kinds is:
 //
 //	Null < False < Number < String < True < JSON
