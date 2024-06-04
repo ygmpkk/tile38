@@ -867,6 +867,7 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 				"Connection: close\r\n"+
 				"Content-Length: %d\r\n"+
 				"Content-Type: application/json; charset=utf-8\r\n"+
+				"Access-Control-Allow-Origin: *\r\n"+
 				"\r\n", status, len(res)+2)
 			if err != nil {
 				return err
@@ -1444,6 +1445,22 @@ func readNextHTTPCommand(packet []byte, argsIn [][]byte, msg *Message, wr io.Wri
 		}
 		method := parts[0]
 		path := parts[1]
+		// Handle CORS request for allowed origins
+		if method == "OPTIONS" {
+			if wr == nil {
+				return false, errors.New("connection is nil")
+			}
+			corshead := "HTTP/1.1 204 No Content\r\n" +
+				"Connection: close\r\n" +
+				"Access-Control-Allow-Origin: *\r\n" +
+				"Access-Control-Allow-Headers: *, Authorization\r\n" +
+				"Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n\r\n"
+
+			if _, err = wr.Write([]byte(corshead)); err != nil {
+				return false, err
+			}
+			return false, nil
+		}
 		if len(path) == 0 || path[0] != '/' {
 			return false, errInvalidHTTP
 		}
@@ -1528,7 +1545,7 @@ func readNextHTTPCommand(packet []byte, argsIn [][]byte, msg *Message, wr io.Wri
 func readNextCommand(packet []byte, argsIn [][]byte, msg *Message, wr io.Writer) (
 	complete bool, args [][]byte, kind redcon.Kind, leftover []byte, err error,
 ) {
-	if packet[0] == 'G' || packet[0] == 'P' {
+	if packet[0] == 'G' || packet[0] == 'P' || packet[0] == 'O' {
 		// could be an HTTP request
 		var line []byte
 		for i := 1; i < len(packet); i++ {
