@@ -202,6 +202,28 @@ func keys_FSET_test(mc *mockServer) error {
 		Do("FSET", "mykey2", "myid", "a", "b").Err("key not found"),
 		Do("FSET", "mykey", "myid2", "a", "b").Err("id not found"),
 		Do("FSET", "mykey", "myid", "f2", 0).JSON().OK(),
+		Do("SET", "cases", "lower", "POINT", 1, 2).OK(),
+		Do("FSET", "cases", "lower", "lowercase", 1).JSON().OK(),
+		Do("GET", "cases", "lower", "WITHFIELDS").JSON().Str(
+			`{"ok":true,"object":{"type":"Point","coordinates":[2,1]},"fields":{"lowercase":1}}`,
+		),
+		Do("SET", "cases", "upper", "POINT", 1, 2).OK(),
+		Do("FSET", "cases", "upper", "UPPERCASE", 1).JSON().OK(),
+		Do("GET", "cases", "upper", "WITHFIELDS").JSON().Str(
+			`{"ok":true,"object":{"type":"Point","coordinates":[2,1]},"fields":{"UPPERCASE":1}}`,
+		),
+		Do("SET", "cases", "camel", "POINT", 1, 2).OK(),
+		Do("FSET", "cases", "camel", "camelCase", 1).JSON().OK(),
+		Do("GET", "cases", "camel", "WITHFIELDS").JSON().Str(
+			`{"ok":true,"object":{"type":"Point","coordinates":[2,1]},"fields":{"camelCase":1}}`,
+		),
+		Do("SET", "cases", "allcases", "POINT", 1, 2).OK(),
+		Do("FSET", "cases", "allcases", "UPPERCASE", 1).JSON().OK(),
+		Do("FSET", "cases", "allcases", "lowercase", 1).JSON().OK(),
+		Do("FSET", "cases", "allcases", "camelCase", 1).JSON().OK(),
+		Do("GET", "cases", "allcases", "WITHFIELDS").JSON().Str(
+			`{"ok":true,"object":{"type":"Point","coordinates":[2,1]},"fields":{"UPPERCASE":1,"camelCase":1,"lowercase":1}}`,
+		),
 	)
 }
 func keys_FGET_test(mc *mockServer) error {
