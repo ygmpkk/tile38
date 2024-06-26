@@ -66,12 +66,16 @@ func (s *Server) Publish(channel string, message ...string) int {
 	}
 	s.pubsub.mu.RUnlock()
 
+	// broadcast to clients
 	for _, msg := range msgs {
 		msg.target.cond.L.Lock()
 		msg.target.msgs = append(msg.target.msgs, msg)
 		msg.target.cond.Broadcast()
 		msg.target.cond.L.Unlock()
 	}
+
+	// Broadcast to followers
+	s.sendPublishQueue(channel, message...)
 
 	return len(msgs)
 }

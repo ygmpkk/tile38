@@ -140,6 +140,7 @@ type Server struct {
 	fcup     bool       // follow caught up
 	fcuponce bool       // follow caught up once
 	aofconnM map[net.Conn]io.Closer
+	pubq     pubQueue
 
 	// lua scripts
 	luascripts *lScriptMap
@@ -422,9 +423,12 @@ func Serve(opts Options) error {
 	go s.backgroundExpiring(&bgwg)
 	bgwg.Add(1)
 	go s.backgroundSyncAOF(&bgwg)
+	bgwg.Add(1)
+	go s.startPublishQueue(&bgwg)
 	defer func() {
 		log.Debug("Stopping background routines")
 		// Stop background routines
+		s.stopPublishQueue()
 		s.followc.Add(1) // this will force any follow communication to die
 		s.stopServer.Store(true)
 		if mln != nil {
