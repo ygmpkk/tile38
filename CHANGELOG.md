@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.33.1] = 2024-07-02
+### Fixed
+- 193bce1: Fix followers not receiving channel messages #468 (@hibooboo2, @trendstate, @DoisKoh)
+
 ## [1.33.0] = 2024-05-03
 ## Added
 - #726: Add EXIST and FEXIST command (@Kilowhisky)
@@ -10,7 +14,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - #738: Add support for CORS in http requests (@Kilowhisky)
 - #741: FSET transforms field names to lowercase (@unendingblue, @iwpnd)
 - #736: Fix field floating point parsing misrepresentation (@Kilowhisky)
-
 
 ## Updated
 - #733: golang.org/x/net
