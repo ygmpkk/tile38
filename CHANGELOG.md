@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.33.2] = 2024-08-02
+### Fixed
+- 2e3eaa7: Remove extra quote in ROLE command with JSON output #749 (@Kilowhisky)
+
 ## [1.33.1] = 2024-07-02
 ### Fixed
 - 193bce1: Fix followers not receiving channel messages #468 (@hibooboo2, @trendstate, @DoisKoh)
