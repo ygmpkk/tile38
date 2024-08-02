@@ -639,7 +639,7 @@ func (s *Server) cmdROLE(msg *Message) (res resp.Value, err error) {
 	}
 	if msg.OutputType == JSON {
 		var json []byte
-		json = append(json, `{"ok":true,"role":{"`...)
+		json = append(json, `{"ok":true,"role":{`...)
 		json = append(json, `"role":`...)
 		json = appendJSONString(json, role)
 		if role == "master" {
