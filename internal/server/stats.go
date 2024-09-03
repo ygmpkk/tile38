@@ -450,6 +450,7 @@ func (s *Server) writeInfoReplication(w *bytes.Buffer) {
 		fmt.Fprintf(w, "role:slave\r\n")
 		fmt.Fprintf(w, "master_host:%s\r\n", s.config.followHost())
 		fmt.Fprintf(w, "master_port:%v\r\n", s.config.followPort())
+		fmt.Fprintf(w, "slave_repl_offset:%v\r\n", int(s.faofsz))
 		if s.config.replicaPriority() >= 0 {
 			fmt.Fprintf(w, "slave_priority:%v\r\n", s.config.replicaPriority())
 		}
