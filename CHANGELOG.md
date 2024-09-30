@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.33.3] = 2024-09-29
+### Fixed
+- 2b080f4: Include field to INFO replication command output #752 (@Kilowhisky)
+
 ## [1.33.2] = 2024-08-02
 ### Fixed
 - 2e3eaa7: Remove extra quote in ROLE command with JSON output #749 (@Kilowhisky)
