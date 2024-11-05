@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.33.4] = 2024-11-05
+### Fixed
+- aa1caa6: Use zero for undefined fields in where expressions #754 (@unendingblue)
+
 ## [1.33.3] = 2024-09-29
 ### Fixed
 - 2b080f4: Include field to INFO replication command output #752 (@Kilowhisky)
