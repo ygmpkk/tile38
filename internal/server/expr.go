@@ -91,6 +91,7 @@ func newExprPool(s *Server) *exprPool {
 						return resultToValue(r), nil
 					}
 				}
+				return expr.Number(0), nil
 			} else {
 				switch v := info.Value.Value().(type) {
 				case gjson.Result:
@@ -102,8 +103,8 @@ func newExprPool(s *Server) *exprPool {
 						return expr.Function("match"), nil
 					}
 				}
+				return expr.Undefined, nil
 			}
-			return expr.Undefined, nil
 		},
 		// call
 		func(info expr.CallInfo, ctx *expr.Context) (expr.Value, error) {

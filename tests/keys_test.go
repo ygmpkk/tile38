@@ -600,6 +600,17 @@ func keys_FIELDS_test(mc *mockServer) error {
 		Do("SCAN", "fleet", "WHERE", "props.speed > 53", "IDS").JSON().Str(`{"ok":true,"ids":[],"count":0,"cursor":0}`),
 		Do("SCAN", "fleet", "WHERE", "Props.speed > 53", "IDS").JSON().Str(`{"ok":true,"ids":[],"count":0,"cursor":0}`),
 		Do("SCAN", "fleet", "WHERE", "Props.Speed > 53", "IDS").JSON().Str(`{"ok":true,"ids":[],"count":0,"cursor":0}`),
+
+		Do("DROP", "fleet").JSON().OK(),
+		Do("SET", "fleet", "1", "field", "teamId", "1", "field", "optionalId", "999", "point", "0", "0").JSON().OK(),
+		Do("SET", "fleet", "2", "field", "teamId", "1", "point", "0", "0").JSON().OK(),
+		Do("SCAN", "fleet", "COUNT").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHEREIN", "teamId", "1", "1", "COUNT").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
+
+		Do("SCAN", "fleet", "WHEREIN", "teamId", "1", "1", "WHERE", "!optionalId || optionalId == 999", "count").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHEREIN", "teamId", "1", "1", "WHERE", "!!!optionalId || optionalId == 999", "count").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHEREIN", "teamId", "1", "1", "WHERE", "optionalId == 0 || optionalId == 999", "count").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
+		Do("SCAN", "fleet", "WHEREIN", "teamId", "1", "1", "WHERE", "1 == 1 || optionalId == 999", "count").JSON().Str(`{"ok":true,"count":2,"cursor":0}`),
 	)
 }
 
