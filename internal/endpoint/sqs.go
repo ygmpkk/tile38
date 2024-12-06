@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -108,10 +110,16 @@ func (conn *SQSConn) Send(msg string) error {
 	}
 
 	queueURL := conn.generateSQSURL()
-	// Send message
+	// Create message
 	sendParams := &sqs.SendMessageInput{
 		MessageBody: aws.String(msg),
 		QueueUrl:    aws.String(queueURL),
+	}
+	if isFifoQueue(queueURL) {
+		key := gjson.Get(msg, "key")
+		id := gjson.Get(msg, "id")
+		keyValue := fmt.Sprintf("%s#%s", key.String(), id.String())
+		sendParams.MessageGroupId = aws.String(keyValue)
 	}
 	_, err := conn.svc.SendMessage(sendParams)
 	if err != nil {
@@ -144,4 +152,8 @@ func sqsRegionFromPlainURL(s string) string {
 		}
 	}
 	return ""
+}
+
+func isFifoQueue(s string) bool {
+	return strings.HasSuffix(s, ".fifo")
 }
