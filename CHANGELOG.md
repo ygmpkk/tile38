@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.34.0] = 2024-12-09
+### Added 
+- 459b3e6: Added fifo support for SQS webhooks #759 (@crankycookie)
+
+### Updated
+- bed590b: Upgrade to Alpine 3.20 #757 (@tduong2049)
+- 2b09508: Upgrade to Go 1.23
+
 ## [1.33.4] = 2024-11-05
 ### Fixed
 - aa1caa6: Use zero for undefined fields in where expressions #754 (@unendingblue)
