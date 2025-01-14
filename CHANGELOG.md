@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.34.1] = 2024-01-13
+### Security
+- 927f382: CVE-2024-45338 golang.org/x/net #762 (@tduong2049)
+- 07389d8: CVE-2024-45337 golang.org/x/crypto #760
+
 ## [1.34.0] = 2024-12-09
 ### Added 
 - 459b3e6: Added fifo support for SQS webhooks #759 (@crankycookie)
