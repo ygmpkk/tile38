@@ -176,9 +176,8 @@ func fence_channel_message_order_test(mc *mockServer) error {
 	finalErr := make(chan error)
 
 	// Concurrently subscribe for notifications
-	var wg1, wg2 sync.WaitGroup
-	wg1.Add(1)
-	wg2.Add(1)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		// Create the subscription connection to Tile38 to subscribe for updates
 		sc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port))
@@ -187,16 +186,14 @@ func fence_channel_message_order_test(mc *mockServer) error {
 			return
 		}
 		defer sc.Close()
-
+		// time.Sleep(time.Second)
 		// Subscribe the subscription client to the * pattern
 		psc := redis.PubSubConn{Conn: sc}
 		if err := psc.PSubscribe("*"); err != nil {
 			log.Println(err)
 			return
 		}
-
-		wg1.Done()
-		wg2.Wait()
+		wg.Done()
 		var msgs []string
 		// While not a permanent error on the connection.
 	loop:
@@ -221,8 +218,8 @@ func fence_channel_message_order_test(mc *mockServer) error {
 		}
 		finalErr <- nil
 	}()
-
-	wg1.Wait()
+	wg.Wait()
+	time.Sleep(time.Second)
 	// Create the base connection for setting up points and geofences
 	bc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port))
 	if err != nil {
@@ -243,7 +240,6 @@ func fence_channel_message_order_test(mc *mockServer) error {
 			return err
 		}
 	}
-	wg2.Done()
 	return <-finalErr
 }
 
