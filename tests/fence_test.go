@@ -175,9 +175,8 @@ func fence_channel_message_order_test(mc *mockServer) error {
 	// Create a channel to store the goroutines error
 	finalErr := make(chan error)
 
+	var ready atomic.Bool
 	// Concurrently subscribe for notifications
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
 		// Create the subscription connection to Tile38 to subscribe for updates
 		sc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port))
@@ -186,23 +185,26 @@ func fence_channel_message_order_test(mc *mockServer) error {
 			return
 		}
 		defer sc.Close()
-		// time.Sleep(time.Second)
+
 		// Subscribe the subscription client to the * pattern
 		psc := redis.PubSubConn{Conn: sc}
 		if err := psc.PSubscribe("*"); err != nil {
 			log.Println(err)
 			return
 		}
-		wg.Done()
 		var msgs []string
 		// While not a permanent error on the connection.
 	loop:
 		for sc.Err() == nil {
 			switch v := psc.Receive().(type) {
 			case redis.Message:
-				msgs = append(msgs, string(v.Data))
-				if len(msgs) == 8 {
-					break loop
+				if v.Channel == "status" && string(v.Data) == "ready" {
+					ready.Store(true)
+				} else {
+					msgs = append(msgs, string(v.Data))
+					if len(msgs) == 8 {
+						break loop
+					}
 				}
 			case error:
 				fmt.Printf("%s\n", err.Error())
@@ -218,14 +220,18 @@ func fence_channel_message_order_test(mc *mockServer) error {
 		}
 		finalErr <- nil
 	}()
-	wg.Wait()
-	time.Sleep(time.Second)
 	// Create the base connection for setting up points and geofences
 	bc, err := redis.Dial("tcp", fmt.Sprintf(":%d", mc.port))
 	if err != nil {
 		return err
 	}
 	defer bc.Close()
+
+	for !ready.Load() {
+		if _, err := do(bc, "PUBLISH status ready"); err != nil {
+			return err
+		}
+	}
 
 	// Fire all setup commands on the base client
 	for _, cmd := range []string{
