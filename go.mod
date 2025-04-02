@@ -1,6 +1,8 @@
 module github.com/tidwall/tile38
 
-go 1.18
+go 1.23.0
+
+toolchain go1.23.4
 
 require (
 	cloud.google.com/go/pubsub v1.33.0
