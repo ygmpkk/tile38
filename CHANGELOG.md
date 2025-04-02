@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.34.2] = 2024-04-01
+### Updated
+- a80eaf2: Upgrade to Go 1.24
+
+### Fixed
+- 556390e: Fix equality tests with WHERE clause for nested values
+- 42e17a1: Fix channel test that sometimes stalls
+
+### Security
+- 0ecf097: Bump golang.org/x/net #765
+
 ## [1.34.1] = 2024-01-13
 ### Security
 - 927f382: CVE-2024-45338 golang.org/x/net #762 (@tduong2049)
