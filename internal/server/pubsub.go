@@ -327,24 +327,22 @@ func (s *Server) liveSubscription(
 	go func() {
 		log.Debugf("pubsub open")
 		defer log.Debugf("pubsub closed")
+		target.cond.L.Lock()
+		defer target.cond.L.Unlock()
 		for {
-			var msgs []submsg
-			target.cond.L.Lock()
-			if len(target.msgs) > 0 {
-				msgs = target.msgs
+			for len(target.msgs) > 0 {
+				msgs := target.msgs
 				target.msgs = nil
-			}
-			target.cond.L.Unlock()
-			for _, msg := range msgs {
-				writeMessage(msg)
-			}
-			target.cond.L.Lock()
-			if target.closed {
 				target.cond.L.Unlock()
-				return
+				for _, msg := range msgs {
+					writeMessage(msg)
+				}
+				target.cond.L.Lock()
+			}
+			if target.closed {
+				break
 			}
 			target.cond.Wait()
-			target.cond.L.Unlock()
 		}
 	}()
 
