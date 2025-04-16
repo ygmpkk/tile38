@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.34.3] = 2024-04-16
+### Fixed
+- dd98481: Fix channel message delay #763 (@txtsd)
+
 ## [1.34.2] = 2024-04-01
 ### Updated
 - a80eaf2: Upgrade to Go 1.24
