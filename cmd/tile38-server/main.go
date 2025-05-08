@@ -265,8 +265,9 @@ Developer Options:
 			}
 			fmt.Fprintf(os.Stderr, "evio must be 'yes' or 'no'\n")
 			os.Exit(1)
+		default:
+			nargs = append(nargs, os.Args[i])
 		}
-		nargs = append(nargs, os.Args[i])
 	}
 	os.Args = nargs
 
