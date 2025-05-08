@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.34.4] = 2024-05-08
+### Fixed
+- 977bf25: Fix issue with some startup flags not being read (@salilgupta1)
+
+### Updated
+- 86333cd: Bump golang.org/x/net #767
+
 ## [1.34.3] = 2024-04-16
 ### Fixed
 - dd98481: Fix channel message delay #763 (@txtsd)
