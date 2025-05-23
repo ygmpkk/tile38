@@ -131,16 +131,15 @@ type Server struct {
 	hookExpires  *btree.BTree // queue of all hooks marked for expiration
 
 	// followers (external aof readers)
-	follows  map[*bytes.Buffer]bool
-	fcond    *sync.Cond
-	lstack   []*commandDetails
-	lives    map[*liveBuffer]bool
-	lcond    *sync.Cond // live geofence signal
-	faofsz   int        // last reported aofsize
-	fcup     bool       // follow caught up
-	fcuponce bool       // follow caught up once
-	aofconnM map[net.Conn]io.Closer
-	pubq     pubQueue
+	follows   map[*bytes.Buffer]bool
+	fcond     *sync.Cond
+	lstack    []*commandDetails
+	lives     map[*liveBuffer]bool
+	lcond     *sync.Cond   // live geofence signal
+	faofsz    int          // last reported aofsize
+	fcupflags atomic.Int32 // follow caught up (caughtUp and caughtUpOnce)
+	aofconnM  map[net.Conn]io.Closer
+	pubq      pubQueue
 
 	// lua scripts
 	luascripts *lScriptMap
@@ -1029,12 +1028,16 @@ func (s *Server) handleInputCommand(client *Client, msg *Message) error {
 		}
 	case "get", "keys", "scan", "nearby", "within", "intersects", "hooks",
 		"chans", "search", "ttl", "bounds", "server", "info", "type", "jget",
-		"evalro", "evalrosha", "healthz", "role", "fget", "exists", "fexists":
+		"evalro", "evalrosha", "role", "fget", "exists", "fexists":
 		// read operations
-
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		if s.config.followHost() != "" && !s.fcuponce {
+		// fallthrough to perform a "catching up to leader" check
+		fallthrough
+	case "healthz":
+		// healthz operation does not require a read lock. It only needs
+		// a caughtup once check to leader, which is atomic.
+		if s.config.followHost() != "" && !s.caughtUpOnce() {
 			return writeErr("catching up to leader")
 		}
 	case "follow", "slaveof", "replconf", "readonly", "config":

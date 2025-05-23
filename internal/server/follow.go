@@ -203,13 +203,37 @@ func (s *Server) followDoLeaderAuth(conn *RESPConn, auth string) error {
 	return nil
 }
 
+// bit flags for the fcupflags server field
+const (
+	bitCaughtUpOnce int32 = 1 // follower caught up at least once in the past
+	bitCaughtUp     int32 = 2 // follower is fully caught up to leader
+)
+
+func (s *Server) setCaughtUp(caughtUp bool) {
+	var flags int32
+	if caughtUp {
+		flags = bitCaughtUp | bitCaughtUpOnce
+	} else {
+		flags = s.fcupflags.Load() & bitCaughtUpOnce
+	}
+	s.fcupflags.Store(flags)
+}
+
+func (s *Server) caughtUp() bool {
+	return (s.fcupflags.Load() & bitCaughtUp) == bitCaughtUp
+}
+
+func (s *Server) caughtUpOnce() bool {
+	return (s.fcupflags.Load() & bitCaughtUpOnce) == bitCaughtUpOnce
+}
+
 func (s *Server) followStep(host string, port int, followc int) error {
 	if int(s.followc.Load()) != followc {
 		return errNoLongerFollowing
 	}
 	s.mu.Lock()
 	s.faofsz = 0
-	s.fcup = false
+	s.setCaughtUp(false)
 	auth := s.config.leaderAuth()
 	s.mu.Unlock()
 	addr := fmt.Sprintf("%s:%d", host, port)
@@ -305,10 +329,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 
 	caughtUp := pos >= aofSize
 	if caughtUp {
-		s.mu.Lock()
-		s.fcup = true
-		s.fcuponce = true
-		s.mu.Unlock()
+		s.setCaughtUp(true)
 		log.Info("caught up")
 	}
 
@@ -339,8 +360,7 @@ func (s *Server) followStep(host string, port int, followc int) error {
 				caughtUp = true
 				s.mu.Lock()
 				s.flushAOF(false)
-				s.fcup = true
-				s.fcuponce = true
+				s.setCaughtUp(true)
 				s.mu.Unlock()
 				log.Info("caught up")
 			}

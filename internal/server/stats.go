@@ -109,9 +109,7 @@ func (s *Server) cmdHEALTHZ(msg *Message) (resp.Value, error) {
 	// >> Operation
 
 	if s.config.followHost() != "" {
-		m := make(map[string]interface{})
-		s.basicStats(m)
-		if fmt.Sprintf("%v", m["caught_up"]) != "true" {
+		if !s.caughtUp() {
 			return retrerr(errors.New("not caught up"))
 		}
 	}
@@ -168,8 +166,9 @@ func (s *Server) basicStats(m map[string]interface{}) {
 	if s.config.followHost() != "" {
 		m["following"] = fmt.Sprintf("%s:%d", s.config.followHost(),
 			s.config.followPort())
-		m["caught_up"] = s.fcup
-		m["caught_up_once"] = s.fcuponce
+
+		m["caught_up"] = s.caughtUp()
+		m["caught_up_once"] = s.caughtUpOnce()
 	}
 	m["http_transport"] = s.http
 	m["pid"] = os.Getpid()

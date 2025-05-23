@@ -111,7 +111,7 @@ func (s *Server) Collect(ch chan<- prometheus.Metric) {
 	if s.config.followHost() != "" {
 		replLbls = []string{"follower",
 			fmt.Sprintf("%s:%d", s.config.followHost(), s.config.followPort()),
-			fmt.Sprintf("%t", s.fcup), fmt.Sprintf("%t", s.fcuponce)}
+			fmt.Sprintf("%t", s.caughtUp()), fmt.Sprintf("%t", s.caughtUpOnce())}
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricDescriptions["replication"],
