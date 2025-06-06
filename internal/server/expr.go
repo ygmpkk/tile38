@@ -60,6 +60,34 @@ func resultToValue(r gjson.Result) expr.Value {
 	}
 }
 
+func objExpr(o *object.Object, info expr.RefInfo) (expr.Value, error) {
+	if r := gjson.Get(o.Geo().Members(), info.Ident); r.Exists() {
+		return resultToValue(r), nil
+	}
+	switch info.Ident {
+	case "id":
+		return expr.String(o.ID()), nil
+	case "type":
+		return typeForObject(o), nil
+	default:
+		var rf field.Field
+		var ok bool
+		o.Fields().Scan(func(f field.Field) bool {
+			if f.Name() == info.Ident {
+				rf = f
+				ok = true
+				return false
+			}
+			return true
+		})
+		if ok {
+			r := gjson.Parse(rf.Value().JSON())
+			return resultToValue(r), nil
+		}
+	}
+	return expr.Number(0), nil
+}
+
 func newExprPool(s *Server) *exprPool {
 	ext := expr.NewExtender(
 		// ref
@@ -67,33 +95,14 @@ func newExprPool(s *Server) *exprPool {
 			o := ctx.UserData.(*object.Object)
 			if !info.Chain {
 				// root
-				if r := gjson.Get(o.Geo().Members(), info.Ident); r.Exists() {
-					return resultToValue(r), nil
+				if info.Ident == "this" {
+					return expr.Object(o), nil
 				}
-				switch info.Ident {
-				case "id":
-					return expr.String(o.ID()), nil
-				case "type":
-					return typeForObject(o), nil
-				default:
-					var rf field.Field
-					var ok bool
-					o.Fields().Scan(func(f field.Field) bool {
-						if f.Name() == info.Ident {
-							rf = f
-							ok = true
-							return false
-						}
-						return true
-					})
-					if ok {
-						r := gjson.Parse(rf.Value().JSON())
-						return resultToValue(r), nil
-					}
-				}
-				return expr.Number(0), nil
+				return objExpr(o, info)
 			} else {
 				switch v := info.Value.Value().(type) {
+				case *object.Object:
+					return objExpr(o, info)
 				case gjson.Result:
 					return resultToValue(v.Get(info.Ident)), nil
 				default:
