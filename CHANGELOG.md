@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.35.0] = 2025-06-16
+### Added
+- 4638279: Added NATS Jetstream acks, user credentials, and tls #770 (@VeryStrongFingers)
+
+### Updated
+- 3fe57a7; Use atomics for HEALTHZ command to remove contention.
+- 3085316: Expose the 'this' property to WHERE clauses.
+
 ## [1.34.4] = 2025-05-08
 ### Fixed
 - 977bf25: Fix issue with some startup flags not being read (@salilgupta1)
