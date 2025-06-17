@@ -2,18 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.34.4] = 2024-05-08
+## [1.34.4] = 2025-05-08
 ### Fixed
 - 977bf25: Fix issue with some startup flags not being read (@salilgupta1)
 
 ### Updated
 - 86333cd: Bump golang.org/x/net #767
 
-## [1.34.3] = 2024-04-16
+## [1.34.3] = 2025-04-16
 ### Fixed
 - dd98481: Fix channel message delay #763 (@txtsd)
 
-## [1.34.2] = 2024-04-01
+## [1.34.2] = 2025-04-01
 ### Updated
 - a80eaf2: Upgrade to Go 1.24
 
@@ -24,7 +24,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Security
 - 0ecf097: Bump golang.org/x/net #765
 
-## [1.34.1] = 2024-01-13
+## [1.34.1] = 2025-01-13
 ### Security
 - 927f382: CVE-2024-45338 golang.org/x/net #762 (@tduong2049)
 - 07389d8: CVE-2024-45337 golang.org/x/crypto #760
