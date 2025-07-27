@@ -23,16 +23,16 @@ require (
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/expr v0.13.0
 	github.com/tidwall/geojson v1.4.5
-	github.com/tidwall/gjson v1.14.3
+	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/hashmap v1.6.1
 	github.com/tidwall/limiter v0.4.0
 	github.com/tidwall/match v1.1.1
-	github.com/tidwall/pretty v1.2.0
+	github.com/tidwall/pretty v1.2.1
 	github.com/tidwall/redbench v0.1.0
 	github.com/tidwall/redcon v1.4.4
 	github.com/tidwall/resp v0.1.1
 	github.com/tidwall/rtree v1.9.2
-	github.com/tidwall/sjson v1.2.4
+	github.com/tidwall/sjson v1.2.5
 	github.com/tidwall/tinylru v1.2.1
 	github.com/xdg-go/scram v1.1.2
 	github.com/yuin/gopher-lua v1.1.0
@@ -62,6 +62,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cloudflare/cloudflare-go/v4 v4.6.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/devigned/tab v0.1.1 // indirect
 	github.com/eapache/go-resiliency v1.3.0 // indirect

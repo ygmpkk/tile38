@@ -42,6 +42,8 @@ const (
 	NATS = Protocol("nats")
 	// EventHub protocol
 	EventHub = Protocol("sb")
+	// CFQueue protocol
+	CFQueue = Protocol("cf-queue")
 )
 
 // Endpoint represents an endpoint.
@@ -133,6 +135,11 @@ type Endpoint struct {
 	}
 	EventHub struct {
 		ConnectionString string
+	}
+	CFQueue struct {
+		AccountID string
+		QueueID   string
+		APIToken  string
 	}
 	Local struct {
 		Channel string
@@ -241,6 +248,8 @@ func (epc *Manager) Send(endpoint, msg string) error {
 				conn = newLocalConn(ep, epc.publisher)
 			case EventHub:
 				conn = newEventHubConn(ep)
+			case CFQueue:
+				conn = newCFQueueConn(ep)
 			}
 			epc.conns[endpoint] = conn
 		}
@@ -298,6 +307,8 @@ func parseEndpoint(s string) (Endpoint, error) {
 		endpoint.Protocol = NATS
 	case strings.HasPrefix(s, "Endpoint="):
 		endpoint.Protocol = EventHub
+	case strings.HasPrefix(s, "cf-queue:"):
+		endpoint.Protocol = CFQueue
 	}
 
 	s = s[strings.Index(s, ":")+1:]
@@ -815,6 +826,48 @@ func parseEndpoint(s string) (Endpoint, error) {
 		}
 
 		endpoint.EventHub.ConnectionString = endpoint.Original
+	}
+
+	// Basic CF Queue connection strings in HOOKS interface
+	// cf-queue://<account_id>/<queue_id>?token=<api_token>
+	//
+	//  params are:
+	//
+	// token - API token
+	if endpoint.Protocol == CFQueue {
+		// Parse account_id/queue_id from the path parts
+		if len(sp) < 2 {
+			return endpoint, errors.New("invalid CF Queue format, should be account_id/queue_id")
+		}
+		endpoint.CFQueue.AccountID = sp[0]
+		endpoint.CFQueue.QueueID = sp[1]
+
+		// Parse query parameters for API token
+		if len(sqp) > 1 {
+			m, err := url.ParseQuery(sqp[1])
+			if err != nil {
+				return endpoint, errors.New("invalid CF Queue url")
+			}
+			for key, val := range m {
+				if len(val) == 0 {
+					continue
+				}
+				switch key {
+				case "token":
+					endpoint.CFQueue.APIToken = val[0]
+				}
+			}
+		}
+
+		if endpoint.CFQueue.AccountID == "" {
+			return endpoint, errors.New("missing CF Queue account ID")
+		}
+		if endpoint.CFQueue.QueueID == "" {
+			return endpoint, errors.New("missing CF Queue queue ID")
+		}
+		if endpoint.CFQueue.APIToken == "" {
+			return endpoint, errors.New("missing CF Queue API token")
+		}
 	}
 
 	return endpoint, nil
