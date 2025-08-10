@@ -7,6 +7,7 @@ import org.locationtech.jts.geom.Geometry;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 /**
  * Core Tile38 service interface for geospatial operations
@@ -17,6 +18,11 @@ public interface Tile38Service {
      * Set/Store a geospatial object
      */
     void set(String key, String id, Tile38Object object);
+    
+    /**
+     * Bulk load objects for better performance
+     */
+    void bulkSet(String key, Map<String, Tile38Object> objects);
     
     /**
      * Get an object by key and id

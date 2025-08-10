@@ -11,22 +11,31 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.index.ItemVisitor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implementation of SpatialRepository using JTS STRtree for spatial indexing
+ * Optimized for million-level data with bulk loading support
  */
 @Repository
 public class SpatialRepositoryImpl implements SpatialRepository {
     
+    private static final Logger logger = LoggerFactory.getLogger(SpatialRepositoryImpl.class);
+    
     private final GeometryFactory geometryFactory = new GeometryFactory();
+    
+    // Optimized node capacity for million-level data
+    private static final int STRTREE_NODE_CAPACITY = 25;
     
     // Spatial indexes per collection
     private final Map<String, STRtree> spatialIndexes = new ConcurrentHashMap<>();
     
-    // Object storage per collection - needed for retrieving full objects
+    // Single source of truth for object storage per collection
     private final Map<String, Map<String, Tile38Object>> objectStorage = new ConcurrentHashMap<>();
     
     @Override
@@ -35,17 +44,102 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             return;
         }
         
-        STRtree index = spatialIndexes.computeIfAbsent(key, k -> new STRtree());
+        STRtree index = spatialIndexes.computeIfAbsent(key, k -> new STRtree(STRTREE_NODE_CAPACITY));
         Map<String, Tile38Object> storage = objectStorage.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
         
         // Remove existing entry if present
         remove(key, id);
+        
+        // Clean up expired objects during indexing
+        removeExpiredObjects(key, storage, index);
         
         // Add to spatial index
         index.insert(object.getGeometry().getEnvelopeInternal(), id);
         
         // Store object
         storage.put(id, object);
+    }
+    
+    @Override
+    public void bulkIndex(String key, Map<String, Tile38Object> objects) {
+        if (objects == null || objects.isEmpty()) {
+            return;
+        }
+        
+        logger.info("Starting bulk index for collection '{}' with {} objects", key, objects.size());
+        long startTime = System.currentTimeMillis();
+        
+        // Create new optimized spatial index for bulk loading
+        STRtree newIndex = new STRtree(STRTREE_NODE_CAPACITY);
+        Map<String, Tile38Object> newStorage = new ConcurrentHashMap<>();
+        
+        // Filter out expired and invalid objects
+        Map<String, Tile38Object> validObjects = new HashMap<>();
+        for (Map.Entry<String, Tile38Object> entry : objects.entrySet()) {
+            Tile38Object object = entry.getValue();
+            if (object.getGeometry() != null && !object.isExpired()) {
+                validObjects.put(entry.getKey(), object);
+            }
+        }
+        
+        logger.info("Filtered {} valid objects from {} total for collection '{}'", 
+                   validObjects.size(), objects.size(), key);
+        
+        // Bulk insert into spatial index
+        for (Map.Entry<String, Tile38Object> entry : validObjects.entrySet()) {
+            newIndex.insert(entry.getValue().getGeometry().getEnvelopeInternal(), entry.getKey());
+            newStorage.put(entry.getKey(), entry.getValue());
+        }
+        
+        // Build the spatial index (this optimizes the tree structure)
+        newIndex.build();
+        
+        // Replace old index and storage atomically
+        spatialIndexes.put(key, newIndex);
+        objectStorage.put(key, newStorage);
+        
+        long endTime = System.currentTimeMillis();
+        logger.info("Completed bulk index for collection '{}' in {}ms", key, (endTime - startTime));
+    }
+    
+    @Override
+    public Optional<Tile38Object> get(String key, String id) {
+        Map<String, Tile38Object> storage = objectStorage.get(key);
+        if (storage == null) {
+            return Optional.empty();
+        }
+        
+        Tile38Object object = storage.get(id);
+        if (object != null && object.isExpired()) {
+            // Remove expired object
+            remove(key, id);
+            return Optional.empty();
+        }
+        
+        return Optional.ofNullable(object);
+    }
+    
+    @Override
+    public Set<String> keys() {
+        return new HashSet<>(objectStorage.keySet());
+    }
+    
+    @Override
+    public Map<String, Tile38Object> getAll(String key) {
+        Map<String, Tile38Object> storage = objectStorage.get(key);
+        if (storage == null) {
+            return Collections.emptyMap();
+        }
+        
+        // Filter out expired objects
+        Map<String, Tile38Object> result = new HashMap<>();
+        for (Map.Entry<String, Tile38Object> entry : storage.entrySet()) {
+            if (!entry.getValue().isExpired()) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -66,6 +160,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
     public void drop(String key) {
         spatialIndexes.remove(key);
         objectStorage.remove(key);
+        logger.info("Dropped collection: {}", key);
     }
     
     @Override
@@ -90,7 +185,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             public void visitItem(Object item) {
                 String id = (String) item;
                 Tile38Object object = storage.get(id);
-                if (object != null) {
+                if (object != null && !object.isExpired()) {
                     double distance = center.distance(object.getGeometry());
                     // Convert distance from degrees to meters (approximation)
                     double distanceMeters = distance * 111000.0;
@@ -128,7 +223,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             public void visitItem(Object item) {
                 String id = (String) item;
                 Tile38Object object = storage.get(id);
-                if (object != null && geometry.contains(object.getGeometry())) {
+                if (object != null && !object.isExpired() && geometry.contains(object.getGeometry())) {
                     results.add(SearchResult.builder()
                                           .id(id)
                                           .object(object)
@@ -157,7 +252,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             public void visitItem(Object item) {
                 String id = (String) item;
                 Tile38Object object = storage.get(id);
-                if (object != null && geometry.intersects(object.getGeometry())) {
+                if (object != null && !object.isExpired() && geometry.intersects(object.getGeometry())) {
                     results.add(SearchResult.builder()
                                           .id(id)
                                           .object(object)
@@ -170,8 +265,51 @@ public class SpatialRepositoryImpl implements SpatialRepository {
     }
     
     @Override
+    public long getTotalObjectCount() {
+        return objectStorage.values().stream()
+                          .mapToLong(storage -> storage.values().stream()
+                                                      .mapToLong(obj -> obj.isExpired() ? 0 : 1)
+                                                      .sum())
+                          .sum();
+    }
+    
+    @Override
+    public long getObjectCount(String key) {
+        Map<String, Tile38Object> storage = objectStorage.get(key);
+        if (storage == null) {
+            return 0;
+        }
+        
+        return storage.values().stream()
+                     .mapToLong(obj -> obj.isExpired() ? 0 : 1)
+                     .sum();
+    }
+    
+    @Override
     public void flushAll() {
         spatialIndexes.clear();
         objectStorage.clear();
+        logger.info("Flushed all collections");
+    }
+    
+    /**
+     * Periodic cleanup of expired objects
+     */
+    private void removeExpiredObjects(String key, Map<String, Tile38Object> storage, STRtree index) {
+        if (storage.size() % 1000 == 0) { // Clean up every 1000 inserts
+            List<String> expiredIds = new ArrayList<>();
+            for (Map.Entry<String, Tile38Object> entry : storage.entrySet()) {
+                if (entry.getValue().isExpired()) {
+                    expiredIds.add(entry.getKey());
+                }
+            }
+            
+            if (!expiredIds.isEmpty()) {
+                logger.debug("Cleaning up {} expired objects from collection '{}'", expiredIds.size(), key);
+                for (String expiredId : expiredIds) {
+                    remove(key, expiredId);
+                }
+            }
+        }
     }
 }

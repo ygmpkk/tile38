@@ -4,6 +4,7 @@ import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
+import com.tile38.loader.DataLoader;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +21,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.time.Instant;
 
 /**
  * HTTP REST API Controller for Tile38 operations
  * Provides HTTP endpoints equivalent to the original Tile38 commands
+ * Enhanced with bulk loading capabilities for million-level data
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -33,6 +36,9 @@ public class Tile38Controller {
     
     @Autowired
     private Tile38Service tile38Service;
+    
+    @Autowired
+    private DataLoader dataLoader;
     
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final WKTReader wktReader = new WKTReader(geometryFactory);
@@ -230,5 +236,158 @@ public class Tile38Controller {
         response.put("elapsed", "0.001s");
         
         return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Bulk load objects for a collection
+     * HTTP: POST /api/v1/keys/{key}/bulk
+     */
+    @PostMapping("/keys/{key}/bulk")
+    public ResponseEntity<Map<String, Object>> bulkSetObjects(
+            @PathVariable String key,
+            @RequestBody Map<String, Map<String, Object>> objects) {
+        
+        try {
+            Map<String, Tile38Object> tile38Objects = new HashMap<>();
+            
+            for (Map.Entry<String, Map<String, Object>> entry : objects.entrySet()) {
+                String id = entry.getKey();
+                Map<String, Object> objData = entry.getValue();
+                
+                Double lat = (Double) objData.get("lat");
+                Double lon = (Double) objData.get("lon");
+                
+                if (lat == null || lon == null) {
+                    log.warn("Skipping object {} - missing lat/lon", id);
+                    continue;
+                }
+                
+                Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
+                
+                Map<String, Object> fields = (Map<String, Object>) objData.get("fields");
+                if (fields == null) {
+                    fields = new HashMap<>();
+                }
+                
+                Tile38Object tile38Object = Tile38Object.builder()
+                    .id(id)
+                    .geometry(point)
+                    .fields(fields)
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+                
+                tile38Objects.put(id, tile38Object);
+            }
+            
+            tile38Service.bulkSet(key, tile38Objects);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", true);
+            response.put("objects_loaded", tile38Objects.size());
+            response.put("elapsed", "0.001s");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error in bulk set operation", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("err", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * Load data from JSON file
+     * HTTP: POST /api/v1/load/json?filePath=/path/to/file.json
+     */
+    @PostMapping("/load/json")
+    public ResponseEntity<Map<String, Object>> loadFromJson(@RequestParam String filePath) {
+        try {
+            CompletableFuture<DataLoader.LoadResult> future = dataLoader.loadFromJson(filePath);
+            DataLoader.LoadResult result = future.get(); // Wait for completion
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", result.isSuccess());
+            response.put("records_loaded", result.getRecordsLoaded());
+            response.put("duration_ms", result.getDurationMs());
+            response.put("message", result.getMessage());
+            
+            return result.isSuccess() ? ResponseEntity.ok(response) : ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error loading from JSON", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("err", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * Load data from CSV file
+     * HTTP: POST /api/v1/load/csv?filePath=/path/to/file.csv
+     */
+    @PostMapping("/load/csv")
+    public ResponseEntity<Map<String, Object>> loadFromCsv(@RequestParam String filePath) {
+        try {
+            CompletableFuture<DataLoader.LoadResult> future = dataLoader.loadFromCsv(filePath);
+            DataLoader.LoadResult result = future.get(); // Wait for completion
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", result.isSuccess());
+            response.put("records_loaded", result.getRecordsLoaded());
+            response.put("duration_ms", result.getDurationMs());
+            response.put("message", result.getMessage());
+            
+            return result.isSuccess() ? ResponseEntity.ok(response) : ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error loading from CSV", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("err", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * Generate test data for performance testing
+     * HTTP: POST /api/v1/generate/test-data
+     */
+    @PostMapping("/generate/test-data")
+    public ResponseEntity<Map<String, Object>> generateTestData(
+            @RequestParam String collection,
+            @RequestParam(defaultValue = "100000") int records,
+            @RequestParam(defaultValue = "30.0") double minLat,
+            @RequestParam(defaultValue = "40.0") double maxLat,
+            @RequestParam(defaultValue = "-120.0") double minLon,
+            @RequestParam(defaultValue = "-110.0") double maxLon) {
+        
+        try {
+            log.info("Starting test data generation: {} records for collection '{}'", records, collection);
+            CompletableFuture<DataLoader.LoadResult> future = dataLoader.generateTestData(
+                collection, records, minLat, maxLat, minLon, maxLon);
+            DataLoader.LoadResult result = future.get(); // Wait for completion
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", result.isSuccess());
+            response.put("records_generated", result.getRecordsLoaded());
+            response.put("duration_ms", result.getDurationMs());
+            response.put("message", result.getMessage());
+            
+            return result.isSuccess() ? ResponseEntity.ok(response) : ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error generating test data", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("err", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
