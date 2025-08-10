@@ -1,0 +1,37 @@
+server:
+  port: 9851
+
+spring:
+  application:
+    name: tile38-server
+
+# Dubbo configuration - disabled by default for HTTP-only mode
+dubbo:
+  application:
+    name: tile38-server
+  protocol:
+    name: dubbo
+    port: 20880
+  # Comment out registry to disable DUBBO services  
+  # registry:
+  #   address: nacos://localhost:8848
+  provider:
+    timeout: 3000
+
+# Logging configuration
+logging:
+  level:
+    com.tile38: DEBUG
+    org.apache.dubbo: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
