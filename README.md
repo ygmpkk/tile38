@@ -42,6 +42,7 @@ It supports a variety of object types including lat/lon points, bounding boxes, 
 - tile38-server: The server
 - tile38-cli: Command line interface tool
 - tile38-benchmark: Server benchmark tool
+- **tile38-spring**: Java/Spring Boot integration with JDK 21 and ZGC support
 
 ## Getting Started
 
@@ -78,6 +79,18 @@ To build everything simply:
 $ make
 ```
 
+This will build both the Go components and the Java/Spring Boot integration (requires JDK 21+ and Maven).
+
+To build only the Go components:
+```
+$ make tile38-server tile38-cli tile38-benchmark
+```
+
+To build only the Spring Boot integration:
+```
+$ make tile38-spring
+```
+
 To test:
 ```
 $ make test
@@ -111,6 +124,31 @@ curl http://127.0.0.1:4321/metrics
 If you need to access the `/metrics` endpoint from a different host you'll have to set the flag accordingly, e.g. set it to `0.0.0.0:<<port>>` to listen on all interfaces.
 
 Use the [redis_exporter](https://github.com/oliver006/redis_exporter) for more advanced use cases like extracting key values or running a lua script.
+
+### Java/Spring Boot Integration
+
+Tile38 now includes a Spring Boot integration layer that provides enterprise-grade Java support with JDK 21 and ZGC optimizations:
+
+```bash
+# Build the Java/Spring integration
+$ make tile38-spring
+
+# Run with ZGC for optimal performance
+$ cd tile38-spring
+$ java -XX:+UseZGC -jar target/tile38-spring-boot-starter-1.0.0-SNAPSHOT.jar
+
+# Or use Docker Compose for full stack
+$ make docker-compose-up
+```
+
+Key features:
+- **JDK 21** with ZGC garbage collection for low-latency geospatial operations
+- RESTful API endpoints for all major Tile38 operations
+- Connection pooling and caching optimized for ZGC
+- Spring Boot auto-configuration and metrics
+- Production-ready Docker containers
+
+See `tile38-spring/README.md` for detailed documentation and API examples.
 
 
 ## <a name="cli"></a>Playing with Tile38
