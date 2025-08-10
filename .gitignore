@@ -6,6 +6,13 @@ data*/
 coverage.out
 packages/
 
+# Java Integration
+java-integration/target/
+java-integration/.mvn/
+java-integration/mvnw
+java-integration/mvnw.cmd
+java-integration/**/*.log
+
 # Ignore IDE folders
 .idea/
 .vscode/

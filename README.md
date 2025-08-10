@@ -42,12 +42,34 @@ It supports a variety of object types including lat/lon points, bounding boxes, 
 - tile38-server: The server
 - tile38-cli: Command line interface tool
 - tile38-benchmark: Server benchmark tool
+- **NEW: Java Enterprise Integration**: Spring Boot layer with JDK 21 + ZGC for enterprise geospatial applications
 
 ## Getting Started
 
 ### Getting Tile38
 
 Perhaps the easiest way to get the latest Tile38 is to use one of the pre-built release binaries which are available for OSX, Linux, FreeBSD, and Windows. Instructions for using these binaries are on the GitHub [releases page](https://github.com/tidwall/tile38/releases).
+
+### Enterprise Java Integration
+
+For enterprise applications requiring advanced integration capabilities, Tile38 now includes a Java Spring Boot layer with JDK 21 and ZGC optimization:
+
+```bash
+# Build both Go server and Java integration
+make all
+
+# Start enterprise stack (Go + Java with ZGC)
+./start-enterprise.sh
+```
+
+The Java integration provides:
+- **JDK 21 with ZGC**: Low-latency garbage collection optimized for geospatial data
+- **Spring Boot 3.x**: Modern enterprise framework with security and monitoring
+- **RESTful APIs**: Enterprise-grade APIs for geospatial operations
+- **Caching & Metrics**: Performance optimization and monitoring
+- **Enterprise Security**: Authentication and role-based access control
+
+Access the enterprise layer at: `http://localhost:8080/tile38-enterprise/`
 
 ### Docker 
 
