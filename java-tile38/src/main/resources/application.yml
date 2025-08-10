@@ -5,15 +5,16 @@ spring:
   application:
     name: tile38-server
 
-# Dubbo configuration
+# Dubbo configuration - disabled by default for HTTP-only mode
 dubbo:
   application:
     name: tile38-server
   protocol:
     name: dubbo
     port: 20880
-  registry:
-    address: nacos://localhost:8848
+  # Comment out registry to disable DUBBO services  
+  # registry:
+  #   address: nacos://localhost:8848
   provider:
     timeout: 3000
 
@@ -21,7 +22,7 @@ dubbo:
 logging:
   level:
     com.tile38: DEBUG
-    org.apache.dubbo: INFO
+    org.apache.dubbo: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 

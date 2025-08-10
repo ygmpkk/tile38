@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Dubbo RPC service implementation for Tile38 operations
  */
-@DubboService
+// @DubboService  // Commented out for HTTP-only mode
 public class Tile38RpcServiceImpl implements Tile38RpcService {
     
     @Autowired
