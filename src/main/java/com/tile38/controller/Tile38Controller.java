@@ -4,6 +4,9 @@ import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
+import com.tile38.model.KVData;
+import com.tile38.model.FilterCondition;
+import com.tile38.model.FilterRequest;
 import com.tile38.loader.DataLoader;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,9 +68,23 @@ public class Tile38Controller {
             // Create geometry
             Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
             
-            // Parse fields
+            // Parse fields and KV data
             @SuppressWarnings("unchecked")
             Map<String, Object> fields = (Map<String, Object>) request.get("fields");
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tagsMap = (Map<String, Object>) request.get("tags");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributesMap = (Map<String, Object>) request.get("attributes");
+            
+            // Create KV data
+            KVData kvData = new KVData();
+            if (tagsMap != null) {
+                tagsMap.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
+            }
+            if (attributesMap != null) {
+                attributesMap.forEach(kvData::setAttribute);
+            }
             
             // Parse expiration
             Long exSeconds = request.get("ex") != null ? ((Number) request.get("ex")).longValue() : null;
@@ -78,6 +95,7 @@ public class Tile38Controller {
                     .id(id)
                     .geometry(point)
                     .fields(fields)
+                    .kvData(kvData.isEmpty() ? null : kvData)
                     .expireAt(expireAt)
                     .timestamp(System.currentTimeMillis())
                     .build();
@@ -178,15 +196,61 @@ public class Tile38Controller {
     /**
      * NEARBY key POINT lat lon radius
      * HTTP: GET /api/v1/keys/{key}/nearby?lat={lat}&lon={lon}&radius={radius}
+     * Enhanced with optional KV filtering
      */
     @GetMapping("/keys/{key}/nearby")
     public ResponseEntity<Map<String, Object>> nearby(
             @PathVariable String key,
             @RequestParam double lat,
             @RequestParam double lon,
-            @RequestParam double radius) {
+            @RequestParam double radius,
+            @RequestParam(required = false) String filter) {
         
-        List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius);
+        FilterCondition filterCondition = null;
+        if (filter != null && !filter.trim().isEmpty()) {
+            try {
+                // Simple filter parsing: format like "tag:category=restaurant" or "attr:speed>50"
+                filterCondition = parseSimpleFilter(filter);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter format: " + e.getMessage()));
+            }
+        }
+        
+        List<SearchResult> results = filterCondition != null ? 
+                tile38Service.nearby(key, lat, lon, radius, filterCondition) :
+                tile38Service.nearby(key, lat, lon, radius);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("ok", true);
+        response.put("count", results.size());
+        response.put("objects", results);
+        response.put("elapsed", "0.001s");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Advanced NEARBY with complex filter conditions
+     * HTTP: POST /api/v1/keys/{key}/nearby/filter
+     */
+    @PostMapping("/keys/{key}/nearby/filter")
+    public ResponseEntity<Map<String, Object>> nearbyWithFilter(
+            @PathVariable String key,
+            @RequestParam double lat,
+            @RequestParam double lon,
+            @RequestParam double radius,
+            @RequestBody(required = false) FilterRequest filterRequest) {
+        
+        FilterCondition filter = null;
+        if (filterRequest != null) {
+            try {
+                filter = filterRequest.toFilterCondition();
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter: " + e.getMessage()));
+            }
+        }
+        
+        List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius, filter);
         
         Map<String, Object> response = new HashMap<>();
         response.put("ok", true);
@@ -269,10 +333,25 @@ public class Tile38Controller {
                     fields = new HashMap<>();
                 }
                 
+                // Parse KV data
+                @SuppressWarnings("unchecked")
+                Map<String, Object> tagsMap = (Map<String, Object>) objData.get("tags");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> attributesMap = (Map<String, Object>) objData.get("attributes");
+                
+                KVData kvData = new KVData();
+                if (tagsMap != null) {
+                    tagsMap.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
+                }
+                if (attributesMap != null) {
+                    attributesMap.forEach(kvData::setAttribute);
+                }
+                
                 Tile38Object tile38Object = Tile38Object.builder()
                     .id(id)
                     .geometry(point)
                     .fields(fields)
+                    .kvData(kvData.isEmpty() ? null : kvData)
                     .timestamp(System.currentTimeMillis())
                     .build();
                 
@@ -388,6 +467,156 @@ public class Tile38Controller {
             response.put("err", e.getMessage());
             
             return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * Update KV data for an existing object
+     * HTTP: PUT /api/v1/keys/{key}/objects/{id}/kv
+     */
+    @PutMapping("/keys/{key}/objects/{id}/kv")
+    public ResponseEntity<Map<String, Object>> updateKVData(
+            @PathVariable String key,
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tagsMap = (Map<String, Object>) request.get("tags");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributesMap = (Map<String, Object>) request.get("attributes");
+            
+            if (tagsMap == null && attributesMap == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Either tags or attributes must be provided"));
+            }
+            
+            // Create KV data
+            KVData kvData = new KVData();
+            if (tagsMap != null) {
+                tagsMap.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
+            }
+            if (attributesMap != null) {
+                attributesMap.forEach(kvData::setAttribute);
+            }
+            
+            boolean updated = tile38Service.updateKVData(key, id, kvData);
+            
+            if (!updated) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", true);
+            response.put("updated", 1);
+            response.put("elapsed", "0.001s");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error updating KV data", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * Parse simple filter format: "tag:key=value", "attr:key>value", etc.
+     */
+    private FilterCondition parseSimpleFilter(String filter) {
+        String[] parts = filter.split(":", 2);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Filter must be in format 'type:condition'");
+        }
+        
+        String type = parts[0].toLowerCase();
+        String condition = parts[1];
+        
+        FilterCondition.DataType dataType;
+        if ("tag".equals(type)) {
+            dataType = FilterCondition.DataType.TAG;
+        } else if ("attr".equals(type) || "attribute".equals(type)) {
+            dataType = FilterCondition.DataType.ATTRIBUTE;
+        } else {
+            throw new IllegalArgumentException("Type must be 'tag' or 'attr'");
+        }
+        
+        // Parse condition (key=value, key>value, etc.)
+        String key;
+        String op;
+        String value;
+        
+        if (condition.contains(">=")) {
+            String[] condParts = condition.split(">=", 2);
+            key = condParts[0].trim();
+            op = "GREATER_EQUAL";
+            value = condParts[1].trim();
+        } else if (condition.contains("<=")) {
+            String[] condParts = condition.split("<=", 2);
+            key = condParts[0].trim();
+            op = "LESS_EQUAL";
+            value = condParts[1].trim();
+        } else if (condition.contains("!=")) {
+            String[] condParts = condition.split("!=", 2);
+            key = condParts[0].trim();
+            op = "NOT_EQUALS";
+            value = condParts[1].trim();
+        } else if (condition.contains("=")) {
+            String[] condParts = condition.split("=", 2);
+            key = condParts[0].trim();
+            op = "EQUALS";
+            value = condParts[1].trim();
+        } else if (condition.contains(">")) {
+            String[] condParts = condition.split(">", 2);
+            key = condParts[0].trim();
+            op = "GREATER_THAN";
+            value = condParts[1].trim();
+        } else if (condition.contains("<")) {
+            String[] condParts = condition.split("<", 2);
+            key = condParts[0].trim();
+            op = "LESS_THAN";
+            value = condParts[1].trim();
+        } else {
+            throw new IllegalArgumentException("Unsupported condition operator");
+        }
+        
+        // Parse value (try to convert to number if possible)
+        Object parsedValue = parseValue(value);
+        
+        return FilterCondition.builder()
+                .key(key)
+                .operator(FilterCondition.Operator.valueOf(op))
+                .value(parsedValue)
+                .dataType(dataType)
+                .build();
+    }
+    
+    /**
+     * Parse value string to appropriate type
+     */
+    private Object parseValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        
+        // Remove quotes if present
+        if (value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1);
+        }
+        
+        // Try to parse as number
+        try {
+            if (value.contains(".")) {
+                return Double.parseDouble(value);
+            } else {
+                return Long.parseLong(value);
+            }
+        } catch (NumberFormatException e) {
+            // Try boolean
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                return Boolean.parseBoolean(value);
+            }
+            
+            // Return as string
+            return value;
         }
     }
 }

@@ -3,6 +3,7 @@ package com.tile38.loader.impl;
 import com.tile38.loader.DataLoader;
 import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
+import com.tile38.model.KVData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -238,18 +239,38 @@ public class DataLoaderImpl implements DataLoader {
                     
                     Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
                     
-                    // Generate sample fields
+                    // Generate sample fields (legacy)
                     Map<String, Object> fields = new HashMap<>();
                     fields.put("type", "vehicle_" + (i % 5)); // vehicle_0 to vehicle_4
                     fields.put("speed", 30 + random.nextInt(70)); // 30-100 speed
                     fields.put("driver", "driver_" + (i % 1000)); // 1000 unique drivers
                     fields.put("fuel", random.nextInt(100)); // 0-100 fuel level
                     
-                    String id = "test_object_" + i;
+                    // Generate KV data for modern usage
+                    KVData kvData = new KVData();
+                    
+                    // Generate tags
+                    String[] categories = {"retail", "service", "food", "entertainment", "healthcare", "education"};
+                    String[] types = {"premium", "standard", "basic", "vip", "regular"};
+                    String[] statuses = {"active", "inactive", "pending", "verified", "suspended"};
+                    
+                    kvData.setTag("category", categories[i % categories.length]);
+                    kvData.setTag("type", types[i % types.length]);
+                    kvData.setTag("status", statuses[i % statuses.length]);
+                    
+                    // Generate attributes
+                    kvData.setAttribute("priority", random.nextInt(10) + 1);
+                    kvData.setAttribute("score", random.nextDouble() * 100);
+                    kvData.setAttribute("active", random.nextBoolean());
+                    kvData.setAttribute("rating", 1.0 + random.nextDouble() * 4.0); // 1.0-5.0
+                    kvData.setAttribute("created_timestamp", System.currentTimeMillis());
+                    
+                    String id = "obj" + i; // Consistent with performance test expectations
                     Tile38Object tile38Object = Tile38Object.builder()
                         .id(id)
                         .geometry(point)
                         .fields(fields)
+                        .kvData(kvData)
                         .timestamp(System.currentTimeMillis())
                         .build();
                     

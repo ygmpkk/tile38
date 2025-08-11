@@ -2,6 +2,8 @@ package com.tile38.repository;
 
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
+import com.tile38.model.FilterCondition;
+import com.tile38.model.KVData;
 import org.locationtech.jts.geom.Geometry;
 
 import java.util.List;
@@ -55,14 +57,34 @@ public interface SpatialRepository {
     List<SearchResult> nearby(String key, double lat, double lon, double radius);
     
     /**
+     * Search for objects nearby a point with KV filtering
+     */
+    List<SearchResult> nearby(String key, double lat, double lon, double radius, FilterCondition filter);
+    
+    /**
      * Search for objects within a geometry
      */
     List<SearchResult> within(String key, Geometry geometry);
     
     /**
+     * Search for objects within a geometry with KV filtering
+     */
+    List<SearchResult> within(String key, Geometry geometry, FilterCondition filter);
+    
+    /**
      * Search for objects that intersect with a geometry
      */
     List<SearchResult> intersects(String key, Geometry geometry);
+    
+    /**
+     * Search for objects that intersect with a geometry with KV filtering
+     */
+    List<SearchResult> intersects(String key, Geometry geometry, FilterCondition filter);
+    
+    /**
+     * Update KV data for an existing object
+     */
+    boolean updateKVData(String key, String id, KVData kvData);
     
     /**
      * Get total number of objects across all collections
