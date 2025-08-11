@@ -4,6 +4,8 @@ import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
+import com.tile38.model.FilterCondition;
+import com.tile38.model.KVData;
 import com.tile38.repository.SpatialRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,13 +97,33 @@ public class Tile38ServiceImpl implements Tile38Service {
     }
     
     @Override
+    public List<SearchResult> nearby(String key, double lat, double lon, double radius, FilterCondition filter) {
+        return spatialRepository.nearby(key, lat, lon, radius, filter);
+    }
+    
+    @Override
     public List<SearchResult> within(String key, Geometry geometry) {
         return spatialRepository.within(key, geometry);
     }
     
     @Override
+    public List<SearchResult> within(String key, Geometry geometry, FilterCondition filter) {
+        return spatialRepository.within(key, geometry, filter);
+    }
+    
+    @Override
     public List<SearchResult> intersects(String key, Geometry geometry) {
         return spatialRepository.intersects(key, geometry);
+    }
+    
+    @Override
+    public List<SearchResult> intersects(String key, Geometry geometry, FilterCondition filter) {
+        return spatialRepository.intersects(key, geometry, filter);
+    }
+    
+    @Override
+    public boolean updateKVData(String key, String id, KVData kvData) {
+        return spatialRepository.updateKVData(key, id, kvData);
     }
     
     @Override

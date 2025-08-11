@@ -3,6 +3,8 @@ package com.tile38.repository.impl;
 import com.tile38.repository.SpatialRepository;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
+import com.tile38.model.FilterCondition;
+import com.tile38.model.KVData;
 
 import org.springframework.stereotype.Repository;
 import org.locationtech.jts.geom.Geometry;
@@ -165,6 +167,11 @@ public class SpatialRepositoryImpl implements SpatialRepository {
     
     @Override
     public List<SearchResult> nearby(String key, double lat, double lon, double radius) {
+        return nearby(key, lat, lon, radius, null);
+    }
+    
+    @Override
+    public List<SearchResult> nearby(String key, double lat, double lon, double radius, FilterCondition filter) {
         STRtree index = spatialIndexes.get(key);
         Map<String, Tile38Object> storage = objectStorage.get(key);
         
@@ -190,7 +197,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
                     // Convert distance from degrees to meters (approximation)
                     double distanceMeters = distance * 111000.0;
                     
-                    if (distanceMeters <= radius) {
+                    if (distanceMeters <= radius && object.matchesFilter(filter)) {
                         results.add(SearchResult.builder()
                                               .id(id)
                                               .object(object)
@@ -209,6 +216,11 @@ public class SpatialRepositoryImpl implements SpatialRepository {
     
     @Override
     public List<SearchResult> within(String key, Geometry geometry) {
+        return within(key, geometry, null);
+    }
+    
+    @Override
+    public List<SearchResult> within(String key, Geometry geometry, FilterCondition filter) {
         STRtree index = spatialIndexes.get(key);
         Map<String, Tile38Object> storage = objectStorage.get(key);
         
@@ -223,7 +235,9 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             public void visitItem(Object item) {
                 String id = (String) item;
                 Tile38Object object = storage.get(id);
-                if (object != null && !object.isExpired() && geometry.contains(object.getGeometry())) {
+                if (object != null && !object.isExpired() && 
+                    geometry.contains(object.getGeometry()) && 
+                    object.matchesFilter(filter)) {
                     results.add(SearchResult.builder()
                                           .id(id)
                                           .object(object)
@@ -238,6 +252,11 @@ public class SpatialRepositoryImpl implements SpatialRepository {
     
     @Override
     public List<SearchResult> intersects(String key, Geometry geometry) {
+        return intersects(key, geometry, null);
+    }
+    
+    @Override
+    public List<SearchResult> intersects(String key, Geometry geometry, FilterCondition filter) {
         STRtree index = spatialIndexes.get(key);
         Map<String, Tile38Object> storage = objectStorage.get(key);
         
@@ -252,7 +271,9 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             public void visitItem(Object item) {
                 String id = (String) item;
                 Tile38Object object = storage.get(id);
-                if (object != null && !object.isExpired() && geometry.intersects(object.getGeometry())) {
+                if (object != null && !object.isExpired() && 
+                    geometry.intersects(object.getGeometry()) && 
+                    object.matchesFilter(filter)) {
                     results.add(SearchResult.builder()
                                           .id(id)
                                           .object(object)
@@ -290,6 +311,26 @@ public class SpatialRepositoryImpl implements SpatialRepository {
         spatialIndexes.clear();
         objectStorage.clear();
         logger.info("Flushed all collections");
+    }
+    
+    @Override
+    public boolean updateKVData(String key, String id, KVData kvData) {
+        Map<String, Tile38Object> storage = objectStorage.get(key);
+        if (storage == null) {
+            return false;
+        }
+        
+        Tile38Object object = storage.get(id);
+        if (object == null || object.isExpired()) {
+            return false;
+        }
+        
+        // Update KV data without affecting spatial indexing
+        object.updateKVData(kvData);
+        object.setTimestamp(System.currentTimeMillis());
+        
+        logger.debug("Updated KV data for object {}/{}", key, id);
+        return true;
     }
     
     /**
