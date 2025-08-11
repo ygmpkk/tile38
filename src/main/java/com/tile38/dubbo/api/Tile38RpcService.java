@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 public interface Tile38RpcService {
     
     /**
-     * Set/Store a geospatial object (legacy method)
+     * Set/Store a geospatial object
      */
     void set(String key, String id, double lat, double lon, Map<String, Object> fields, Long expirationSeconds);
     
@@ -54,7 +54,7 @@ public interface Tile38RpcService {
     Bounds bounds(String key);
     
     /**
-     * Search for objects nearby a point (legacy method)
+     * Search for objects nearby a point
      */
     List<SearchResult> nearby(String key, double lat, double lon, double radius);
     
