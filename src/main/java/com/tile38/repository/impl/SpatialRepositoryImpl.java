@@ -333,6 +333,40 @@ public class SpatialRepositoryImpl implements SpatialRepository {
         return true;
     }
     
+    @Override
+    public List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset) {
+        Map<String, Tile38Object> storage = objectStorage.get(key);
+        if (storage == null || storage.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<SearchResult> allResults = new ArrayList<>();
+        for (Tile38Object object : storage.values()) {
+            // Apply filter if provided
+            if (filter == null || filter.matches(object)) {
+                SearchResult result = SearchResult.builder()
+                        .object(object)
+                        .distance(0.0) // No distance for scan operations
+                        .build();
+                allResults.add(result);
+            }
+        }
+        
+        // Apply pagination
+        int startIndex = Math.max(0, offset);
+        int endIndex = limit > 0 ? Math.min(allResults.size(), startIndex + limit) : allResults.size();
+        
+        if (startIndex >= allResults.size()) {
+            return new ArrayList<>();
+        }
+        
+        List<SearchResult> paginatedResults = allResults.subList(startIndex, endIndex);
+        logger.debug("Scan collection '{}': found {} objects (offset: {}, limit: {})", 
+                    key, paginatedResults.size(), offset, limit);
+        
+        return paginatedResults;
+    }
+    
     /**
      * Periodic cleanup of expired objects
      */

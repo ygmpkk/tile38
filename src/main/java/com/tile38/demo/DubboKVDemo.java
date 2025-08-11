@@ -1,6 +1,7 @@
 package com.tile38.demo;
 
 import com.tile38.dubbo.api.Tile38RpcService;
+import com.tile38.loader.DataLoader;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.KVData;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Demo class showing DUBBO RPC interface KV capabilities
@@ -44,6 +46,12 @@ public class DubboKVDemo implements CommandLineRunner {
         
         // Demo 4: Bulk operations
         demonstrateBulkOperations();
+        
+        // Demo 5: Advanced search operations
+        demonstrateAdvancedSearch();
+        
+        // Demo 6: Data loading capabilities
+        demonstrateDataLoading();
         
         log.info("✅ DUBBO KV Capabilities Demo completed successfully!");
     }
@@ -230,5 +238,89 @@ public class DubboKVDemo implements CommandLineRunner {
         List<String> collections = tile38RpcService.keys();
         log.info("✓ Total collections: {}", collections);
         log.info("✓ Server stats: {}", tile38RpcService.stats().split("\n")[0]); // First line only
+    }
+    
+    private void demonstrateAdvancedSearch() {
+        log.info("\n🔍 Demo 5: Advanced Search Operations");
+        
+        // Create objects across a geographic area for search testing
+        for (int i = 0; i < 5; i++) {
+            Map<String, String> tags = new HashMap<>();
+            tags.put("type", i % 2 == 0 ? "restaurant" : "shop");
+            tags.put("district", "downtown");
+            
+            Map<String, Object> attrs = new HashMap<>();
+            attrs.put("id", i);
+            attrs.put("rating", 3.0 + Math.random() * 2.0);
+            
+            tile38RpcService.setWithKV("city_poi", "poi_" + i, 
+                                       33.0 + i * 0.01, -115.0 + i * 0.01,
+                                       new HashMap<>(), tags, attrs, null);
+        }
+        
+        // Test 1: Scan with filter and pagination
+        FilterCondition restaurantFilter = FilterCondition.tagEquals("type", "restaurant");
+        List<SearchResult> restaurants = tile38RpcService.scan("city_poi", restaurantFilter, 10, 0);
+        log.info("✓ Scan found {} restaurants", restaurants.size());
+        
+        // Test 2: Search within bounding box
+        List<SearchResult> withinResults = tile38RpcService.within("city_poi", 
+                                                                   32.9, -115.1, 
+                                                                   33.1, -114.9, null);
+        log.info("✓ Within bounding box: {} POIs", withinResults.size());
+        
+        // Test 3: Search intersecting bounding box with filter
+        List<SearchResult> intersectsResults = tile38RpcService.intersects("city_poi", 
+                                                                           32.95, -115.05,
+                                                                           33.05, -114.95, 
+                                                                           restaurantFilter);
+        log.info("✓ Intersects with restaurant filter: {} POIs", intersectsResults.size());
+        
+        // Test 4: Full scan with pagination
+        List<SearchResult> page1 = tile38RpcService.scan("city_poi", null, 2, 0);
+        List<SearchResult> page2 = tile38RpcService.scan("city_poi", null, 2, 2);
+        log.info("✓ Pagination: page1={} items, page2={} items", page1.size(), page2.size());
+    }
+    
+    private void demonstrateDataLoading() {
+        log.info("\n📊 Demo 6: Data Loading Capabilities");
+        
+        try {
+            // Generate synthetic test data
+            log.info("Generating synthetic test data...");
+            CompletableFuture<DataLoader.LoadResult> future = tile38RpcService.generateTestData(
+                    "synthetic_data", 50, 32.0, 35.0, -118.0, -115.0);
+            
+            DataLoader.LoadResult result = future.get();
+            log.info("✓ Generated {} records in {}ms", 
+                    result.getRecordsLoaded(), result.getDurationMs());
+            
+            // Verify the generated data
+            List<SearchResult> generatedData = tile38RpcService.scan("synthetic_data", null, 10, 0);
+            log.info("✓ Verified: {} records loaded successfully", generatedData.size());
+            
+            if (!generatedData.isEmpty()) {
+                SearchResult sample = generatedData.get(0);
+                Tile38Object sampleObj = sample.getObject();
+                log.info("✓ Sample object: id={}, tags={}, attributes={}",
+                        sampleObj.getId(),
+                        sampleObj.getKvData() != null ? sampleObj.getKvData().getTags().size() : 0,
+                        sampleObj.getKvData() != null ? sampleObj.getKvData().getAttributes().size() : 0);
+            }
+            
+            // Test spatial filtering on generated data
+            FilterCondition ratingFilter = FilterCondition.builder()
+                    .key("rating")
+                    .operator(FilterCondition.Operator.GREATER_THAN)
+                    .value(3.5)
+                    .dataType(FilterCondition.DataType.ATTRIBUTE)
+                    .build();
+            
+            List<SearchResult> highRatedPlaces = tile38RpcService.scan("synthetic_data", ratingFilter, 10, 0);
+            log.info("✓ High-rated places: {} found with rating > 3.5", highRatedPlaces.size());
+            
+        } catch (Exception e) {
+            log.error("Error in data loading demo: {}", e.getMessage());
+        }
     }
 }

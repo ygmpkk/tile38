@@ -2,6 +2,7 @@ package com.tile38.dubbo;
 
 import com.tile38.dubbo.api.Tile38RpcService;
 import com.tile38.dubbo.impl.Tile38RpcServiceImpl;
+import com.tile38.loader.DataLoader;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -21,6 +22,7 @@ import org.locationtech.jts.geom.Coordinate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -281,5 +283,77 @@ class Tile38RpcServiceTest {
         // Verify objects are gone
         assertNull(tile38RpcService.get("fleet", "truck1"));
         assertNull(tile38RpcService.get("fleet", "truck2"));
+    }
+    
+    @Test
+    void testAdvancedSearchOperations() {
+        // Create test objects in a bounding box
+        Map<String, String> tags1 = new HashMap<>();
+        tags1.put("category", "restaurant");
+        tags1.put("type", "italian");
+        
+        Map<String, Object> attrs1 = new HashMap<>();
+        attrs1.put("rating", 4.5);
+        attrs1.put("seats", 50);
+        
+        tile38RpcService.setWithKV("places", "restaurant1", 33.5, -115.5, 
+                                   new HashMap<>(), tags1, attrs1, null);
+        
+        Map<String, String> tags2 = new HashMap<>();
+        tags2.put("category", "shop");
+        tags2.put("type", "grocery");
+        
+        Map<String, Object> attrs2 = new HashMap<>();
+        attrs2.put("rating", 4.0);
+        attrs2.put("area", 1000);
+        
+        tile38RpcService.setWithKV("places", "shop1", 33.6, -115.4, 
+                                   new HashMap<>(), tags2, attrs2, null);
+        
+        // Test scan with filter
+        FilterCondition categoryFilter = FilterCondition.tagEquals("category", "restaurant");
+        List<SearchResult> scanResults = tile38RpcService.scan("places", categoryFilter, 10, 0);
+        assertEquals(1, scanResults.size());
+        assertEquals("restaurant1", scanResults.get(0).getObject().getId());
+        
+        // Test scan with pagination
+        List<SearchResult> allResults = tile38RpcService.scan("places", null, 1, 0);
+        assertEquals(1, allResults.size());
+        
+        allResults = tile38RpcService.scan("places", null, 1, 1);
+        assertEquals(1, allResults.size());
+        
+        // Test intersects with bounding box
+        List<SearchResult> intersectsResults = tile38RpcService.intersects("places", 33.0, -116.0, 34.0, -115.0, null);
+        assertEquals(2, intersectsResults.size());
+        
+        // Test within with bounding box
+        List<SearchResult> withinResults = tile38RpcService.within("places", 33.0, -116.0, 34.0, -115.0, null);
+        assertEquals(2, withinResults.size());
+        
+        // Test intersects with filter
+        intersectsResults = tile38RpcService.intersects("places", 33.0, -116.0, 34.0, -115.0, categoryFilter);
+        assertEquals(1, intersectsResults.size());
+        assertEquals("restaurant1", intersectsResults.get(0).getObject().getId());
+    }
+    
+    @Test
+    void testDataLoadingOperations() throws Exception {
+        // Test generateTestData
+        CompletableFuture<DataLoader.LoadResult> future = tile38RpcService.generateTestData(
+                "test_collection", 10, 30.0, 35.0, -120.0, -115.0);
+        
+        DataLoader.LoadResult result = future.get();
+        assertTrue(result.isSuccess());
+        assertEquals(10, result.getRecordsLoaded());
+        
+        // Verify test data was loaded
+        List<SearchResult> results = tile38RpcService.scan("test_collection", null, 20, 0);
+        assertEquals(10, results.size());
+        
+        // Verify objects have proper KV data
+        SearchResult firstResult = results.get(0);
+        assertNotNull(firstResult.getObject().getKvData());
+        assertNotNull(firstResult.getObject().getKvData().getTag("type"));
     }
 }

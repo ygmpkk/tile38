@@ -1,15 +1,17 @@
-# DUBBO RPC Interface - KV Capabilities Documentation
+# DUBBO RPC Interface - Comprehensive KV Capabilities Documentation
 
-This document describes the enhanced DUBBO RPC interface for Tile38 with comprehensive Key-Value (KV) data support.
+This document describes the enhanced DUBBO RPC interface for Tile38 with comprehensive Key-Value (KV) data support, advanced search operations, and data loading capabilities.
 
 ## Overview
 
-The enhanced DUBBO interface provides all the advanced KV capabilities available in the HTTP controller, including:
+The enhanced DUBBO interface provides complete parity with the HTTP controller, including:
 
 - **KV Data Support**: Store and manage tags (String key-value pairs) and attributes (mixed type key-value pairs)
 - **Advanced Filtering**: Multi-condition filtering with 13 operators and logical combinations (AND, OR)
 - **KV Data Updates**: Update KV data without affecting geometry
 - **Bulk Operations**: Efficient bulk loading with KV data support
+- **Advanced Search**: Scan, intersects, within operations with filtering
+- **Data Loading**: JSON/CSV loading and synthetic test data generation
 
 ## Interface Methods
 
@@ -31,6 +33,9 @@ boolean del(String key, String id);
 
 // Drop collection
 boolean drop(String key);
+
+// Get collection bounds
+Bounds bounds(String key);
 ```
 
 ### KV Data Operations
@@ -51,6 +56,15 @@ List<SearchResult> nearby(String key, double lat, double lon, double radius);
 
 // Enhanced nearby search with KV filtering
 List<SearchResult> nearbyWithFilter(String key, double lat, double lon, double radius, FilterCondition filter);
+
+// Scan collection with optional filtering and pagination
+List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset);
+
+// Search within bounding box
+List<SearchResult> within(String key, double minLat, double minLon, double maxLat, double maxLon, FilterCondition filter);
+
+// Search intersecting bounding box
+List<SearchResult> intersects(String key, double minLat, double minLon, double maxLat, double maxLon, FilterCondition filter);
 ```
 
 ### Bulk Operations
@@ -58,6 +72,21 @@ List<SearchResult> nearbyWithFilter(String key, double lat, double lon, double r
 ```java
 // Bulk set multiple objects
 void bulkSet(String key, Map<String, Tile38Object> objects);
+```
+
+### Data Loading Operations
+
+```java
+// Load data from JSON file
+CompletableFuture<DataLoader.LoadResult> loadFromJson(String filePath);
+
+// Load data from CSV file
+CompletableFuture<DataLoader.LoadResult> loadFromCsv(String filePath);
+
+// Generate synthetic test data
+CompletableFuture<DataLoader.LoadResult> generateTestData(String collectionName, int numberOfRecords,
+                                                         double minLat, double maxLat, 
+                                                         double minLon, double maxLon);
 ```
 
 ### Utility Operations
@@ -167,6 +196,51 @@ for (int i = 1; i <= 100; i++) {
 
 // Bulk set all objects
 tile38RpcService.bulkSet("fleet", objects);
+```
+
+### 5. Advanced Search Operations
+
+```java
+// Scan with filtering and pagination
+FilterCondition highRatedFilter = FilterCondition.builder()
+    .key("rating")
+    .operator(FilterCondition.Operator.GREATER_THAN)
+    .value(4.0)
+    .dataType(FilterCondition.DataType.ATTRIBUTE)
+    .build();
+
+List<SearchResult> page1 = tile38RpcService.scan("restaurants", highRatedFilter, 10, 0);
+List<SearchResult> page2 = tile38RpcService.scan("restaurants", highRatedFilter, 10, 10);
+
+// Bounding box searches
+List<SearchResult> withinResults = tile38RpcService.within("restaurants", 
+                                                          30.0, -120.0, 35.0, -115.0, null);
+
+List<SearchResult> intersectsResults = tile38RpcService.intersects("poi", 
+                                                                  32.9, -115.1, 33.1, -114.9, 
+                                                                  cuisineFilter);
+```
+
+### 6. Data Loading Operations
+
+```java
+// Generate synthetic test data
+CompletableFuture<DataLoader.LoadResult> future = tile38RpcService.generateTestData(
+    "test_collection", 1000, 30.0, 35.0, -120.0, -115.0);
+
+DataLoader.LoadResult result = future.get();
+if (result.isSuccess()) {
+    System.out.println("Generated " + result.getRecordsLoaded() + " records in " + 
+                      result.getDurationMs() + "ms");
+}
+
+// Load from JSON file
+CompletableFuture<DataLoader.LoadResult> jsonLoad = tile38RpcService.loadFromJson("/path/to/data.json");
+DataLoader.LoadResult jsonResult = jsonLoad.get();
+
+// Load from CSV file  
+CompletableFuture<DataLoader.LoadResult> csvLoad = tile38RpcService.loadFromCsv("/path/to/data.csv");
+DataLoader.LoadResult csvResult = csvLoad.get();
 ```
 
 ## Filter Operators

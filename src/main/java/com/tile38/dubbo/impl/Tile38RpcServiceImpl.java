@@ -2,6 +2,7 @@ package com.tile38.dubbo.impl;
 
 import com.tile38.dubbo.api.Tile38RpcService;
 import com.tile38.service.Tile38Service;
+import com.tile38.loader.DataLoader;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Dubbo RPC service implementation for Tile38 operations with enhanced KV capabilities
@@ -30,6 +32,9 @@ public class Tile38RpcServiceImpl implements Tile38RpcService {
 
     @Autowired
     private Tile38Service tile38Service;
+    
+    @Autowired
+    private DataLoader dataLoader;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
@@ -179,5 +184,87 @@ public class Tile38RpcServiceImpl implements Tile38RpcService {
     public String ping() {
         log.debug("Ping via DUBBO");
         return "PONG";
+    }
+    
+    // Advanced Data Loading Operations
+    
+    @Override
+    public CompletableFuture<DataLoader.LoadResult> loadFromJson(String filePath) {
+        log.debug("Loading data from JSON via DUBBO: {}", filePath);
+        return dataLoader.loadFromJson(filePath);
+    }
+    
+    @Override
+    public CompletableFuture<DataLoader.LoadResult> loadFromCsv(String filePath) {
+        log.debug("Loading data from CSV via DUBBO: {}", filePath);
+        return dataLoader.loadFromCsv(filePath);
+    }
+    
+    @Override
+    public CompletableFuture<DataLoader.LoadResult> generateTestData(String collectionName, int numberOfRecords,
+                                                                     double minLat, double maxLat,
+                                                                     double minLon, double maxLon) {
+        log.debug("Generating test data via DUBBO: collection={}, records={}", collectionName, numberOfRecords);
+        return dataLoader.generateTestData(collectionName, numberOfRecords, minLat, maxLat, minLon, maxLon);
+    }
+    
+    // Advanced Search Operations
+    
+    @Override
+    public List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset) {
+        List<SearchResult> results = tile38Service.scan(key, filter, limit, offset);
+        log.debug("Scan via DUBBO: {} - found {} results (limit:{}, offset:{})", 
+                 key, results.size(), limit, offset);
+        return results;
+    }
+    
+    @Override
+    public List<SearchResult> intersects(String key, double minLat, double minLon, 
+                                         double maxLat, double maxLon, FilterCondition filter) {
+        // Create bounding box geometry
+        Point[] points = new Point[5];
+        points[0] = geometryFactory.createPoint(new Coordinate(minLon, minLat));
+        points[1] = geometryFactory.createPoint(new Coordinate(maxLon, minLat));
+        points[2] = geometryFactory.createPoint(new Coordinate(maxLon, maxLat));
+        points[3] = geometryFactory.createPoint(new Coordinate(minLon, maxLat));
+        points[4] = geometryFactory.createPoint(new Coordinate(minLon, minLat)); // Close the polygon
+        
+        // Create polygon from points
+        Coordinate[] coords = new Coordinate[points.length];
+        for (int i = 0; i < points.length; i++) {
+            coords[i] = points[i].getCoordinate();
+        }
+        
+        org.locationtech.jts.geom.Polygon boundingBox = geometryFactory.createPolygon(coords);
+        
+        List<SearchResult> results = tile38Service.intersects(key, boundingBox, filter);
+        log.debug("Intersects via DUBBO: {} bbox({},{},{},{}) - found {} results", 
+                 key, minLat, minLon, maxLat, maxLon, results.size());
+        return results;
+    }
+    
+    @Override
+    public List<SearchResult> within(String key, double minLat, double minLon, 
+                                     double maxLat, double maxLon, FilterCondition filter) {
+        // Create bounding box geometry
+        Point[] points = new Point[5];
+        points[0] = geometryFactory.createPoint(new Coordinate(minLon, minLat));
+        points[1] = geometryFactory.createPoint(new Coordinate(maxLon, minLat));
+        points[2] = geometryFactory.createPoint(new Coordinate(maxLon, maxLat));
+        points[3] = geometryFactory.createPoint(new Coordinate(minLon, maxLat));
+        points[4] = geometryFactory.createPoint(new Coordinate(minLon, minLat)); // Close the polygon
+        
+        // Create polygon from points
+        Coordinate[] coords = new Coordinate[points.length];
+        for (int i = 0; i < points.length; i++) {
+            coords[i] = points[i].getCoordinate();
+        }
+        
+        org.locationtech.jts.geom.Polygon boundingBox = geometryFactory.createPolygon(coords);
+        
+        List<SearchResult> results = tile38Service.within(key, boundingBox, filter);
+        log.debug("Within via DUBBO: {} bbox({},{},{},{}) - found {} results", 
+                 key, minLat, minLon, maxLat, maxLon, results.size());
+        return results;
     }
 }
