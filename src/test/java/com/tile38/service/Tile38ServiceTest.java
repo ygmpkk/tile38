@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -56,6 +57,9 @@ class Tile38ServiceTest {
                 .timestamp(System.currentTimeMillis())
                 .build();
         
+        // Mock the repository to return the object when asked
+        when(spatialRepository.get(key, id)).thenReturn(Optional.of(object));
+        
         // When
         tile38Service.set(key, id, object);
         Optional<Tile38Object> retrieved = tile38Service.get(key, id);
@@ -67,6 +71,7 @@ class Tile38ServiceTest {
         assertEquals("test", retrieved.get().getFields().get("name"));
         
         verify(spatialRepository).index(key, id, object);
+        verify(spatialRepository).get(key, id);
     }
     
     @Test
@@ -82,6 +87,11 @@ class Tile38ServiceTest {
                 .timestamp(System.currentTimeMillis())
                 .build();
         
+        // Mock the repository to return the object initially, then empty after deletion
+        when(spatialRepository.get(key, id))
+            .thenReturn(Optional.of(object))  // First call (for del operation)
+            .thenReturn(Optional.empty());    // Second call (for get after delete)
+        
         // When
         tile38Service.set(key, id, object);
         boolean deleted = tile38Service.del(key, id);
@@ -91,7 +101,9 @@ class Tile38ServiceTest {
         assertTrue(deleted);
         assertFalse(retrieved.isPresent());
         
+        verify(spatialRepository).index(key, id, object);
         verify(spatialRepository).remove(key, id);
+        verify(spatialRepository, times(2)).get(key, id);
     }
     
     @Test
@@ -126,6 +138,10 @@ class Tile38ServiceTest {
                 .geometry(point)
                 .build();
         
+        // Mock the repository to return the expected keys
+        Set<String> expectedKeys = Set.of(key1, key2);
+        when(spatialRepository.keys()).thenReturn(expectedKeys);
+        
         // When
         tile38Service.set(key1, "test1", object);
         tile38Service.set(key2, "test2", object);
@@ -135,5 +151,7 @@ class Tile38ServiceTest {
         assertEquals(2, keys.size());
         assertTrue(keys.contains(key1));
         assertTrue(keys.contains(key2));
+        
+        verify(spatialRepository).keys();
     }
 }

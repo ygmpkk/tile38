@@ -9,64 +9,51 @@ import com.tile38.repository.SpatialRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.time.Instant;
 
 /**
- * Implementation of Tile38Service using in-memory storage and JTS for geospatial operations
+ * Implementation of Tile38Service using repository as single source of truth
+ * Optimized for million-level data operations
  */
 @Service
 public class Tile38ServiceImpl implements Tile38Service {
+    
+    private static final Logger logger = LoggerFactory.getLogger(Tile38ServiceImpl.class);
     
     @Autowired
     private SpatialRepository spatialRepository;
     
     private final GeometryFactory geometryFactory = new GeometryFactory();
     
-    // In-memory collections storage - maps collection key to object map
-    private final Map<String, Map<String, Tile38Object>> collections = new ConcurrentHashMap<>();
-    
     @Override
     public void set(String key, String id, Tile38Object object) {
-        collections.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                   .put(id, object);
-        
-        // Update spatial index
         spatialRepository.index(key, id, object);
     }
     
     @Override
+    public void bulkSet(String key, Map<String, Tile38Object> objects) {
+        logger.info("Starting bulk set operation for collection '{}' with {} objects", key, objects.size());
+        long startTime = System.currentTimeMillis();
+        
+        spatialRepository.bulkIndex(key, objects);
+        
+        long endTime = System.currentTimeMillis();
+        logger.info("Completed bulk set operation for collection '{}' in {}ms", key, (endTime - startTime));
+    }
+    
+    @Override
     public Optional<Tile38Object> get(String key, String id) {
-        Map<String, Tile38Object> collection = collections.get(key);
-        if (collection == null) {
-            return Optional.empty();
-        }
-        
-        Tile38Object object = collection.get(id);
-        if (object != null && object.isExpired()) {
-            // Remove expired object
-            collection.remove(id);
-            spatialRepository.remove(key, id);
-            return Optional.empty();
-        }
-        
-        return Optional.ofNullable(object);
+        return spatialRepository.get(key, id);
     }
     
     @Override
     public boolean del(String key, String id) {
-        Map<String, Tile38Object> collection = collections.get(key);
-        if (collection == null) {
-            return false;
-        }
-        
-        Tile38Object removed = collection.remove(id);
-        if (removed != null) {
+        Optional<Tile38Object> existing = spatialRepository.get(key, id);
+        if (existing.isPresent()) {
             spatialRepository.remove(key, id);
             return true;
         }
@@ -75,8 +62,8 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public boolean drop(String key) {
-        Map<String, Tile38Object> removed = collections.remove(key);
-        if (removed != null) {
+        Set<String> existingKeys = spatialRepository.keys();
+        if (existingKeys.contains(key)) {
             spatialRepository.drop(key);
             return true;
         }
@@ -85,8 +72,8 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public Optional<Bounds> bounds(String key) {
-        Map<String, Tile38Object> collection = collections.get(key);
-        if (collection == null || collection.isEmpty()) {
+        Map<String, Tile38Object> collection = spatialRepository.getAll(key);
+        if (collection.isEmpty()) {
             return Optional.empty();
         }
         
@@ -119,25 +106,38 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public List<String> keys() {
-        return new ArrayList<>(collections.keySet());
+        return new ArrayList<>(spatialRepository.keys());
     }
     
     @Override
     public String stats() {
-        int totalKeys = collections.size();
-        int totalObjects = collections.values().stream()
-                                   .mapToInt(Map::size)
-                                   .sum();
+        Set<String> allKeys = spatialRepository.keys();
+        long totalObjects = spatialRepository.getTotalObjectCount();
+        long memoryUsed = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         
-        return String.format("{\"in_memory_size\":%d,\"num_collections\":%d,\"num_objects\":%d}", 
-                           Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory(),
-                           totalKeys, 
-                           totalObjects);
+        StringBuilder stats = new StringBuilder();
+        stats.append("{");
+        stats.append("\"in_memory_size\":").append(memoryUsed).append(",");
+        stats.append("\"num_collections\":").append(allKeys.size()).append(",");
+        stats.append("\"num_objects\":").append(totalObjects).append(",");
+        stats.append("\"collections\":{");
+        
+        boolean first = true;
+        for (String key : allKeys) {
+            if (!first) stats.append(",");
+            stats.append("\"").append(key).append("\":")
+                .append(spatialRepository.getObjectCount(key));
+            first = false;
+        }
+        
+        stats.append("}}");
+        
+        return stats.toString();
     }
     
     @Override
     public void flushdb() {
-        collections.clear();
         spatialRepository.flushAll();
+        logger.info("Database flushed");
     }
 }
