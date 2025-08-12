@@ -33,6 +33,7 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public void set(String key, String id, Tile38Object object) {
+        logger.debug("Setting object {}/{}", key, id);
         spatialRepository.index(key, id, object);
     }
     
@@ -93,32 +94,74 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public List<SearchResult> nearby(String key, double lat, double lon, double radius) {
-        return spatialRepository.nearby(key, lat, lon, radius);
+        logger.debug("Starting nearby search for collection '{}' at ({},{}) with radius {}", key, lat, lon, radius);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.nearby(key, lat, lon, radius);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed nearby search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override
     public List<SearchResult> nearby(String key, double lat, double lon, double radius, FilterCondition filter) {
-        return spatialRepository.nearby(key, lat, lon, radius, filter);
+        logger.debug("Starting nearby search with filter for collection '{}' at ({},{}) with radius {}", key, lat, lon, radius);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.nearby(key, lat, lon, radius, filter);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed nearby search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override
     public List<SearchResult> within(String key, Geometry geometry) {
-        return spatialRepository.within(key, geometry);
+        logger.debug("Starting within search for collection '{}'", key);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.within(key, geometry);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed within search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override
     public List<SearchResult> within(String key, Geometry geometry, FilterCondition filter) {
-        return spatialRepository.within(key, geometry, filter);
+        logger.debug("Starting within search with filter for collection '{}'", key);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.within(key, geometry, filter);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed within search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override
     public List<SearchResult> intersects(String key, Geometry geometry) {
-        return spatialRepository.intersects(key, geometry);
+        logger.debug("Starting intersects search for collection '{}'", key);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.intersects(key, geometry);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed intersects search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override
     public List<SearchResult> intersects(String key, Geometry geometry, FilterCondition filter) {
-        return spatialRepository.intersects(key, geometry, filter);
+        logger.debug("Starting intersects search with filter for collection '{}'", key);
+        long startTime = System.currentTimeMillis();
+        
+        List<SearchResult> results = spatialRepository.intersects(key, geometry, filter);
+        
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("Completed intersects search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        return results;
     }
     
     @Override

@@ -1,27 +1,27 @@
 package com.tile38.model;
 
 import lombok.Data;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import org.locationtech.jts.geom.Geometry;
+import lombok.EqualsAndHashCode;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.tile38.model.base.BaseSpatialEntity;
 
-import java.time.Instant;
 import java.util.Map;
 
 /**
  * Tile38 Object - represents a geospatial object in the database
  * Enhanced with structured KV data support for tags and attributes
+ * Now extends BaseSpatialEntity for generic capabilities
  */
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Tile38Object {
-    private String id;
-    private Geometry geometry;
+public class Tile38Object extends BaseSpatialEntity<String> {
     
     // Legacy fields for backward compatibility
     private Map<String, Object> fields;
@@ -29,22 +29,12 @@ public class Tile38Object {
     // New structured KV data for tags and attributes
     private KVData kvData;
     
-    private Instant expireAt;
-    private long timestamp;
-    
     /**
      * Get the object as GeoJSON
      */
     public String toGeoJSON() {
         // TODO: Implement GeoJSON serialization
         return null;
-    }
-    
-    /**
-     * Check if object has expired
-     */
-    public boolean isExpired() {
-        return expireAt != null && Instant.now().isAfter(expireAt);
     }
     
     /**
