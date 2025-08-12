@@ -87,6 +87,11 @@ public interface SpatialRepository {
     boolean updateKVData(String key, String id, KVData kvData);
     
     /**
+     * Scan all objects in a collection with optional filter and pagination
+     */
+    List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset);
+    
+    /**
      * Get total number of objects across all collections
      */
     long getTotalObjectCount();

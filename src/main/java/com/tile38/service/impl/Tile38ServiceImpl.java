@@ -127,6 +127,11 @@ public class Tile38ServiceImpl implements Tile38Service {
     }
     
     @Override
+    public List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset) {
+        return spatialRepository.scan(key, filter, limit, offset);
+    }
+    
+    @Override
     public List<String> keys() {
         return new ArrayList<>(spatialRepository.keys());
     }

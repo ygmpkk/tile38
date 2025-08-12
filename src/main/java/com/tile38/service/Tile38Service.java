@@ -82,6 +82,11 @@ public interface Tile38Service {
     boolean updateKVData(String key, String id, KVData kvData);
     
     /**
+     * Scan all objects in a collection with optional filter
+     */
+    List<SearchResult> scan(String key, FilterCondition filter, int limit, int offset);
+    
+    /**
      * Get all keys (collections)
      */
     List<String> keys();
