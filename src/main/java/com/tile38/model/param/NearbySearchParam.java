@@ -7,10 +7,11 @@ import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tile38.model.FilterRequest;
-import com.tile38.model.LocationEntity;
+import org.locationtech.jts.geom.Point;
 
 /**
- * Parameter class for nearby search operations
+ * Parameter class for nearby search operations on polygon data
+ * Searches for polygon objects near a specified point
  */
 @Data
 @Builder
@@ -20,28 +21,22 @@ import com.tile38.model.LocationEntity;
 public class NearbySearchParam {
     
     /**
-     * Unified location entity for consistent spatial handling
+     * Search center point (for finding nearby polygons)
      */
-    private LocationEntity location;
+    private Point centerPoint;
     
     /**
-     * Legacy fields for backward compatibility - will be deprecated
+     * Search radius in meters
      */
-    @Deprecated
-    private Double lat;
-    
-    @Deprecated
-    private Double lon;
-    
     private Double radius;
     
     /**
-     * Simple string-based filter
+     * Simple string-based filter for KV data
      */
     private String filter;
     
     /**
-     * Complex structured filter
+     * Complex structured filter for KV data
      */
     private FilterRequest filterRequest;
     
@@ -52,46 +47,10 @@ public class NearbySearchParam {
     private Integer offset;
     
     /**
-     * Get effective location entity (prioritizes unified location over legacy lat/lon)
+     * Check if parameters have valid center point
      */
     @JsonIgnore
-    public LocationEntity getEffectiveLocation() {
-        if (location != null && location.isValid()) {
-            return location;
-        }
-        
-        // Fallback to legacy lat/lon for backward compatibility
-        if (lat != null && lon != null) {
-            return LocationEntity.of(lat, lon);
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Check if parameters have valid location data
-     */
-    @JsonIgnore
-    public boolean hasValidLocation() {
-        LocationEntity effectiveLocation = getEffectiveLocation();
-        return effectiveLocation != null && effectiveLocation.isValid();
-    }
-    
-    /**
-     * Get effective latitude for backward compatibility
-     */
-    @JsonIgnore
-    public Double getEffectiveLat() {
-        LocationEntity effectiveLocation = getEffectiveLocation();
-        return effectiveLocation != null ? effectiveLocation.getEffectiveLat() : null;
-    }
-    
-    /**
-     * Get effective longitude for backward compatibility
-     */
-    @JsonIgnore
-    public Double getEffectiveLon() {
-        LocationEntity effectiveLocation = getEffectiveLocation();
-        return effectiveLocation != null ? effectiveLocation.getEffectiveLon() : null;
+    public boolean hasValidCenterPoint() {
+        return centerPoint != null && !centerPoint.isEmpty();
     }
 }

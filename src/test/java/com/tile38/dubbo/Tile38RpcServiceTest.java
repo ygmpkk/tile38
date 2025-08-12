@@ -54,12 +54,15 @@ class Tile38RpcServiceTest {
         // Test ping
         assertEquals("PONG", tile38RpcService.ping());
 
-        // Test set and get
+        // Test set and get with polygon geometry
         Map<String, Object> fields = new HashMap<>();
         fields.put("speed", 60);
         fields.put("driver", "John");
 
-        tile38RpcService.set("fleet", "truck1", 33.5, -115.5, fields, null);
+        // Create a simple point geometry for the test
+        Point geometry = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        
+        tile38RpcService.set("fleet", "truck1", geometry, fields, null);
         
         Tile38Object object = tile38RpcService.get("fleet", "truck1");
         assertNotNull(object);
@@ -77,20 +80,22 @@ class Tile38RpcServiceTest {
 
     @Test
     void testKVOperations() {
-        // Test setWithKV
+        // Test setWithKVData (polygon-centric approach)
         Map<String, Object> fields = new HashMap<>();
         fields.put("speed", 65);
 
-        Map<String, String> tags = new HashMap<>();
-        tags.put("category", "truck");
-        tags.put("type", "delivery");
+        // Create KV data directly 
+        KVData kvData = new KVData();
+        kvData.setTag("category", "truck");
+        kvData.setTag("type", "delivery");
+        kvData.setAttribute("fuel_level", 75.5);
+        kvData.setAttribute("active", true);
+        kvData.setAttribute("last_maintenance", "2024-01-15");
 
-        Map<String, Object> attributes = new HashMap<>();
-        attributes.put("fuel_level", 75.5);
-        attributes.put("active", true);
-        attributes.put("last_maintenance", "2024-01-15");
+        // Create a simple point geometry 
+        Point geometry = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
 
-        tile38RpcService.setWithKV("fleet", "truck1", 33.5, -115.5, fields, tags, attributes, null);
+        tile38RpcService.setWithKVData("fleet", "truck1", geometry, fields, kvData, null);
 
         // Verify object was created with KV data
         Tile38Object object = tile38RpcService.get("fleet", "truck1");
@@ -109,19 +114,18 @@ class Tile38RpcServiceTest {
 
     @Test
     void testKVDataUpdates() {
-        // First create an object
-        tile38RpcService.set("fleet", "truck1", 33.5, -115.5, new HashMap<>(), null);
+        // First create a polygon object
+        Point geometry = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        tile38RpcService.set("fleet", "truck1", geometry, new HashMap<>(), null);
 
-        // Update KV data
-        Map<String, String> newTags = new HashMap<>();
-        newTags.put("status", "maintenance");
-        newTags.put("priority", "high");
+        // Update KV data using KVData object (polygon-centric approach)
+        KVData newKvData = new KVData();
+        newKvData.setTag("status", "maintenance");
+        newKvData.setTag("priority", "high");
+        newKvData.setAttribute("fuel_level", 45.0);
+        newKvData.setAttribute("active", false);
 
-        Map<String, Object> newAttributes = new HashMap<>();
-        newAttributes.put("fuel_level", 45.0);
-        newAttributes.put("active", false);
-
-        boolean updated = tile38RpcService.updateKVData("fleet", "truck1", newTags, newAttributes);
+        boolean updated = tile38RpcService.updateKVData("fleet", "truck1", newKvData);
         assertTrue(updated);
 
         // Verify updates
@@ -133,42 +137,21 @@ class Tile38RpcServiceTest {
         assertEquals(false, object.getKvData().getAttribute("active"));
 
         // Test updating non-existent object
-        assertFalse(tile38RpcService.updateKVData("fleet", "nonexistent", newTags, newAttributes));
-    }
-
-    @Test
-    void testKVDataObjectUpdate() {
-        // Create an object
-        tile38RpcService.set("fleet", "truck1", 33.5, -115.5, new HashMap<>(), null);
-
-        // Create KV data object
-        KVData kvData = new KVData();
-        kvData.setTag("category", "van");
-        kvData.setTag("status", "active");
-        kvData.setAttribute("capacity", 1000);
-        kvData.setAttribute("electric", true);
-
-        // Update using KV data object
-        boolean updated = tile38RpcService.updateKVDataObject("fleet", "truck1", kvData);
-        assertTrue(updated);
-
-        // Verify updates
-        Tile38Object object = tile38RpcService.get("fleet", "truck1");
-        assertNotNull(object.getKvData());
-        assertEquals("van", object.getKvData().getTag("category"));
-        assertEquals("active", object.getKvData().getTag("status"));
-        assertEquals(1000, object.getKvData().getAttribute("capacity"));
-        assertEquals(true, object.getKvData().getAttribute("electric"));
+        assertFalse(tile38RpcService.updateKVData("fleet", "nonexistent", newKvData));
     }
 
     @Test
     void testNearbySearch() {
-        // Create test objects with coordinates close to each other
-        tile38RpcService.set("restaurants", "restaurant1", 33.5, -115.5, new HashMap<>(), null);
-        tile38RpcService.set("restaurants", "restaurant2", 33.51, -115.51, new HashMap<>(), null);
+        // Create test polygon objects with coordinates close to each other
+        Point geometry1 = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        Point geometry2 = geometryFactory.createPoint(new Coordinate(-115.51, 33.51));
+        
+        tile38RpcService.set("restaurants", "restaurant1", geometry1, new HashMap<>(), null);
+        tile38RpcService.set("restaurants", "restaurant2", geometry2, new HashMap<>(), null);
 
         // Test basic nearby search with larger radius
-        List<SearchResult> results = tile38RpcService.nearby("restaurants", 33.5, -115.5, 50000); // 50km radius
+        Point centerPoint = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        List<SearchResult> results = tile38RpcService.nearby("restaurants", centerPoint, 50000); // 50km radius
         assertEquals(2, results.size());
 
         // Verify results
@@ -178,28 +161,29 @@ class Tile38RpcServiceTest {
 
     @Test
     void testNearbySearchWithFilter() {
-        // Create test objects with KV data
-        Map<String, String> italianTags = new HashMap<>();
-        italianTags.put("cuisine", "italian");
-        italianTags.put("price_range", "moderate");
+        // Create test polygon objects with KV data
+        
+        // Italian restaurant
+        Point geometry1 = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        KVData italianKvData = new KVData();
+        italianKvData.setTag("cuisine", "italian");
+        italianKvData.setTag("price_range", "moderate");
+        italianKvData.setAttribute("rating", 4.5);
+        italianKvData.setAttribute("seats", 80);
 
-        Map<String, Object> italianAttrs = new HashMap<>();
-        italianAttrs.put("rating", 4.5);
-        italianAttrs.put("seats", 80);
+        tile38RpcService.setWithKVData("restaurants", "restaurant1", geometry1, 
+                                      new HashMap<>(), italianKvData, null);
 
-        tile38RpcService.setWithKV("restaurants", "restaurant1", 33.5, -115.5, 
-                                   new HashMap<>(), italianTags, italianAttrs, null);
+        // Chinese restaurant
+        Point geometry2 = geometryFactory.createPoint(new Coordinate(-115.4, 33.6));
+        KVData chineseKvData = new KVData();
+        chineseKvData.setTag("cuisine", "chinese");
+        chineseKvData.setTag("price_range", "low");
+        chineseKvData.setAttribute("rating", 3.8);
+        chineseKvData.setAttribute("seats", 60);
 
-        Map<String, String> chineseTags = new HashMap<>();
-        chineseTags.put("cuisine", "chinese");
-        chineseTags.put("price_range", "low");
-
-        Map<String, Object> chineseAttrs = new HashMap<>();
-        chineseAttrs.put("rating", 3.8);
-        chineseAttrs.put("seats", 60);
-
-        tile38RpcService.setWithKV("restaurants", "restaurant2", 33.6, -115.4, 
-                                   new HashMap<>(), chineseTags, chineseAttrs, null);
+        tile38RpcService.setWithKVData("restaurants", "restaurant2", geometry2, 
+                                      new HashMap<>(), chineseKvData, null);
 
         // Create filter for Italian restaurants
         FilterCondition filter = FilterCondition.builder()
@@ -210,7 +194,8 @@ class Tile38RpcServiceTest {
                 .build();
 
         // Test filtered search with larger radius
-        List<SearchResult> results = tile38RpcService.nearbyWithFilter("restaurants", 33.5, -115.5, 50000, filter);
+        Point centerPoint = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        List<SearchResult> results = tile38RpcService.nearbyWithFilter("restaurants", centerPoint, 50000, filter);
         assertEquals(1, results.size());
         assertEquals("restaurant1", results.get(0).getObject().getId());
 
@@ -222,7 +207,7 @@ class Tile38RpcServiceTest {
                 .dataType(FilterCondition.DataType.ATTRIBUTE)
                 .build();
 
-        results = tile38RpcService.nearbyWithFilter("restaurants", 33.5, -115.5, 50000, ratingFilter);
+        results = tile38RpcService.nearbyWithFilter("restaurants", centerPoint, 50000, ratingFilter);
         assertEquals(1, results.size());
         assertEquals("restaurant1", results.get(0).getObject().getId());
     }
@@ -266,9 +251,12 @@ class Tile38RpcServiceTest {
 
     @Test
     void testCollectionOperations() {
-        // Create test data
-        tile38RpcService.set("fleet", "truck1", 33.5, -115.5, new HashMap<>(), null);
-        tile38RpcService.set("fleet", "truck2", 33.6, -115.4, new HashMap<>(), null);
+        // Create test polygon data
+        Point geometry1 = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        Point geometry2 = geometryFactory.createPoint(new Coordinate(-115.4, 33.6));
+        
+        tile38RpcService.set("fleet", "truck1", geometry1, new HashMap<>(), null);
+        tile38RpcService.set("fleet", "truck2", geometry2, new HashMap<>(), null);
 
         // Test bounds
         Bounds bounds = tile38RpcService.bounds("fleet");
@@ -287,28 +275,29 @@ class Tile38RpcServiceTest {
     
     @Test
     void testAdvancedSearchOperations() {
-        // Create test objects in a bounding box
-        Map<String, String> tags1 = new HashMap<>();
-        tags1.put("category", "restaurant");
-        tags1.put("type", "italian");
+        // Create test polygon objects in a bounding box
         
-        Map<String, Object> attrs1 = new HashMap<>();
-        attrs1.put("rating", 4.5);
-        attrs1.put("seats", 50);
+        // Restaurant
+        Point geometry1 = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        KVData kvData1 = new KVData();
+        kvData1.setTag("category", "restaurant");
+        kvData1.setTag("type", "italian");
+        kvData1.setAttribute("rating", 4.5);
+        kvData1.setAttribute("seats", 50);
         
-        tile38RpcService.setWithKV("places", "restaurant1", 33.5, -115.5, 
-                                   new HashMap<>(), tags1, attrs1, null);
+        tile38RpcService.setWithKVData("places", "restaurant1", geometry1, 
+                                      new HashMap<>(), kvData1, null);
         
-        Map<String, String> tags2 = new HashMap<>();
-        tags2.put("category", "shop");
-        tags2.put("type", "grocery");
+        // Shop
+        Point geometry2 = geometryFactory.createPoint(new Coordinate(-115.4, 33.6));
+        KVData kvData2 = new KVData();
+        kvData2.setTag("category", "shop");
+        kvData2.setTag("type", "grocery");
+        kvData2.setAttribute("rating", 4.0);
+        kvData2.setAttribute("area", 1000);
         
-        Map<String, Object> attrs2 = new HashMap<>();
-        attrs2.put("rating", 4.0);
-        attrs2.put("area", 1000);
-        
-        tile38RpcService.setWithKV("places", "shop1", 33.6, -115.4, 
-                                   new HashMap<>(), tags2, attrs2, null);
+        tile38RpcService.setWithKVData("places", "shop1", geometry2, 
+                                      new HashMap<>(), kvData2, null);
         
         // Test scan with filter
         FilterCondition categoryFilter = FilterCondition.tagEquals("category", "restaurant");

@@ -12,6 +12,7 @@ import com.tile38.model.FilterCondition;
 import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Coordinate;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Dubbo RPC service implementation for Tile38 operations with enhanced KV capabilities
+ * Dubbo RPC service implementation for Tile38 with polygon-centric design
+ * Core focus on polygon data with KV as supplemental metadata
  */
 @Service
 @Slf4j
@@ -39,51 +41,37 @@ public class Tile38RpcServiceImpl implements Tile38RpcService {
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Override
-    public void set(String key, String id, double lat, double lon, Map<String, Object> fields, Long expirationSeconds) {
-        Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
-
+    public void set(String key, String id, Geometry geometry, Map<String, Object> fields, Long expirationSeconds) {
         Instant expireAt = expirationSeconds != null ? Instant.now().plusSeconds(expirationSeconds) : null;
 
         Tile38Object object = Tile38Object.builder()
                 .id(id)
-                .geometry(point)
+                .geometry(geometry)
                 .fields(fields)
                 .expireAt(expireAt)
                 .timestamp(System.currentTimeMillis())
                 .build();
 
         tile38Service.set(key, id, object);
-        log.debug("Set object via DUBBO: {}/{}", key, id);
+        log.debug("Set polygon object via DUBBO: {}/{}", key, id);
     }
 
     @Override
-    public void setWithKV(String key, String id, double lat, double lon, Map<String, Object> fields, 
-                          Map<String, String> tags, Map<String, Object> attributes, Long expirationSeconds) {
-        Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
-
+    public void setWithKVData(String key, String id, Geometry geometry, Map<String, Object> fields, 
+                              KVData kvData, Long expirationSeconds) {
         Instant expireAt = expirationSeconds != null ? Instant.now().plusSeconds(expirationSeconds) : null;
-
-        // Create KV data
-        KVData kvData = new KVData();
-        if (tags != null) {
-            tags.forEach(kvData::setTag);
-        }
-        if (attributes != null) {
-            attributes.forEach(kvData::setAttribute);
-        }
 
         Tile38Object object = Tile38Object.builder()
                 .id(id)
-                .geometry(point)
+                .geometry(geometry)
                 .fields(fields)
-                .kvData(kvData.isEmpty() ? null : kvData)
+                .kvData(kvData)
                 .expireAt(expireAt)
                 .timestamp(System.currentTimeMillis())
                 .build();
 
         tile38Service.set(key, id, object);
-        log.debug("Set object with KV data via DUBBO: {}/{} with {} tags, {} attributes", 
-                 key, id, tags != null ? tags.size() : 0, attributes != null ? attributes.size() : 0);
+        log.debug("Set polygon object with KV data via DUBBO: {}/{}", key, id);
     }
 
     @Override
@@ -121,42 +109,39 @@ public class Tile38RpcServiceImpl implements Tile38RpcService {
     }
 
     @Override
-    public List<SearchResult> nearby(String key, double lat, double lon, double radius) {
+    public List<SearchResult> nearby(String key, Point centerPoint, double radius) {
+        if (centerPoint == null || centerPoint.isEmpty()) {
+            throw new IllegalArgumentException("Center point cannot be null or empty");
+        }
+        
+        double lat = centerPoint.getY();
+        double lon = centerPoint.getX();
+        
         List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius);
-        log.debug("Nearby search via DUBBO: {} ({},{}) radius:{} - found {} results", 
+        log.debug("Nearby search via DUBBO: {} center({},{}) radius:{} - found {} results", 
                  key, lat, lon, radius, results.size());
         return results;
     }
 
     @Override
-    public List<SearchResult> nearbyWithFilter(String key, double lat, double lon, double radius, FilterCondition filter) {
+    public List<SearchResult> nearbyWithFilter(String key, Point centerPoint, double radius, FilterCondition filter) {
+        if (centerPoint == null || centerPoint.isEmpty()) {
+            throw new IllegalArgumentException("Center point cannot be null or empty");
+        }
+        
+        double lat = centerPoint.getY();
+        double lon = centerPoint.getX();
+        
         List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius, filter);
-        log.debug("Nearby search with filter via DUBBO: {} ({},{}) radius:{} - found {} results", 
+        log.debug("Nearby search with filter via DUBBO: {} center({},{}) radius:{} - found {} results", 
                  key, lat, lon, radius, results.size());
         return results;
     }
 
     @Override
-    public boolean updateKVData(String key, String id, Map<String, String> tags, Map<String, Object> attributes) {
-        // Create KV data from maps
-        KVData kvData = new KVData();
-        if (tags != null) {
-            tags.forEach(kvData::setTag);
-        }
-        if (attributes != null) {
-            attributes.forEach(kvData::setAttribute);
-        }
-
+    public boolean updateKVData(String key, String id, KVData kvData) {
         boolean updated = tile38Service.updateKVData(key, id, kvData);
-        log.debug("Update KV data via DUBBO: {}/{} - updated: {} (tags:{}, attrs:{})", 
-                 key, id, updated, tags != null ? tags.size() : 0, attributes != null ? attributes.size() : 0);
-        return updated;
-    }
-
-    @Override
-    public boolean updateKVDataObject(String key, String id, KVData kvData) {
-        boolean updated = tile38Service.updateKVData(key, id, kvData);
-        log.debug("Update KV data object via DUBBO: {}/{} - updated: {}", key, id, updated);
+        log.debug("Update KV data via DUBBO: {}/{} - updated: {}", key, id, updated);
         return updated;
     }
 

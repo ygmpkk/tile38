@@ -8,11 +8,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tile38.model.KVData;
 
-import java.util.Map;
-
 /**
- * Unified parameter class for KV data operations
- * Supports both structured KVData and legacy Map formats
+ * Parameter class for updating KV data of existing polygon objects
+ * KV data (tags and attributes) is supplemental metadata attached to polygons by ID
  */
 @Data
 @Builder
@@ -22,49 +20,15 @@ import java.util.Map;
 public class UpdateKVParam {
     
     /**
-     * Unified KV data entity
+     * KV data entity for tags and attributes
      */
     private KVData kvData;
-    
-    /**
-     * Legacy fields for backward compatibility
-     */
-    private Map<String, Object> tags;
-    private Map<String, Object> attributes;
-    
-    /**
-     * Get effective KV data (prioritizes unified kvData over legacy maps)
-     */
-    @JsonIgnore
-    public KVData getEffectiveKVData() {
-        if (kvData != null && !kvData.isEmpty()) {
-            return kvData;
-        }
-        
-        // Build KVData from legacy maps for backward compatibility
-        if ((tags != null && !tags.isEmpty()) || (attributes != null && !attributes.isEmpty())) {
-            KVData legacyKVData = new KVData();
-            
-            if (tags != null) {
-                tags.forEach((k, v) -> legacyKVData.setTag(k, v != null ? v.toString() : null));
-            }
-            
-            if (attributes != null) {
-                attributes.forEach(legacyKVData::setAttribute);
-            }
-            
-            return legacyKVData;
-        }
-        
-        return null;
-    }
     
     /**
      * Check if parameters have valid KV data
      */
     @JsonIgnore
     public boolean hasValidKVData() {
-        KVData effectiveKVData = getEffectiveKVData();
-        return effectiveKVData != null && !effectiveKVData.isEmpty();
+        return kvData != null && !kvData.isEmpty();
     }
 }

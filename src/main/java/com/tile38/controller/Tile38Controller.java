@@ -83,20 +83,34 @@ public class Tile38Controller {
                     }
                 }
                 
+                // Create geometry from lat/lon coordinates
+                Point geometry = geometryFactory.createPoint(new Coordinate(lon, lat));
+                
+                // Create KVData from legacy fields if present
+                KVData kvData = new KVData();
+                Map<String, Object> tags = (Map<String, Object>) requestMap.get("tags");
+                Map<String, Object> attributes = (Map<String, Object>) requestMap.get("attributes");
+                
+                if (tags != null) {
+                    tags.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
+                }
+                if (attributes != null) {
+                    attributes.forEach(kvData::setAttribute);
+                }
+                
                 param = SetObjectParam.builder()
-                    .location(LocationEntity.of(lat, lon))
+                    .geometry(geometry)
                     .fields((Map<String, Object>) requestMap.get("fields"))
-                    .tags((Map<String, Object>) requestMap.get("tags"))
-                    .attributes((Map<String, Object>) requestMap.get("attributes"))
+                    .kvData(kvData.isEmpty() ? null : kvData)
                     .ex(requestMap.get("ex") != null ? ((Number) requestMap.get("ex")).longValue() : null)
                     .build();
             } else {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
             }
             
-            // Validate location
-            if (!param.hasValidLocation()) {
-                String errorMsg = "Valid location coordinates are required";
+            // Validate geometry
+            if (!param.hasValidGeometry()) {
+                String errorMsg = "Valid geometry is required";
                 if (isLegacy) {
                     return ResponseEntity.badRequest().body(Map.of("error", errorMsg));
                 } else {
@@ -104,12 +118,8 @@ public class Tile38Controller {
                 }
             }
             
-            LocationEntity location = param.getEffectiveLocation();
-            log.debug("Setting object {}/{} with coordinates ({},{})", key, id, location.getEffectiveLat(), location.getEffectiveLon());
+            log.debug("Setting polygon object {}/{}", key, id);
             long startTime = System.currentTimeMillis();
-            
-            // Create geometry from unified location entity
-            Point point = location.toPoint();
             
             // Create KV data using unified approach
             KVData kvData = param.getEffectiveKVData();
@@ -120,7 +130,7 @@ public class Tile38Controller {
             // Create object
             Tile38Object object = Tile38Object.builder()
                     .id(id)
-                    .geometry(point)
+                    .geometry(param.getGeometry())
                     .fields(param.getFields())
                     .kvData(kvData)
                     .expireAt(expireAt)
@@ -358,14 +368,17 @@ public class Tile38Controller {
             @PathVariable String key,
             @RequestBody NearbySearchParam param) {
         
-        // Validate location
-        if (!param.hasValidLocation()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Valid location coordinates are required"));
+        // Validate center point
+        if (!param.hasValidCenterPoint()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Valid center point is required"));
         }
         
-        LocationEntity location = param.getEffectiveLocation();
+        Point centerPoint = param.getCenterPoint();
+        double lat = centerPoint.getY();
+        double lon = centerPoint.getX();
+        
         log.debug("Starting nearby search with complex filter for collection '{}' at ({},{}) with radius {}", 
-                 key, location.getEffectiveLat(), location.getEffectiveLon(), param.getRadius());
+                 key, lat, lon, param.getRadius());
         long startTime = System.currentTimeMillis();
         
         try {
@@ -384,7 +397,7 @@ public class Tile38Controller {
                 }
             }
             
-            List<SearchResult> results = tile38Service.nearby(key, location.getEffectiveLat(), location.getEffectiveLon(), param.getRadius(), filter);
+            List<SearchResult> results = tile38Service.nearby(key, lat, lon, param.getRadius(), filter);
             
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed nearby search with complex filter for collection '{}' in {}ms, found {} results", 
@@ -684,28 +697,30 @@ public class Tile38Controller {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> requestMap = (Map<String, Object>) request;
                 
+                // Create KVData from legacy map structure
+                KVData kvData = new KVData();
+                Map<String, Object> tags = (Map<String, Object>) requestMap.get("tags");
+                Map<String, Object> attributes = (Map<String, Object>) requestMap.get("attributes");
+                
+                if (tags != null) {
+                    tags.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
+                }
+                if (attributes != null) {
+                    attributes.forEach(kvData::setAttribute);
+                }
+                
                 param = UpdateKVParam.builder()
-                    .tags((Map<String, Object>) requestMap.get("tags"))
-                    .attributes((Map<String, Object>) requestMap.get("attributes"))
+                    .kvData(kvData)
                     .build();
             } else {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
             }
             
-            if (param.getTags() == null && param.getAttributes() == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Either tags or attributes must be provided"));
+            if (!param.hasValidKVData()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Valid KV data must be provided"));
             }
             
-            // Create KV data
-            KVData kvData = new KVData();
-            if (param.getTags() != null) {
-                param.getTags().forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
-            }
-            if (param.getAttributes() != null) {
-                param.getAttributes().forEach(kvData::setAttribute);
-            }
-            
-            boolean updated = tile38Service.updateKVData(key, id, kvData);
+            boolean updated = tile38Service.updateKVData(key, id, param.getKvData());
             
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed updating KV data for object {}/{} in {}ms, updated: {}", key, id, duration, updated);
