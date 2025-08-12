@@ -261,9 +261,219 @@ public class FileDataRepository implements DataRepository {
      * Load data from GeoJSON file
      */
     private CompletableFuture<LoadResult> loadFromGeoJson(DataSource dataSource) {
-        // TODO: Implement GeoJSON loading with proper geometry parsing
-        return CompletableFuture.completedFuture(
-            new LoadResult(false, 0, 0, "GeoJSON loading not yet implemented"));
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting GeoJSON data load from: {}", dataSource.getLocation());
+            long startTime = System.currentTimeMillis();
+            
+            try {
+                File file = new File(dataSource.getLocation());
+                if (!file.exists()) {
+                    return new LoadResult(false, 0, 0, "File not found: " + dataSource.getLocation());
+                }
+                
+                JsonNode root = objectMapper.readTree(file);
+                long totalRecords = 0;
+                String collectionName = dataSource.getCollectionName();
+                
+                // Handle FeatureCollection
+                if (root.has("type") && "FeatureCollection".equals(root.get("type").asText())) {
+                    JsonNode features = root.get("features");
+                    if (features != null && features.isArray()) {
+                        totalRecords = processGeoJsonFeatures(features, collectionName);
+                    }
+                } else if (root.has("type") && "Feature".equals(root.get("type").asText())) {
+                    // Handle single Feature
+                    totalRecords = processGeoJsonFeature(root, collectionName);
+                } else {
+                    return new LoadResult(false, 0, 0, "Invalid GeoJSON format: expected FeatureCollection or Feature");
+                }
+                
+                long endTime = System.currentTimeMillis();
+                String message = String.format("Successfully loaded %d records from GeoJSON in %dms", 
+                                              totalRecords, (endTime - startTime));
+                logger.info(message);
+                
+                return new LoadResult(true, totalRecords, endTime - startTime, message);
+                
+            } catch (Exception e) {
+                long endTime = System.currentTimeMillis();
+                String error = "Failed to load GeoJSON: " + e.getMessage();
+                logger.error(error, e);
+                return new LoadResult(false, 0, endTime - startTime, error);
+            }
+        });
+    }
+    
+    /**
+     * Process GeoJSON features array
+     */
+    private long processGeoJsonFeatures(JsonNode features, String collectionName) {
+        Map<String, Tile38Object> batch = new HashMap<>();
+        long totalRecords = 0;
+        
+        for (JsonNode feature : features) {
+            try {
+                long processed = processGeoJsonFeature(feature, collectionName, batch);
+                totalRecords += processed;
+                
+                // Process batch when it reaches the limit
+                if (batch.size() >= BATCH_SIZE) {
+                    tile38Service.bulkSet(collectionName, batch);
+                    logger.info("Processed batch of {} objects for collection '{}', total: {}", 
+                              batch.size(), collectionName, totalRecords);
+                    batch.clear();
+                }
+                
+            } catch (Exception e) {
+                logger.warn("Failed to process GeoJSON feature: {}", e.getMessage());
+            }
+        }
+        
+        // Process remaining batch
+        if (!batch.isEmpty()) {
+            tile38Service.bulkSet(collectionName, batch);
+            logger.info("Processed final batch of {} objects for collection '{}'", 
+                      batch.size(), collectionName);
+        }
+        
+        return totalRecords;
+    }
+    
+    /**
+     * Process single GeoJSON feature
+     */
+    private long processGeoJsonFeature(JsonNode feature, String collectionName) {
+        Map<String, Tile38Object> batch = new HashMap<>();
+        long processed = processGeoJsonFeature(feature, collectionName, batch);
+        if (!batch.isEmpty()) {
+            tile38Service.bulkSet(collectionName, batch);
+        }
+        return processed;
+    }
+    
+    /**
+     * Process single GeoJSON feature into batch
+     */
+    private long processGeoJsonFeature(JsonNode feature, String collectionName, Map<String, Tile38Object> batch) {
+        try {
+            // Get feature properties
+            Map<String, Object> fields = new HashMap<>();
+            String id = null;
+            
+            if (feature.has("properties") && !feature.get("properties").isNull()) {
+                JsonNode properties = feature.get("properties");
+                properties.fields().forEachRemaining(entry -> {
+                    JsonNode value = entry.getValue();
+                    if (value.isTextual()) {
+                        fields.put(entry.getKey(), value.asText());
+                    } else if (value.isNumber()) {
+                        fields.put(entry.getKey(), value.asDouble());
+                    } else if (value.isBoolean()) {
+                        fields.put(entry.getKey(), value.asBoolean());
+                    } else if (!value.isNull()) {
+                        fields.put(entry.getKey(), value.toString());
+                    }
+                });
+                
+                // Try to get ID from properties
+                if (properties.has("id")) {
+                    id = properties.get("id").asText();
+                }
+            }
+            
+            // Get ID from feature.id if not in properties
+            if (id == null && feature.has("id")) {
+                id = feature.get("id").asText();
+            }
+            
+            // Generate ID if not found
+            if (id == null) {
+                id = "feature_" + System.nanoTime();
+            }
+            
+            // Parse geometry
+            JsonNode geometry = feature.get("geometry");
+            if (geometry == null || geometry.isNull()) {
+                logger.warn("Skipping feature with no geometry: {}", id);
+                return 0;
+            }
+            
+            org.locationtech.jts.geom.Geometry jtsGeometry = parseGeoJsonGeometry(geometry);
+            if (jtsGeometry == null) {
+                logger.warn("Failed to parse geometry for feature: {}", id);
+                return 0;
+            }
+            
+            Tile38Object tile38Object = Tile38Object.builder()
+                .id(id)
+                .geometry(jtsGeometry)
+                .fields(fields)
+                .timestamp(System.currentTimeMillis())
+                .build();
+            
+            batch.put(id, tile38Object);
+            return 1;
+            
+        } catch (Exception e) {
+            logger.warn("Failed to process GeoJSON feature: {}", e.getMessage());
+            return 0;
+        }
+    }
+    
+    /**
+     * Parse GeoJSON geometry into JTS geometry
+     */
+    private org.locationtech.jts.geom.Geometry parseGeoJsonGeometry(JsonNode geometry) {
+        try {
+            String type = geometry.get("type").asText();
+            JsonNode coordinates = geometry.get("coordinates");
+            
+            switch (type.toLowerCase()) {
+                case "point":
+                    if (coordinates.isArray() && coordinates.size() >= 2) {
+                        double lon = coordinates.get(0).asDouble();
+                        double lat = coordinates.get(1).asDouble();
+                        return geometryFactory.createPoint(new Coordinate(lon, lat));
+                    }
+                    break;
+                    
+                case "linestring":
+                    if (coordinates.isArray() && coordinates.size() >= 2) {
+                        Coordinate[] coords = new Coordinate[coordinates.size()];
+                        for (int i = 0; i < coordinates.size(); i++) {
+                            JsonNode coord = coordinates.get(i);
+                            if (coord.isArray() && coord.size() >= 2) {
+                                coords[i] = new Coordinate(coord.get(0).asDouble(), coord.get(1).asDouble());
+                            }
+                        }
+                        return geometryFactory.createLineString(coords);
+                    }
+                    break;
+                    
+                case "polygon":
+                    if (coordinates.isArray() && coordinates.size() >= 1) {
+                        JsonNode shell = coordinates.get(0);
+                        if (shell.isArray() && shell.size() >= 4) {
+                            Coordinate[] coords = new Coordinate[shell.size()];
+                            for (int i = 0; i < shell.size(); i++) {
+                                JsonNode coord = shell.get(i);
+                                if (coord.isArray() && coord.size() >= 2) {
+                                    coords[i] = new Coordinate(coord.get(0).asDouble(), coord.get(1).asDouble());
+                                }
+                            }
+                            return geometryFactory.createPolygon(coords);
+                        }
+                    }
+                    break;
+                    
+                default:
+                    logger.warn("Unsupported GeoJSON geometry type: {}", type);
+            }
+        } catch (Exception e) {
+            logger.warn("Error parsing GeoJSON geometry: {}", e.getMessage());
+        }
+        
+        return null;
     }
     
     /**

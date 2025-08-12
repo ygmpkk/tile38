@@ -33,6 +33,7 @@ class DataRepositoryTest {
         fileRepository.tile38Service = tile38Service;
         
         databaseRepository = new DatabaseRepository();
+        databaseRepository.tile38Service = tile38Service;
         
         repositoryFactory = new RepositoryFactory();
         repositoryFactory.repositories = List.of(fileRepository, databaseRepository);
@@ -109,24 +110,24 @@ class DataRepositoryTest {
 
     @Test
     void testUnimplementedFunctionality() {
-        DataSource geoJsonSource = DataSource.createFileSource(
-            DataSourceType.FILE_GEOJSON, "/path/to/data.geojson", "test");
+        DataSource shpSource = DataSource.createFileSource(
+            DataSourceType.FILE_SHP, "/path/to/data.shp", "test");
         
-        // GeoJSON loading should return not implemented message
-        var result = fileRepository.loadData(geoJsonSource).join();
+        // Shapefile loading should return not implemented message
+        var result = fileRepository.loadData(shpSource).join();
         assertFalse(result.isSuccess());
-        assertTrue(result.getMessage().contains("GeoJSON loading not yet implemented"));
+        assertTrue(result.getMessage().contains("Shapefile loading not yet implemented"));
 
         DataSource mysqlSource = DataSource.createDatabaseSource(
             DataSourceType.DATABASE_MYSQL, "jdbc:mysql://localhost:3306/test", 
             "geo_data", "SELECT * FROM locations", null);
 
-        // MySQL loading should return not implemented message
+        // MySQL loading should work but fail on connection (since no DB is running)
         var mysqlResult = databaseRepository.loadData(mysqlSource).join();
         assertFalse(mysqlResult.isSuccess());
-        assertTrue(mysqlResult.getMessage().contains("MySQL loading not yet implemented"));
+        assertTrue(mysqlResult.getMessage().contains("Failed to load from MySQL"));
 
-        // Connection test should return false for unimplemented
+        // Connection test should return false for failed connection
         var connectionResult = databaseRepository.testConnection(mysqlSource).join();
         assertFalse(connectionResult);
     }
