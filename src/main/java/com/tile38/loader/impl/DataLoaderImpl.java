@@ -1,6 +1,8 @@
 package com.tile38.loader.impl;
 
 import com.tile38.loader.DataLoader;
+import com.tile38.repository.data.DataSource;
+import com.tile38.repository.data.RepositoryFactory;
 import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.KVData;
@@ -33,6 +35,9 @@ public class DataLoaderImpl implements DataLoader {
     
     @Autowired
     private Tile38Service tile38Service;
+    
+    @Autowired
+    private RepositoryFactory repositoryFactory;
     
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -306,5 +311,16 @@ public class DataLoaderImpl implements DataLoader {
                 return new LoadResult(false, 0, endTime - startTime, error);
             }
         });
+    }
+    
+    @Override
+    public CompletableFuture<LoadResult> loadFromDataSource(DataSource dataSource) {
+        try {
+            var repository = repositoryFactory.getRepository(dataSource.getType());
+            return repository.loadData(dataSource);
+        } catch (IllegalArgumentException e) {
+            return CompletableFuture.completedFuture(
+                new LoadResult(false, 0, 0, "Unsupported data source: " + e.getMessage()));
+        }
     }
 }
