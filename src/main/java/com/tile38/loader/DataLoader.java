@@ -1,5 +1,7 @@
 package com.tile38.loader;
 
+import com.tile38.repository.data.DataSource;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,6 +25,11 @@ public interface DataLoader {
      */
     CompletableFuture<LoadResult> generateTestData(String collectionName, int numberOfRecords, 
                                                    double minLat, double maxLat, double minLon, double maxLon);
+    
+    /**
+     * Load data from any supported data source using the unified repository abstraction
+     */
+    CompletableFuture<LoadResult> loadFromDataSource(DataSource dataSource);
     
     /**
      * Result of a data loading operation
