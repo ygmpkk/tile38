@@ -23,11 +23,16 @@ public class SearchResult extends BaseSearchResult<Tile38Object, String> {
     private boolean withinArea;
     
     public SearchResult(String id, Tile38Object object) {
-        super(id, object, null, null, null);
+        super();
+        setId(id);
+        setEntity(object);
     }
     
     public SearchResult(String id, Tile38Object object, double distance) {
-        super(id, object, distance, null, null);
+        super();
+        setId(id);
+        setEntity(object);
+        setScore(distance);
         this.distance = distance;
     }
     

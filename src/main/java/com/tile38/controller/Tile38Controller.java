@@ -7,6 +7,7 @@ import com.tile38.model.Bounds;
 import com.tile38.model.KVData;
 import com.tile38.model.FilterCondition;
 import com.tile38.model.FilterRequest;
+import com.tile38.model.LocationEntity;
 import com.tile38.model.param.*;
 import com.tile38.model.result.*;
 import com.tile38.loader.DataLoader;
@@ -83,8 +84,7 @@ public class Tile38Controller {
                 }
                 
                 param = SetObjectParam.builder()
-                    .lat(lat)
-                    .lon(lon)
+                    .location(LocationEntity.of(lat, lon))
                     .fields((Map<String, Object>) requestMap.get("fields"))
                     .tags((Map<String, Object>) requestMap.get("tags"))
                     .attributes((Map<String, Object>) requestMap.get("attributes"))
@@ -94,14 +94,25 @@ public class Tile38Controller {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
             }
             
-            log.debug("Setting object {}/{} with coordinates ({},{})", key, id, param.getLat(), param.getLon());
+            // Validate location
+            if (!param.hasValidLocation()) {
+                String errorMsg = "Valid location coordinates are required";
+                if (isLegacy) {
+                    return ResponseEntity.badRequest().body(Map.of("error", errorMsg));
+                } else {
+                    return ResponseEntity.badRequest().body(ApiResponse.error(errorMsg));
+                }
+            }
+            
+            LocationEntity location = param.getEffectiveLocation();
+            log.debug("Setting object {}/{} with coordinates ({},{})", key, id, location.getEffectiveLat(), location.getEffectiveLon());
             long startTime = System.currentTimeMillis();
             
-            // Create geometry
-            Point point = geometryFactory.createPoint(new Coordinate(param.getLon(), param.getLat()));
+            // Create geometry from unified location entity
+            Point point = location.toPoint();
             
-            // Create KV data
-            KVData kvData = param.toKVData();
+            // Create KV data using unified approach
+            KVData kvData = param.getEffectiveKVData();
             
             // Parse expiration
             Instant expireAt = param.getEx() != null ? Instant.now().plusSeconds(param.getEx()) : null;
@@ -347,8 +358,14 @@ public class Tile38Controller {
             @PathVariable String key,
             @RequestBody NearbySearchParam param) {
         
+        // Validate location
+        if (!param.hasValidLocation()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Valid location coordinates are required"));
+        }
+        
+        LocationEntity location = param.getEffectiveLocation();
         log.debug("Starting nearby search with complex filter for collection '{}' at ({},{}) with radius {}", 
-                 key, param.getLat(), param.getLon(), param.getRadius());
+                 key, location.getEffectiveLat(), location.getEffectiveLon(), param.getRadius());
         long startTime = System.currentTimeMillis();
         
         try {
@@ -367,7 +384,7 @@ public class Tile38Controller {
                 }
             }
             
-            List<SearchResult> results = tile38Service.nearby(key, param.getLat(), param.getLon(), param.getRadius(), filter);
+            List<SearchResult> results = tile38Service.nearby(key, location.getEffectiveLat(), location.getEffectiveLon(), param.getRadius(), filter);
             
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed nearby search with complex filter for collection '{}' in {}ms, found {} results", 
@@ -383,6 +400,54 @@ public class Tile38Controller {
         } catch (Exception e) {
             log.error("Error in nearby search with complex filter for collection '{}'", key, e);
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Advanced NEARBY with complex filter conditions - backward compatibility
+     * HTTP: POST /api/v1/keys/{key}/nearby/filter?lat={lat}&lon={lon}&radius={radius}
+     * For legacy tests that send location as query params and filter in body
+     */
+    @PostMapping(value = "/keys/{key}/nearby/filter", params = {"lat", "lon", "radius"})
+    public ResponseEntity<?> nearbyWithFilterLegacy(
+            @PathVariable String key,
+            @RequestParam double lat,
+            @RequestParam double lon,
+            @RequestParam double radius,
+            @RequestBody FilterRequest filterRequest) {
+        
+        log.debug("Starting nearby search with complex filter (legacy) for collection '{}' at ({},{}) with radius {}", 
+                 key, lat, lon, radius);
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            FilterCondition filter = null;
+            if (filterRequest != null) {
+                try {
+                    filter = filterRequest.toFilterCondition();
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter: " + e.getMessage()));
+                }
+            }
+            
+            List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius, filter);
+            
+            long duration = System.currentTimeMillis() - startTime;
+            log.debug("Completed nearby search with complex filter (legacy) for collection '{}' in {}ms, found {} results", 
+                     key, duration, results.size());
+            
+            // Return legacy format for backward compatibility  
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", true);
+            response.put("count", results.size());
+            response.put("objects", results);
+            response.put("elapsed", duration + "ms");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error in nearby search with complex filter (legacy) for collection '{}'", key, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
     
