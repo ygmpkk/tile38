@@ -292,10 +292,10 @@ public class Tile38Controller {
     /**
      * NEARBY key POINT lat lon radius
      * HTTP: GET /api/v1/keys/{key}/nearby?lat={lat}&lon={lon}&radius={radius}
-     * Enhanced with optional KV filtering
+     * Enhanced with optional KV filtering - returns legacy format for backward compatibility
      */
     @GetMapping("/keys/{key}/nearby")
-    public ResponseEntity<ApiResponse<SearchResultData>> nearby(
+    public ResponseEntity<Map<String, Object>> nearby(
             @PathVariable String key,
             @RequestParam double lat,
             @RequestParam double lon,
@@ -312,7 +312,7 @@ public class Tile38Controller {
                     // Simple filter parsing: format like "tag:category=restaurant" or "attr:speed>50"
                     filterCondition = parseSimpleFilter(filter);
                 } catch (Exception e) {
-                    return ResponseEntity.badRequest().body(ApiResponse.error("Invalid filter format: " + e.getMessage()));
+                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter format: " + e.getMessage()));
                 }
             }
             
@@ -323,16 +323,18 @@ public class Tile38Controller {
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed nearby search for collection '{}' in {}ms, found {} results", key, duration, results.size());
             
-            SearchResultData resultData = SearchResultData.builder()
-                    .count(results.size())
-                    .objects(results)
-                    .build();
-                    
-            return ResponseEntity.ok(ApiResponse.success(resultData, duration + "ms"));
+            // Return legacy format for backward compatibility
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", true);
+            response.put("count", results.size());
+            response.put("objects", results);
+            response.put("elapsed", duration + "ms");
+            
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             log.error("Error in nearby search for collection '{}'", key, e);
-            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
     
@@ -596,19 +598,37 @@ public class Tile38Controller {
     /**
      * Update KV data for an existing object
      * HTTP: PUT /api/v1/keys/{key}/objects/{id}/kv
+     * Returns legacy format for backward compatibility
      */
     @PutMapping("/keys/{key}/objects/{id}/kv")
-    public ResponseEntity<ApiResponse<ObjectResult>> updateKVData(
+    public ResponseEntity<Map<String, Object>> updateKVData(
             @PathVariable String key,
             @PathVariable String id,
-            @RequestBody UpdateKVParam param) {
+            @RequestBody Object request) {
         
         try {
             log.debug("Updating KV data for object {}/{}", key, id);
             long startTime = System.currentTimeMillis();
             
+            UpdateKVParam param;
+            
+            // Handle both structured param and legacy Map
+            if (request instanceof UpdateKVParam) {
+                param = (UpdateKVParam) request;
+            } else if (request instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> requestMap = (Map<String, Object>) request;
+                
+                param = UpdateKVParam.builder()
+                    .tags((Map<String, Object>) requestMap.get("tags"))
+                    .attributes((Map<String, Object>) requestMap.get("attributes"))
+                    .build();
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
+            }
+            
             if (param.getTags() == null && param.getAttributes() == null) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("Either tags or attributes must be provided"));
+                return ResponseEntity.badRequest().body(Map.of("error", "Either tags or attributes must be provided"));
             }
             
             // Create KV data
@@ -629,15 +649,17 @@ public class Tile38Controller {
                 return ResponseEntity.notFound().build();
             }
             
-            ObjectResult result = ObjectResult.builder()
-                    .updated(1)
-                    .build();
+            // Return legacy format for backward compatibility
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", true);
+            response.put("updated", 1);
+            response.put("elapsed", duration + "ms");
                     
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             log.error("Error updating KV data for object {}/{}", key, id, e);
-            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
     
