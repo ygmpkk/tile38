@@ -50,72 +50,20 @@ public class Tile38Controller {
     private final WKTReader wktReader = new WKTReader(geometryFactory);
     
     /**
-     * SET key id POINT lat lon [FIELD name value ...] [EX seconds]
+     * SET key id POINT geometry [FIELD name value ...] [EX seconds]
      * HTTP: POST /api/v1/keys/{key}/objects/{id}
-     * Supporting both SetObjectParam and legacy Map for backward compatibility
+     * Polygon-centric architecture with KV data as supplemental metadata
      */
     @PostMapping("/keys/{key}/objects/{id}")
-    public ResponseEntity<?> setObject(
+    public ResponseEntity<ApiResponse<ObjectResult>> setObject(
             @PathVariable String key,
             @PathVariable String id,
-            @RequestBody Object request) {
+            @RequestBody SetObjectParam param) {
         
         try {
-            SetObjectParam param;
-            boolean isLegacy = false;
-            
-            // Handle both structured param and legacy Map
-            if (request instanceof SetObjectParam) {
-                param = (SetObjectParam) request;
-            } else if (request instanceof Map) {
-                isLegacy = true;
-                @SuppressWarnings("unchecked")
-                Map<String, Object> requestMap = (Map<String, Object>) request;
-                
-                Double lat = (Double) requestMap.get("lat");
-                Double lon = (Double) requestMap.get("lon");
-                
-                if (lat == null || lon == null) {
-                    if (isLegacy) {
-                        return ResponseEntity.badRequest().body(Map.of("error", "lat and lon are required"));
-                    } else {
-                        return ResponseEntity.badRequest().body(ApiResponse.error("lat and lon are required"));
-                    }
-                }
-                
-                // Create geometry from lat/lon coordinates
-                Point geometry = geometryFactory.createPoint(new Coordinate(lon, lat));
-                
-                // Create KVData from legacy fields if present
-                KVData kvData = new KVData();
-                Map<String, Object> tags = (Map<String, Object>) requestMap.get("tags");
-                Map<String, Object> attributes = (Map<String, Object>) requestMap.get("attributes");
-                
-                if (tags != null) {
-                    tags.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
-                }
-                if (attributes != null) {
-                    attributes.forEach(kvData::setAttribute);
-                }
-                
-                param = SetObjectParam.builder()
-                    .geometry(geometry)
-                    .fields((Map<String, Object>) requestMap.get("fields"))
-                    .kvData(kvData.isEmpty() ? null : kvData)
-                    .ex(requestMap.get("ex") != null ? ((Number) requestMap.get("ex")).longValue() : null)
-                    .build();
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
-            }
-            
             // Validate geometry
             if (!param.hasValidGeometry()) {
-                String errorMsg = "Valid geometry is required";
-                if (isLegacy) {
-                    return ResponseEntity.badRequest().body(Map.of("error", errorMsg));
-                } else {
-                    return ResponseEntity.badRequest().body(ApiResponse.error(errorMsg));
-                }
+                return ResponseEntity.badRequest().body(ApiResponse.error("Valid geometry is required"));
             }
             
             log.debug("Setting polygon object {}/{}", key, id);
@@ -143,42 +91,25 @@ public class Tile38Controller {
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed setting object {}/{} in {}ms", key, id, duration);
             
-            // Return appropriate response format
-            if (isLegacy) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("ok", true);
-                response.put("elapsed", duration + "ms");
-                return ResponseEntity.ok(response);
-            } else {
-                ObjectResult result = ObjectResult.builder().build();
-                return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
-            }
+            ObjectResult result = ObjectResult.builder().build();
+            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
             
         } catch (Exception e) {
             log.error("Error setting object {}/{}", key, id, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
         }
     }
-    
-    /**
-     * SET key id - Overloaded method for legacy tests
-     */
-    public ResponseEntity<Map<String, Object>> setObject(String key, String id, Map<String, Object> request) {
-        @SuppressWarnings("unchecked")
-        ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) setObject(key, id, (Object) request);
-        return response;
-    }
+
     
     /**
      * GET key id
      * HTTP: GET /api/v1/keys/{key}/objects/{id}
-     * Supporting both structured response and legacy format
+     * Returns polygon object with KV data as supplemental metadata
      */
     @GetMapping("/keys/{key}/objects/{id}")
-    public ResponseEntity<?> getObject(
+    public ResponseEntity<ApiResponse<ObjectResult>> getObject(
             @PathVariable String key,
-            @PathVariable String id,
-            @RequestParam(defaultValue = "legacy", required = false) String format) {
+            @PathVariable String id) {
         
         log.debug("Getting object {}/{}", key, id);
         long startTime = System.currentTimeMillis();
@@ -192,43 +123,23 @@ public class Tile38Controller {
             return ResponseEntity.notFound().build();
         }
         
-        if ("structured".equals(format)) {
-            ObjectResult result = ObjectResult.builder()
-                    .object(object.get())
-                    .found(true)
-                    .build();
-                    
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
-        } else {
-            // Legacy format for backward compatibility
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("object", object.get());
-            response.put("elapsed", duration + "ms");
-            
-            return ResponseEntity.ok(response);
-        }
-    }
-    
-    /**
-     * GET key id - Overloaded method without format parameter for tests
-     */
-    public ResponseEntity<Map<String, Object>> getObject(String key, String id) {
-        @SuppressWarnings("unchecked")
-        ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) getObject(key, id, "legacy");
-        return response;
+        ObjectResult result = ObjectResult.builder()
+                .object(object.get())
+                .found(true)
+                .build();
+                
+        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
     }
     
     /**
      * DEL key id
      * HTTP: DELETE /api/v1/keys/{key}/objects/{id}
-     * Supporting both structured response and legacy format
+     * Deletes polygon object by ID
      */
     @DeleteMapping("/keys/{key}/objects/{id}")
-    public ResponseEntity<?> deleteObject(
+    public ResponseEntity<ApiResponse<ObjectResult>> deleteObject(
             @PathVariable String key,
-            @PathVariable String id,
-            @RequestParam(defaultValue = "legacy", required = false) String format) {
+            @PathVariable String id) {
         
         log.debug("Deleting object {}/{}", key, id);
         long startTime = System.currentTimeMillis();
@@ -238,30 +149,11 @@ public class Tile38Controller {
         long duration = System.currentTimeMillis() - startTime;
         log.debug("Completed deleting object {}/{} in {}ms, deleted: {}", key, id, duration, deleted);
         
-        if ("structured".equals(format)) {
-            ObjectResult result = ObjectResult.builder()
-                    .deleted(deleted ? 1 : 0)
-                    .build();
-                    
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
-        } else {
-            // Legacy format for backward compatibility
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("deleted", deleted ? 1 : 0);
-            response.put("elapsed", duration + "ms");
-            
-            return ResponseEntity.ok(response);
-        }
-    }
-    
-    /**
-     * DEL key id - Overloaded method without format parameter for tests
-     */
-    public ResponseEntity<Map<String, Object>> deleteObject(String key, String id) {
-        @SuppressWarnings("unchecked")
-        ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) deleteObject(key, id, "legacy");
-        return response;
+        ObjectResult result = ObjectResult.builder()
+                .deleted(deleted ? 1 : 0)
+                .build();
+                
+        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
     }
     
     /**
@@ -313,10 +205,10 @@ public class Tile38Controller {
     /**
      * NEARBY key POINT lat lon radius
      * HTTP: GET /api/v1/keys/{key}/nearby?lat={lat}&lon={lon}&radius={radius}
-     * Enhanced with optional KV filtering - returns legacy format for backward compatibility
+     * Enhanced with optional KV filtering - polygon-centric search
      */
     @GetMapping("/keys/{key}/nearby")
-    public ResponseEntity<Map<String, Object>> nearby(
+    public ResponseEntity<ApiResponse<SearchResultData>> nearby(
             @PathVariable String key,
             @RequestParam double lat,
             @RequestParam double lon,
@@ -333,7 +225,7 @@ public class Tile38Controller {
                     // Simple filter parsing: format like "tag:category=restaurant" or "attr:speed>50"
                     filterCondition = parseSimpleFilter(filter);
                 } catch (Exception e) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter format: " + e.getMessage()));
+                    return ResponseEntity.badRequest().body(ApiResponse.error("Invalid filter format: " + e.getMessage()));
                 }
             }
             
@@ -344,18 +236,16 @@ public class Tile38Controller {
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed nearby search for collection '{}' in {}ms, found {} results", key, duration, results.size());
             
-            // Return legacy format for backward compatibility
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("count", results.size());
-            response.put("objects", results);
-            response.put("elapsed", duration + "ms");
+            SearchResultData resultData = SearchResultData.builder()
+                    .count(results.size())
+                    .objects(results)
+                    .build();
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(resultData, duration + "ms"));
             
         } catch (Exception e) {
             log.error("Error in nearby search for collection '{}'", key, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
         }
     }
     
@@ -415,61 +305,14 @@ public class Tile38Controller {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
         }
     }
-    
-    /**
-     * Advanced NEARBY with complex filter conditions - backward compatibility
-     * HTTP: POST /api/v1/keys/{key}/nearby/filter?lat={lat}&lon={lon}&radius={radius}
-     * For legacy tests that send location as query params and filter in body
-     */
-    @PostMapping(value = "/keys/{key}/nearby/filter", params = {"lat", "lon", "radius"})
-    public ResponseEntity<?> nearbyWithFilterLegacy(
-            @PathVariable String key,
-            @RequestParam double lat,
-            @RequestParam double lon,
-            @RequestParam double radius,
-            @RequestBody FilterRequest filterRequest) {
-        
-        log.debug("Starting nearby search with complex filter (legacy) for collection '{}' at ({},{}) with radius {}", 
-                 key, lat, lon, radius);
-        long startTime = System.currentTimeMillis();
-        
-        try {
-            FilterCondition filter = null;
-            if (filterRequest != null) {
-                try {
-                    filter = filterRequest.toFilterCondition();
-                } catch (Exception e) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid filter: " + e.getMessage()));
-                }
-            }
-            
-            List<SearchResult> results = tile38Service.nearby(key, lat, lon, radius, filter);
-            
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed nearby search with complex filter (legacy) for collection '{}' in {}ms, found {} results", 
-                     key, duration, results.size());
-            
-            // Return legacy format for backward compatibility  
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("count", results.size());
-            response.put("objects", results);
-            response.put("elapsed", duration + "ms");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("Error in nearby search with complex filter (legacy) for collection '{}'", key, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
+
     
     /**
      * KEYS pattern
      * HTTP: GET /api/v1/keys
      */
     @GetMapping("/keys")
-    public ResponseEntity<Map<String, Object>> getKeys() {
+    public ResponseEntity<ApiResponse<CollectionResult>> getKeys() {
         log.debug("Getting keys");
         long startTime = System.currentTimeMillis();
         
@@ -478,12 +321,11 @@ public class Tile38Controller {
         long duration = System.currentTimeMillis() - startTime;
         log.debug("Completed getting keys in {}ms, found {} keys", duration, keys.size());
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("ok", true);
-        response.put("keys", keys);
-        response.put("elapsed", duration + "ms");
+        CollectionResult result = CollectionResult.builder()
+                .keys(keys)
+                .build();
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
     }
     
     /**
@@ -501,7 +343,7 @@ public class Tile38Controller {
      * HTTP: POST /api/v1/flushdb
      */
     @PostMapping("/flushdb")
-    public ResponseEntity<Map<String, Object>> flushDb() {
+    public ResponseEntity<ApiResponse<ObjectResult>> flushDb() {
         log.debug("Flushing database");
         long startTime = System.currentTimeMillis();
         
@@ -510,11 +352,9 @@ public class Tile38Controller {
         long duration = System.currentTimeMillis() - startTime;
         log.debug("Completed flushing database in {}ms", duration);
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("ok", true);
-        response.put("elapsed", duration + "ms");
+        ObjectResult result = ObjectResult.builder().build();
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
     }
     
     /**
@@ -522,7 +362,7 @@ public class Tile38Controller {
      * HTTP: POST /api/v1/keys/{key}/bulk
      */
     @PostMapping("/keys/{key}/bulk")
-    public ResponseEntity<Map<String, Object>> bulkSetObjects(
+    public ResponseEntity<ApiResponse<BulkOperationResult>> bulkSetObjects(
             @PathVariable String key,
             @RequestBody Map<String, Map<String, Object>> objects) {
         
@@ -581,20 +421,15 @@ public class Tile38Controller {
             long duration = System.currentTimeMillis() - startTime;
             log.debug("Completed bulk set operation for collection '{}' in {}ms, loaded {} objects", key, duration, tile38Objects.size());
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("objects_loaded", tile38Objects.size());
-            response.put("elapsed", duration + "ms");
+            BulkOperationResult result = BulkOperationResult.builder()
+                    .objectsLoaded(tile38Objects.size())
+                    .build();
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
             
         } catch (Exception e) {
             log.error("Error in bulk set operation", e);
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", false);
-            response.put("err", e.getMessage());
-            
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
     
@@ -694,48 +529,20 @@ public class Tile38Controller {
     /**
      * Update KV data for an existing object
      * HTTP: PUT /api/v1/keys/{key}/objects/{id}/kv
-     * Returns legacy format for backward compatibility
+     * Pure ID-based KV update - polygon-centric architecture
      */
     @PutMapping("/keys/{key}/objects/{id}/kv")
-    public ResponseEntity<Map<String, Object>> updateKVData(
+    public ResponseEntity<ApiResponse<ObjectResult>> updateKVData(
             @PathVariable String key,
             @PathVariable String id,
-            @RequestBody Object request) {
+            @RequestBody UpdateKVParam param) {
         
         try {
             log.debug("Updating KV data for object {}/{}", key, id);
             long startTime = System.currentTimeMillis();
             
-            UpdateKVParam param;
-            
-            // Handle both structured param and legacy Map
-            if (request instanceof UpdateKVParam) {
-                param = (UpdateKVParam) request;
-            } else if (request instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> requestMap = (Map<String, Object>) request;
-                
-                // Create KVData from legacy map structure
-                KVData kvData = new KVData();
-                Map<String, Object> tags = (Map<String, Object>) requestMap.get("tags");
-                Map<String, Object> attributes = (Map<String, Object>) requestMap.get("attributes");
-                
-                if (tags != null) {
-                    tags.forEach((k, v) -> kvData.setTag(k, v != null ? v.toString() : null));
-                }
-                if (attributes != null) {
-                    attributes.forEach(kvData::setAttribute);
-                }
-                
-                param = UpdateKVParam.builder()
-                    .kvData(kvData)
-                    .build();
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid request format"));
-            }
-            
             if (!param.hasValidKVData()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Valid KV data must be provided"));
+                return ResponseEntity.badRequest().body(ApiResponse.error("Valid KV data must be provided"));
             }
             
             boolean updated = tile38Service.updateKVData(key, id, param.getKvData());
@@ -747,17 +554,15 @@ public class Tile38Controller {
                 return ResponseEntity.notFound().build();
             }
             
-            // Return legacy format for backward compatibility
-            Map<String, Object> response = new HashMap<>();
-            response.put("ok", true);
-            response.put("updated", 1);
-            response.put("elapsed", duration + "ms");
+            ObjectResult result = ObjectResult.builder()
+                    .updated(1)
+                    .build();
                     
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
             
         } catch (Exception e) {
             log.error("Error updating KV data for object {}/{}", key, id, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
         }
     }
     

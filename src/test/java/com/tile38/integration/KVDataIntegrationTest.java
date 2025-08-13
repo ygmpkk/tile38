@@ -76,7 +76,11 @@ public class KVDataIntegrationTest {
         assertTrue((Boolean) getResponse.getBody().get("ok"));
         
         @SuppressWarnings("unchecked")
-        Map<String, Object> objectData = (Map<String, Object>) getResponse.getBody().get("object");
+        Map<String, Object> responseData = (Map<String, Object>) getResponse.getBody().get("data");
+        assertNotNull(responseData);
+        
+        @SuppressWarnings("unchecked")
+        Map<String, Object> objectData = (Map<String, Object>) responseData.get("object");
         assertNotNull(objectData);
         
         // 3. Update KV data
@@ -99,7 +103,10 @@ public class KVDataIntegrationTest {
         
         assertEquals(HttpStatus.OK, updateResponse.getStatusCode());
         assertTrue((Boolean) updateResponse.getBody().get("ok"));
-        assertEquals(1, updateResponse.getBody().get("updated"));
+        
+        @SuppressWarnings("unchecked")
+        Map<String, Object> updateResponseData = (Map<String, Object>) updateResponse.getBody().get("data");
+        assertEquals(1, updateResponseData.get("updated"));
         
         // 4. Verify KV data was updated
         ResponseEntity<Map> getUpdatedResponse = restTemplate.getForEntity(
@@ -126,7 +133,9 @@ public class KVDataIntegrationTest {
         assertEquals(HttpStatus.OK, tagFilterResponse.getStatusCode());
         
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> tagResults = (List<Map<String, Object>>) tagFilterResponse.getBody().get("objects");
+        Map<String, Object> responseData = (Map<String, Object>) tagFilterResponse.getBody().get("data");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> tagResults = (List<Map<String, Object>>) responseData.get("objects");
         assertEquals(2, tagResults.size()); // Should find 2 Italian restaurants
         
         // 2. Test attribute filtering
@@ -157,16 +166,21 @@ public class KVDataIntegrationTest {
             Map.of("key", "rating", "operator", "GREATER_THAN", "value", 4.0, "dataType", "ATTRIBUTE")
         ));
         filterRequest.put("logicalOperator", "AND");
+        filterRequest.put("lat", 33.5);
+        filterRequest.put("lon", -115.5);
+        filterRequest.put("radius", 10000.0);
         
         ResponseEntity<Map> complexFilterResponse = restTemplate.postForEntity(
-            baseUrl + "/keys/" + collectionKey + "/nearby/filter?lat=33.5&lon=-115.5&radius=10000",
+            baseUrl + "/keys/" + collectionKey + "/nearby/filter",
             filterRequest,
             Map.class);
         
         assertEquals(HttpStatus.OK, complexFilterResponse.getStatusCode());
         
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> complexResults = (List<Map<String, Object>>) complexFilterResponse.getBody().get("objects");
+        Map<String, Object> complexResponseData = (Map<String, Object>) complexFilterResponse.getBody().get("data");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> complexResults = (List<Map<String, Object>>) complexResponseData.get("objects");
         assertEquals(1, complexResults.size()); // Should find 1 Italian restaurant with rating > 4.0
     }
     
