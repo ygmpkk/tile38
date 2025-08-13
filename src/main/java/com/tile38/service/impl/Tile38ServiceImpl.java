@@ -1,6 +1,7 @@
 package com.tile38.service.impl;
 
 import com.tile38.service.Tile38Service;
+import com.tile38.aspect.Timed;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -38,14 +39,11 @@ public class Tile38ServiceImpl implements Tile38Service {
     }
     
     @Override
+    @Timed(value = "Bulk set operation", logLevel = Timed.LogLevel.INFO)
     public void bulkSet(String key, Map<String, Tile38Object> objects) {
         logger.info("Starting bulk set operation for collection '{}' with {} objects", key, objects.size());
-        long startTime = System.currentTimeMillis();
-        
         spatialRepository.bulkIndex(key, objects);
-        
-        long endTime = System.currentTimeMillis();
-        logger.info("Completed bulk set operation for collection '{}' in {}ms", key, (endTime - startTime));
+        logger.info("Completed bulk set operation for collection '{}'", key);
     }
     
     @Override
@@ -93,74 +91,56 @@ public class Tile38ServiceImpl implements Tile38Service {
     }
     
     @Override
+    @Timed("Nearby search")
     public List<SearchResult> nearby(String key, double lat, double lon, double radius) {
         logger.debug("Starting nearby search for collection '{}' at ({},{}) with radius {}", key, lat, lon, radius);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.nearby(key, lat, lon, radius);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed nearby search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed nearby search for collection '{}', found {} results", key, results.size());
         return results;
     }
     
     @Override
+    @Timed("Nearby search with filter")
     public List<SearchResult> nearby(String key, double lat, double lon, double radius, FilterCondition filter) {
         logger.debug("Starting nearby search with filter for collection '{}' at ({},{}) with radius {}", key, lat, lon, radius);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.nearby(key, lat, lon, radius, filter);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed nearby search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed nearby search with filter for collection '{}', found {} results", key, results.size());
         return results;
     }
     
     @Override
+    @Timed("Within search")
     public List<SearchResult> within(String key, Geometry geometry) {
         logger.debug("Starting within search for collection '{}'", key);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.within(key, geometry);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed within search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed within search for collection '{}', found {} results", key, results.size());
         return results;
     }
     
     @Override
+    @Timed("Within search with filter")
     public List<SearchResult> within(String key, Geometry geometry, FilterCondition filter) {
         logger.debug("Starting within search with filter for collection '{}'", key);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.within(key, geometry, filter);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed within search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed within search with filter for collection '{}', found {} results", key, results.size());
         return results;
     }
     
     @Override
+    @Timed("Intersects search")
     public List<SearchResult> intersects(String key, Geometry geometry) {
         logger.debug("Starting intersects search for collection '{}'", key);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.intersects(key, geometry);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed intersects search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed intersects search for collection '{}', found {} results", key, results.size());
         return results;
     }
     
     @Override
+    @Timed("Intersects search with filter")
     public List<SearchResult> intersects(String key, Geometry geometry, FilterCondition filter) {
         logger.debug("Starting intersects search with filter for collection '{}'", key);
-        long startTime = System.currentTimeMillis();
-        
         List<SearchResult> results = spatialRepository.intersects(key, geometry, filter);
-        
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("Completed intersects search with filter for collection '{}' in {}ms, found {} results", key, duration, results.size());
+        logger.debug("Completed intersects search with filter for collection '{}', found {} results", key, results.size());
         return results;
     }
     

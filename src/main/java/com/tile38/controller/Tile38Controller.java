@@ -1,6 +1,8 @@
 package com.tile38.controller;
 
 import com.tile38.service.Tile38Service;
+import com.tile38.aspect.Timed;
+import com.tile38.aspect.TimingAspect;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -55,6 +57,7 @@ public class Tile38Controller {
      * Polygon-centric architecture with KV data as supplemental metadata
      */
     @PostMapping("/keys/{key}/objects/{id}")
+    @Timed("Set object operation")
     public ResponseEntity<ApiResponse<ObjectResult>> setObject(
             @PathVariable String key,
             @PathVariable String id,
@@ -67,7 +70,6 @@ public class Tile38Controller {
             }
             
             log.debug("Setting polygon object {}/{}", key, id);
-            long startTime = System.currentTimeMillis();
             
             // Create KV data using unified approach
             KVData kvData = param.getEffectiveKVData();
@@ -88,11 +90,10 @@ public class Tile38Controller {
             // Store object
             tile38Service.set(key, id, object);
             
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed setting object {}/{} in {}ms", key, id, duration);
+            log.debug("Completed setting object {}/{}", key, id);
             
             ObjectResult result = ObjectResult.builder().build();
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+            return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
             
         } catch (Exception e) {
             log.error("Error setting object {}/{}", key, id, e);
@@ -107,17 +108,16 @@ public class Tile38Controller {
      * Returns polygon object with KV data as supplemental metadata
      */
     @GetMapping("/keys/{key}/objects/{id}")
+    @Timed("Get object operation")
     public ResponseEntity<ApiResponse<ObjectResult>> getObject(
             @PathVariable String key,
             @PathVariable String id) {
         
         log.debug("Getting object {}/{}", key, id);
-        long startTime = System.currentTimeMillis();
         
         Optional<Tile38Object> object = tile38Service.get(key, id);
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed getting object {}/{} in {}ms, found: {}", key, id, duration, object.isPresent());
+        log.debug("Completed getting object {}/{}, found: {}", key, id, object.isPresent());
         
         if (object.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -128,7 +128,7 @@ public class Tile38Controller {
                 .found(true)
                 .build();
                 
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -137,23 +137,22 @@ public class Tile38Controller {
      * Deletes polygon object by ID
      */
     @DeleteMapping("/keys/{key}/objects/{id}")
+    @Timed("Delete object operation")
     public ResponseEntity<ApiResponse<ObjectResult>> deleteObject(
             @PathVariable String key,
             @PathVariable String id) {
         
         log.debug("Deleting object {}/{}", key, id);
-        long startTime = System.currentTimeMillis();
         
         boolean deleted = tile38Service.del(key, id);
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed deleting object {}/{} in {}ms, deleted: {}", key, id, duration, deleted);
+        log.debug("Completed deleting object {}/{}, deleted: {}", key, id, deleted);
         
         ObjectResult result = ObjectResult.builder()
                 .deleted(deleted ? 1 : 0)
                 .build();
                 
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -161,20 +160,19 @@ public class Tile38Controller {
      * HTTP: DELETE /api/v1/keys/{key}
      */
     @DeleteMapping("/keys/{key}")
+    @Timed("Drop collection operation")
     public ResponseEntity<ApiResponse<CollectionResult>> dropCollection(@PathVariable String key) {
         log.debug("Dropping collection '{}'", key);
-        long startTime = System.currentTimeMillis();
         
         boolean dropped = tile38Service.drop(key);
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed dropping collection '{}' in {}ms, dropped: {}", key, duration, dropped);
+        log.debug("Completed dropping collection '{}', dropped: {}", key, dropped);
         
         CollectionResult result = CollectionResult.builder()
                 .dropped(dropped ? 1 : 0)
                 .build();
                 
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -182,14 +180,13 @@ public class Tile38Controller {
      * HTTP: GET /api/v1/keys/{key}/bounds
      */
     @GetMapping("/keys/{key}/bounds")
+    @Timed("Get bounds operation")
     public ResponseEntity<ApiResponse<CollectionResult>> getBounds(@PathVariable String key) {
         log.debug("Getting bounds for collection '{}'", key);
-        long startTime = System.currentTimeMillis();
         
         Optional<Bounds> bounds = tile38Service.bounds(key);
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed getting bounds for collection '{}' in {}ms, found: {}", key, duration, bounds.isPresent());
+        log.debug("Completed getting bounds for collection '{}', found: {}", key, bounds.isPresent());
         
         if (bounds.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -199,7 +196,7 @@ public class Tile38Controller {
                 .bounds(bounds.get())
                 .build();
                 
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -208,6 +205,7 @@ public class Tile38Controller {
      * Enhanced with optional KV filtering - polygon-centric search
      */
     @GetMapping("/keys/{key}/nearby")
+    @Timed("Nearby search operation")
     public ResponseEntity<ApiResponse<SearchResultData>> nearby(
             @PathVariable String key,
             @RequestParam double lat,
@@ -216,7 +214,6 @@ public class Tile38Controller {
             @RequestParam(required = false) String filter) {
         
         log.debug("Starting nearby search for collection '{}' at ({},{}) with radius {}", key, lat, lon, radius);
-        long startTime = System.currentTimeMillis();
         
         try {
             FilterCondition filterCondition = null;
@@ -233,15 +230,14 @@ public class Tile38Controller {
                     tile38Service.nearby(key, lat, lon, radius, filterCondition) :
                     tile38Service.nearby(key, lat, lon, radius);
             
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed nearby search for collection '{}' in {}ms, found {} results", key, duration, results.size());
+            log.debug("Completed nearby search for collection '{}', found {} results", key, results.size());
             
             SearchResultData resultData = SearchResultData.builder()
                     .count(results.size())
                     .objects(results)
                     .build();
             
-            return ResponseEntity.ok(ApiResponse.success(resultData, duration + "ms"));
+            return ResponseEntity.ok(ApiResponse.success(resultData, TimingAspect.getAndClearExecutionTime()));
             
         } catch (Exception e) {
             log.error("Error in nearby search for collection '{}'", key, e);
@@ -254,6 +250,7 @@ public class Tile38Controller {
      * HTTP: POST /api/v1/keys/{key}/nearby/filter
      */
     @PostMapping("/keys/{key}/nearby/filter")
+    @Timed("Nearby search with filter operation")
     public ResponseEntity<ApiResponse<SearchResultData>> nearbyWithFilter(
             @PathVariable String key,
             @RequestBody NearbySearchParam param) {
@@ -269,7 +266,6 @@ public class Tile38Controller {
         
         log.debug("Starting nearby search with complex filter for collection '{}' at ({},{}) with radius {}", 
                  key, lat, lon, param.getRadius());
-        long startTime = System.currentTimeMillis();
         
         try {
             FilterCondition filter = null;
@@ -289,16 +285,15 @@ public class Tile38Controller {
             
             List<SearchResult> results = tile38Service.nearby(key, lat, lon, param.getRadius(), filter);
             
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed nearby search with complex filter for collection '{}' in {}ms, found {} results", 
-                     key, duration, results.size());
+            log.debug("Completed nearby search with complex filter for collection '{}', found {} results", 
+                     key, results.size());
             
             SearchResultData resultData = SearchResultData.builder()
                     .count(results.size())
                     .objects(results)
                     .build();
                     
-            return ResponseEntity.ok(ApiResponse.success(resultData, duration + "ms"));
+            return ResponseEntity.ok(ApiResponse.success(resultData, TimingAspect.getAndClearExecutionTime()));
             
         } catch (Exception e) {
             log.error("Error in nearby search with complex filter for collection '{}'", key, e);
@@ -312,20 +307,19 @@ public class Tile38Controller {
      * HTTP: GET /api/v1/keys
      */
     @GetMapping("/keys")
+    @Timed("Get keys operation")
     public ResponseEntity<ApiResponse<CollectionResult>> getKeys() {
         log.debug("Getting keys");
-        long startTime = System.currentTimeMillis();
         
         List<String> keys = tile38Service.keys();
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed getting keys in {}ms, found {} keys", duration, keys.size());
+        log.debug("Completed getting keys, found {} keys", keys.size());
         
         CollectionResult result = CollectionResult.builder()
                 .keys(keys)
                 .build();
         
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -343,18 +337,17 @@ public class Tile38Controller {
      * HTTP: POST /api/v1/flushdb
      */
     @PostMapping("/flushdb")
+    @Timed("Flush database operation")
     public ResponseEntity<ApiResponse<ObjectResult>> flushDb() {
         log.debug("Flushing database");
-        long startTime = System.currentTimeMillis();
         
         tile38Service.flushdb();
         
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("Completed flushing database in {}ms", duration);
+        log.debug("Completed flushing database");
         
         ObjectResult result = ObjectResult.builder().build();
         
-        return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+        return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
     }
     
     /**
@@ -362,13 +355,13 @@ public class Tile38Controller {
      * HTTP: POST /api/v1/keys/{key}/bulk
      */
     @PostMapping("/keys/{key}/bulk")
+    @Timed("Bulk set operation")
     public ResponseEntity<ApiResponse<BulkOperationResult>> bulkSetObjects(
             @PathVariable String key,
             @RequestBody Map<String, Map<String, Object>> objects) {
         
         try {
             log.debug("Starting bulk set operation for collection '{}' with {} objects", key, objects.size());
-            long startTime = System.currentTimeMillis();
             
             Map<String, Tile38Object> tile38Objects = new HashMap<>();
             
@@ -418,14 +411,13 @@ public class Tile38Controller {
             
             tile38Service.bulkSet(key, tile38Objects);
             
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed bulk set operation for collection '{}' in {}ms, loaded {} objects", key, duration, tile38Objects.size());
+            log.debug("Completed bulk set operation for collection '{}', loaded {} objects", key, tile38Objects.size());
             
             BulkOperationResult result = BulkOperationResult.builder()
                     .objectsLoaded(tile38Objects.size())
                     .build();
             
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+            return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
             
         } catch (Exception e) {
             log.error("Error in bulk set operation", e);
@@ -532,6 +524,7 @@ public class Tile38Controller {
      * Pure ID-based KV update - polygon-centric architecture
      */
     @PutMapping("/keys/{key}/objects/{id}/kv")
+    @Timed("Update KV data operation")
     public ResponseEntity<ApiResponse<ObjectResult>> updateKVData(
             @PathVariable String key,
             @PathVariable String id,
@@ -539,7 +532,6 @@ public class Tile38Controller {
         
         try {
             log.debug("Updating KV data for object {}/{}", key, id);
-            long startTime = System.currentTimeMillis();
             
             if (!param.hasValidKVData()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Valid KV data must be provided"));
@@ -547,8 +539,7 @@ public class Tile38Controller {
             
             boolean updated = tile38Service.updateKVData(key, id, param.getKvData());
             
-            long duration = System.currentTimeMillis() - startTime;
-            log.debug("Completed updating KV data for object {}/{} in {}ms, updated: {}", key, id, duration, updated);
+            log.debug("Completed updating KV data for object {}/{}, updated: {}", key, id, updated);
             
             if (!updated) {
                 return ResponseEntity.notFound().build();
@@ -558,7 +549,7 @@ public class Tile38Controller {
                     .updated(1)
                     .build();
                     
-            return ResponseEntity.ok(ApiResponse.success(result, duration + "ms"));
+            return ResponseEntity.ok(ApiResponse.success(result, TimingAspect.getAndClearExecutionTime()));
             
         } catch (Exception e) {
             log.error("Error updating KV data for object {}/{}", key, id, e);
