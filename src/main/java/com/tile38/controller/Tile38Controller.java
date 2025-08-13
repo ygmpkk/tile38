@@ -470,12 +470,18 @@ public class Tile38Controller {
      */
     @GetMapping("/keys")
     public ResponseEntity<Map<String, Object>> getKeys() {
+        log.debug("Getting keys");
+        long startTime = System.currentTimeMillis();
+        
         List<String> keys = tile38Service.keys();
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Completed getting keys in {}ms, found {} keys", duration, keys.size());
         
         Map<String, Object> response = new HashMap<>();
         response.put("ok", true);
         response.put("keys", keys);
-        response.put("elapsed", "0.001s");
+        response.put("elapsed", duration + "ms");
         
         return ResponseEntity.ok(response);
     }
@@ -496,11 +502,17 @@ public class Tile38Controller {
      */
     @PostMapping("/flushdb")
     public ResponseEntity<Map<String, Object>> flushDb() {
+        log.debug("Flushing database");
+        long startTime = System.currentTimeMillis();
+        
         tile38Service.flushdb();
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Completed flushing database in {}ms", duration);
         
         Map<String, Object> response = new HashMap<>();
         response.put("ok", true);
-        response.put("elapsed", "0.001s");
+        response.put("elapsed", duration + "ms");
         
         return ResponseEntity.ok(response);
     }
@@ -515,6 +527,9 @@ public class Tile38Controller {
             @RequestBody Map<String, Map<String, Object>> objects) {
         
         try {
+            log.debug("Starting bulk set operation for collection '{}' with {} objects", key, objects.size());
+            long startTime = System.currentTimeMillis();
+            
             Map<String, Tile38Object> tile38Objects = new HashMap<>();
             
             for (Map.Entry<String, Map<String, Object>> entry : objects.entrySet()) {
@@ -563,10 +578,13 @@ public class Tile38Controller {
             
             tile38Service.bulkSet(key, tile38Objects);
             
+            long duration = System.currentTimeMillis() - startTime;
+            log.debug("Completed bulk set operation for collection '{}' in {}ms, loaded {} objects", key, duration, tile38Objects.size());
+            
             Map<String, Object> response = new HashMap<>();
             response.put("ok", true);
             response.put("objects_loaded", tile38Objects.size());
-            response.put("elapsed", "0.001s");
+            response.put("elapsed", duration + "ms");
             
             return ResponseEntity.ok(response);
             
