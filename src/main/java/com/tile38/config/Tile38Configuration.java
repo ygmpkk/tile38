@@ -11,6 +11,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.tile38.config.serializer.GeometrySerializer;
+import com.tile38.config.serializer.GeometryDeserializer;
+import com.tile38.config.serializer.SetObjectParamDeserializer;
+import com.tile38.config.serializer.UpdateKVParamDeserializer;
+import com.tile38.config.serializer.NearbySearchParamDeserializer;
+import com.tile38.model.param.SetObjectParam;
+import com.tile38.model.param.UpdateKVParam;
+import com.tile38.model.param.NearbySearchParam;
 
 /**
  * Application configuration for Tile38
@@ -39,9 +46,13 @@ public class Tile38Configuration {
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
-        // Register custom serializer for Geometry objects
+        // Register custom serializer and deserializer for Geometry objects
         SimpleModule geometryModule = new SimpleModule();
         geometryModule.addSerializer(Geometry.class, new GeometrySerializer());
+        geometryModule.addDeserializer(Geometry.class, new GeometryDeserializer());
+        geometryModule.addDeserializer(SetObjectParam.class, new SetObjectParamDeserializer());
+        geometryModule.addDeserializer(UpdateKVParam.class, new UpdateKVParamDeserializer());
+        geometryModule.addDeserializer(NearbySearchParam.class, new NearbySearchParamDeserializer());
         mapper.registerModule(geometryModule);
         
         return mapper;

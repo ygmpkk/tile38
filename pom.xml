@@ -42,6 +42,13 @@
             <version>${spring.boot.version}</version>
         </dependency>
 
+        <!-- Spring AOP for timing aspects -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+
         <!-- 在 Dubbo 依赖中排除冲突的日志依赖 -->
         <dependency>
             <groupId>org.apache.dubbo</groupId>

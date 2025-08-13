@@ -200,8 +200,9 @@ public class SpatialRepositoryImpl implements SpatialRepository {
                     if (distanceMeters <= radius && object.matchesFilter(filter)) {
                         results.add(SearchResult.builder()
                                               .id(id)
-                                              .object(object)
+                                              .entity(object)
                                               .distance(distanceMeters)
+                                              .score(distanceMeters)
                                               .build());
                     }
                 }
@@ -240,7 +241,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
                     object.matchesFilter(filter)) {
                     results.add(SearchResult.builder()
                                           .id(id)
-                                          .object(object)
+                                          .entity(object)
                                           .withinArea(true)
                                           .build());
                 }
@@ -276,7 +277,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
                     object.matchesFilter(filter)) {
                     results.add(SearchResult.builder()
                                           .id(id)
-                                          .object(object)
+                                          .entity(object)
                                           .build());
                 }
             }
@@ -345,7 +346,7 @@ public class SpatialRepositoryImpl implements SpatialRepository {
             // Apply filter if provided
             if (filter == null || filter.matches(object)) {
                 SearchResult result = SearchResult.builder()
-                        .object(object)
+                        .entity(object)
                         .distance(0.0) // No distance for scan operations
                         .build();
                 allResults.add(result);

@@ -4,6 +4,10 @@ import com.tile38.controller.Tile38Controller;
 import com.tile38.service.Tile38Service;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.Bounds;
+import com.tile38.model.param.SetObjectParam;
+import com.tile38.model.result.ApiResponse;
+import com.tile38.model.result.ObjectResult;
+import com.tile38.model.result.CollectionResult;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,20 +40,23 @@ class Tile38ControllerTest {
         // Given
         String key = "testCollection";
         String id = "testObject";
-        Map<String, Object> request = new HashMap<>();
-        request.put("lat", 33.5);
-        request.put("lon", -115.5);
-        request.put("fields", Map.of("name", "test"));
+        GeometryFactory geometryFactory = new GeometryFactory();
+        Point geometry = geometryFactory.createPoint(new Coordinate(-115.5, 33.5));
+        
+        SetObjectParam param = SetObjectParam.builder()
+                .geometry(geometry)
+                .fields(Map.of("name", "test"))
+                .build();
         
         doNothing().when(tile38Service).set(eq(key), eq(id), any(Tile38Object.class));
         
         // When
-        ResponseEntity<Map<String, Object>> response = controller.setObject(key, id, request);
+        ResponseEntity<ApiResponse<ObjectResult>> response = controller.setObject(key, id, param);
         
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue((Boolean) response.getBody().get("ok"));
+        assertTrue(response.getBody().getOk());
         
         verify(tile38Service).set(eq(key), eq(id), any(Tile38Object.class));
     }
@@ -71,13 +78,13 @@ class Tile38ControllerTest {
         when(tile38Service.get(key, id)).thenReturn(Optional.of(object));
         
         // When
-        ResponseEntity<Map<String, Object>> response = controller.getObject(key, id);
+        ResponseEntity<ApiResponse<ObjectResult>> response = controller.getObject(key, id);
         
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue((Boolean) response.getBody().get("ok"));
-        assertNotNull(response.getBody().get("object"));
+        assertTrue(response.getBody().getOk());
+        assertNotNull(response.getBody().getData().getObject());
         
         verify(tile38Service).get(key, id);
     }
@@ -91,7 +98,7 @@ class Tile38ControllerTest {
         when(tile38Service.get(key, id)).thenReturn(Optional.empty());
         
         // When
-        ResponseEntity<Map<String, Object>> response = controller.getObject(key, id);
+        ResponseEntity<ApiResponse<ObjectResult>> response = controller.getObject(key, id);
         
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
@@ -108,13 +115,13 @@ class Tile38ControllerTest {
         when(tile38Service.del(key, id)).thenReturn(true);
         
         // When
-        ResponseEntity<Map<String, Object>> response = controller.deleteObject(key, id);
+        ResponseEntity<ApiResponse<ObjectResult>> response = controller.deleteObject(key, id);
         
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue((Boolean) response.getBody().get("ok"));
-        assertEquals(1, response.getBody().get("deleted"));
+        assertTrue(response.getBody().getOk());
+        assertEquals(1, response.getBody().getData().getDeleted());
         
         verify(tile38Service).del(key, id);
     }
@@ -126,13 +133,13 @@ class Tile38ControllerTest {
         when(tile38Service.keys()).thenReturn(keys);
         
         // When
-        ResponseEntity<Map<String, Object>> response = controller.getKeys();
+        ResponseEntity<ApiResponse<CollectionResult>> response = controller.getKeys();
         
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue((Boolean) response.getBody().get("ok"));
-        assertEquals(keys, response.getBody().get("keys"));
+        assertTrue(response.getBody().getOk());
+        assertEquals(keys, response.getBody().getData().getKeys());
         
         verify(tile38Service).keys();
     }
