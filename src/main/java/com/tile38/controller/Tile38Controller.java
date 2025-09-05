@@ -519,6 +519,56 @@ public class Tile38Controller {
     }
     
     /**
+     * Manually save RDB snapshot
+     * HTTP: POST /api/v1/persistence/rdb/save
+     */
+    @PostMapping("/persistence/rdb/save")
+    public ResponseEntity<Map<String, Object>> saveRdb() {
+        try {
+            boolean success = ((com.tile38.service.impl.Tile38ServiceImpl) tile38Service).saveRdb();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", success);
+            response.put("message", success ? "RDB saved successfully" : "Failed to save RDB");
+            
+            return success ? ResponseEntity.ok(response) : ResponseEntity.internalServerError().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error saving RDB", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("error", e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * Manually load RDB snapshot
+     * HTTP: POST /api/v1/persistence/rdb/load
+     */
+    @PostMapping("/persistence/rdb/load")
+    public ResponseEntity<Map<String, Object>> loadRdb() {
+        try {
+            boolean success = ((com.tile38.service.impl.Tile38ServiceImpl) tile38Service).loadRdb();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", success);
+            response.put("message", success ? "RDB loaded successfully" : "Failed to load RDB");
+            
+            return success ? ResponseEntity.ok(response) : ResponseEntity.internalServerError().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error loading RDB", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("error", e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
      * Parse simple filter format: "tag:key=value", "attr:key>value", etc.
      */
     private FilterCondition parseSimpleFilter(String filter) {

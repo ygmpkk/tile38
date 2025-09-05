@@ -1,6 +1,8 @@
 package com.tile38.service.impl;
 
 import com.tile38.service.Tile38Service;
+import com.tile38.service.persistence.RdbPersistenceService;
+import com.tile38.service.persistence.MysqlPersistenceService;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -19,7 +21,7 @@ import java.util.*;
 
 /**
  * Implementation of Tile38Service using repository as single source of truth
- * Optimized for million-level data operations
+ * Optimized for million-level data operations with RDB and MySQL persistence
  */
 @Service
 public class Tile38ServiceImpl implements Tile38Service {
@@ -29,11 +31,20 @@ public class Tile38ServiceImpl implements Tile38Service {
     @Autowired
     private SpatialRepository spatialRepository;
     
+    @Autowired
+    private RdbPersistenceService rdbPersistenceService;
+    
+    @Autowired
+    private MysqlPersistenceService mysqlPersistenceService;
+    
     private final GeometryFactory geometryFactory = new GeometryFactory();
     
     @Override
     public void set(String key, String id, Tile38Object object) {
         spatialRepository.index(key, id, object);
+        
+        // Persist to MySQL if enabled
+        mysqlPersistenceService.persistObject(key, id, object);
     }
     
     @Override
@@ -42,6 +53,11 @@ public class Tile38ServiceImpl implements Tile38Service {
         long startTime = System.currentTimeMillis();
         
         spatialRepository.bulkIndex(key, objects);
+        
+        // Persist to MySQL if enabled (async)
+        for (Map.Entry<String, Tile38Object> entry : objects.entrySet()) {
+            mysqlPersistenceService.persistObject(key, entry.getKey(), entry.getValue());
+        }
         
         long endTime = System.currentTimeMillis();
         logger.info("Completed bulk set operation for collection '{}' in {}ms", key, (endTime - startTime));
@@ -57,6 +73,10 @@ public class Tile38ServiceImpl implements Tile38Service {
         Optional<Tile38Object> existing = spatialRepository.get(key, id);
         if (existing.isPresent()) {
             spatialRepository.remove(key, id);
+            
+            // Delete from MySQL if enabled
+            mysqlPersistenceService.deleteObject(key, id);
+            
             return true;
         }
         return false;
@@ -66,7 +86,16 @@ public class Tile38ServiceImpl implements Tile38Service {
     public boolean drop(String key) {
         Set<String> existingKeys = spatialRepository.keys();
         if (existingKeys.contains(key)) {
+            // Get all objects before dropping
+            Map<String, Tile38Object> objects = spatialRepository.getAll(key);
+            
             spatialRepository.drop(key);
+            
+            // Delete from MySQL if enabled
+            for (String id : objects.keySet()) {
+                mysqlPersistenceService.deleteObject(key, id);
+            }
+            
             return true;
         }
         return false;
@@ -123,7 +152,17 @@ public class Tile38ServiceImpl implements Tile38Service {
     
     @Override
     public boolean updateKVData(String key, String id, KVData kvData) {
-        return spatialRepository.updateKVData(key, id, kvData);
+        boolean updated = spatialRepository.updateKVData(key, id, kvData);
+        
+        if (updated) {
+            // Update in MySQL if enabled
+            Optional<Tile38Object> object = spatialRepository.get(key, id);
+            if (object.isPresent()) {
+                mysqlPersistenceService.updateObject(key, id, object.get());
+            }
+        }
+        
+        return updated;
     }
     
     @Override
@@ -147,6 +186,8 @@ public class Tile38ServiceImpl implements Tile38Service {
         stats.append("\"in_memory_size\":").append(memoryUsed).append(",");
         stats.append("\"num_collections\":").append(allKeys.size()).append(",");
         stats.append("\"num_objects\":").append(totalObjects).append(",");
+        stats.append("\"rdb_loaded\":").append(rdbPersistenceService.isLoaded()).append(",");
+        stats.append("\"mysql_initialized\":").append(mysqlPersistenceService.isInitialized()).append(",");
         stats.append("\"collections\":{");
         
         boolean first = true;
@@ -166,5 +207,19 @@ public class Tile38ServiceImpl implements Tile38Service {
     public void flushdb() {
         spatialRepository.flushAll();
         logger.info("Database flushed");
+    }
+    
+    /**
+     * Manually trigger RDB save
+     */
+    public boolean saveRdb() {
+        return rdbPersistenceService.saveToRdb();
+    }
+    
+    /**
+     * Manually trigger RDB load
+     */
+    public boolean loadRdb() {
+        return rdbPersistenceService.loadFromRdb();
     }
 }

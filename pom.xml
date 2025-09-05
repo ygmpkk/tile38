@@ -122,6 +122,13 @@
             <version>8.0.33</version>
         </dependency>
         
+        <!-- Spring Data JPA for easier database operations -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+        
         <!-- MongoDB Java Driver -->
         <dependency>
             <groupId>org.mongodb</groupId>

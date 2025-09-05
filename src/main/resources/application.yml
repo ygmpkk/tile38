@@ -5,6 +5,23 @@ spring:
   application:
     name: tile38-server
 
+# Tile38 persistence configuration
+tile38:
+  persistence:
+    rdb:
+      enabled: true
+      save-interval: 300000  # Save every 5 minutes (300 seconds * 1000 ms)
+      file-path: ./data/tile38.rdb
+      load-on-startup: true
+    mysql:
+      enabled: true
+      url: jdbc:mysql://localhost:3306/tile38
+      username: tile38_user
+      password: tile38_pass
+      table-prefix: tile38_
+      batch-size: 1000
+      real-time: true  # Save data to MySQL in real-time
+
 # Dubbo configuration - disabled by default for HTTP-only mode
 dubbo:
   application:

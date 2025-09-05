@@ -2,6 +2,7 @@ package com.tile38.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.WKTReader;
@@ -16,6 +17,7 @@ import com.tile38.config.serializer.GeometrySerializer;
  * Application configuration for Tile38
  */
 @Configuration
+@EnableConfigurationProperties(PersistenceProperties.class)
 public class Tile38Configuration {
     
     @Bean
