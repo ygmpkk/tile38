@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: tile38-server
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
 # Tile38 persistence configuration
 tile38:
@@ -14,7 +18,7 @@ tile38:
       file-path: ./data/tile38.rdb
       load-on-startup: true
     mysql:
-      enabled: true
+      enabled: false  # Disabled by default
       url: jdbc:mysql://localhost:3306/tile38
       username: tile38_user
       password: tile38_pass

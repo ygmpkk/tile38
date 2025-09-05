@@ -1,0 +1,1 @@
+{"timestamp":1757058510970,"version":"1.0","collections":{"test":{"obj1":{"id":"obj1","geometry":{"lon":-74.0,"lat":40.0,"type":"Point"},"fields":{"name":"Test Object"},"kvData":{"tags":{},"attributes":{},"empty":true},"timestamp":1757058504381,"expired":false}}},"totalObjects":1}

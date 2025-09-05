@@ -2,7 +2,6 @@ package com.tile38.service.persistence;
 
 import com.tile38.model.Tile38Object;
 import com.tile38.repository.SpatialRepository;
-import com.tile38.service.Tile38Service;
 import com.tile38.config.PersistenceProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +32,6 @@ public class RdbPersistenceService {
     
     @Autowired
     private SpatialRepository spatialRepository;
-    
-    @Autowired
-    private Tile38Service tile38Service;
     
     @Autowired
     private PersistenceProperties persistenceProperties;

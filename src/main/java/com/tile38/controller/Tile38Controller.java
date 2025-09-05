@@ -1,6 +1,7 @@
 package com.tile38.controller;
 
 import com.tile38.service.Tile38Service;
+import com.tile38.service.persistence.RdbPersistenceService;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -42,6 +43,9 @@ public class Tile38Controller {
     
     @Autowired
     private DataLoader dataLoader;
+    
+    @Autowired
+    private RdbPersistenceService rdbPersistenceService;
     
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final WKTReader wktReader = new WKTReader(geometryFactory);
@@ -525,7 +529,7 @@ public class Tile38Controller {
     @PostMapping("/persistence/rdb/save")
     public ResponseEntity<Map<String, Object>> saveRdb() {
         try {
-            boolean success = ((com.tile38.service.impl.Tile38ServiceImpl) tile38Service).saveRdb();
+            boolean success = rdbPersistenceService.saveToRdb();
             
             Map<String, Object> response = new HashMap<>();
             response.put("ok", success);
@@ -550,7 +554,7 @@ public class Tile38Controller {
     @PostMapping("/persistence/rdb/load")
     public ResponseEntity<Map<String, Object>> loadRdb() {
         try {
-            boolean success = ((com.tile38.service.impl.Tile38ServiceImpl) tile38Service).loadRdb();
+            boolean success = rdbPersistenceService.loadFromRdb();
             
             Map<String, Object> response = new HashMap<>();
             response.put("ok", success);

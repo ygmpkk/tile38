@@ -41,9 +41,10 @@ public class Tile38Configuration {
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
-        // Register custom serializer for Geometry objects
+        // Register custom serializer/deserializer for Geometry objects
         SimpleModule geometryModule = new SimpleModule();
         geometryModule.addSerializer(Geometry.class, new GeometrySerializer());
+        geometryModule.addDeserializer(Geometry.class, new com.tile38.config.serializer.GeometryDeserializer());
         mapper.registerModule(geometryModule);
         
         return mapper;
