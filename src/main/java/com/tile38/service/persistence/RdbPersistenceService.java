@@ -9,6 +9,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,9 @@ public class RdbPersistenceService {
         
         String filePath = persistenceProperties.getRdb().getFilePath();
         logger.info("Starting RDB save to: {}", filePath);
-        long startTime = System.currentTimeMillis();
+        
+        StopWatch stopWatch = new StopWatch("RDB Save");
+        stopWatch.start();
         
         try {
             // Create directory if it doesn't exist
@@ -115,13 +118,16 @@ public class RdbPersistenceService {
             Files.move(Paths.get(tempFilePath), path, 
                       java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             
-            long endTime = System.currentTimeMillis();
-            logger.info("RDB save completed: {} collections, {} objects in {}ms", 
-                       allData.size(), totalObjects, (endTime - startTime));
+            stopWatch.stop();
+            logger.info("RDB save completed: {} collections, {} objects in {}", 
+                       allData.size(), totalObjects, stopWatch.shortSummary());
             
             return true;
             
         } catch (Exception e) {
+            if (stopWatch.isRunning()) {
+                stopWatch.stop();
+            }
             logger.error("Failed to save RDB: {}", e.getMessage(), e);
             return false;
         }
@@ -146,7 +152,9 @@ public class RdbPersistenceService {
         }
         
         logger.info("Starting RDB load from: {}", filePath);
-        long startTime = System.currentTimeMillis();
+        
+        StopWatch stopWatch = new StopWatch("RDB Load");
+        stopWatch.start();
         
         try {
             RdbSnapshot snapshot;
@@ -184,14 +192,17 @@ public class RdbPersistenceService {
                 }
             }
             
-            long endTime = System.currentTimeMillis();
-            logger.info("RDB load completed: {} collections, {} objects in {}ms", 
-                       snapshot.getCollections().size(), totalLoaded, (endTime - startTime));
+            stopWatch.stop();
+            logger.info("RDB load completed: {} collections, {} objects in {}", 
+                       snapshot.getCollections().size(), totalLoaded, stopWatch.shortSummary());
             
             isLoaded.set(true);
             return true;
             
         } catch (Exception e) {
+            if (stopWatch.isRunning()) {
+                stopWatch.stop();
+            }
             logger.error("Failed to load RDB: {}", e.getMessage(), e);
             isLoaded.set(true); // Mark as loaded even if failed to prevent startup blocking
             return false;
