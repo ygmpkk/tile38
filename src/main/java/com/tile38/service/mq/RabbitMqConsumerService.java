@@ -1,12 +1,13 @@
 package com.tile38.service.mq;
 
+import com.tile38.config.RabbitMqEnabledCondition;
 import com.tile38.config.PersistenceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
@@ -15,8 +16,7 @@ import org.springframework.stereotype.Service;
  * RabbitMQ consumer service for real-time data ingestion into Tile38
  */
 @Service
-@ConditionalOnProperty(name = {"tile38.persistence.mq.enabled", "tile38.persistence.mq.type"}, 
-                       havingValue = "rabbitmq", matchIfMissing = false)
+@Conditional(RabbitMqEnabledCondition.class)
 public class RabbitMqConsumerService {
     
     private static final Logger logger = LoggerFactory.getLogger(RabbitMqConsumerService.class);

@@ -1,10 +1,11 @@
 package com.tile38.service.mq;
 
+import com.tile38.config.KafkaEnabledCondition;
 import com.tile38.config.PersistenceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -16,8 +17,7 @@ import org.springframework.stereotype.Service;
  * Kafka consumer service for real-time data ingestion into Tile38
  */
 @Service
-@ConditionalOnProperty(name = {"tile38.persistence.mq.enabled", "tile38.persistence.mq.type"}, 
-                       havingValue = "kafka", matchIfMissing = false)
+@Conditional(KafkaEnabledCondition.class)
 public class KafkaConsumerService {
     
     private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerService.class);
