@@ -25,6 +25,22 @@ tile38:
       table-prefix: tile38_
       batch-size: 1000
       real-time: true  # Save data to MySQL in real-time
+    mq:
+      enabled: false  # Disabled by default
+      type: kafka  # Options: kafka, rabbitmq
+      kafka:
+        bootstrap-servers: localhost:9092
+        topic: tile38-data
+        group-id: tile38-consumer-group
+        concurrency: 3
+        auto-offset-reset: latest
+      rabbitmq:
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+        queue: tile38-data
+        concurrency: 3
 
 # Dubbo configuration - disabled by default for HTTP-only mode
 dubbo:
