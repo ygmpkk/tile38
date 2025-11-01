@@ -4,6 +4,43 @@ server:
 spring:
   application:
     name: tile38-server
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+# Tile38 persistence configuration
+tile38:
+  persistence:
+    rdb:
+      enabled: true
+      save-interval: 300000  # Save every 5 minutes (300 seconds * 1000 ms)
+      file-path: ./data/tile38.rdb
+      load-on-startup: true
+    mysql:
+      enabled: false  # Disabled by default
+      url: jdbc:mysql://localhost:3306/tile38
+      username: tile38_user
+      password: tile38_pass
+      table-prefix: tile38_
+      batch-size: 1000
+      real-time: true  # Save data to MySQL in real-time
+    mq:
+      enabled: false  # Disabled by default
+      type: kafka  # Options: kafka, rabbitmq
+      kafka:
+        bootstrap-servers: localhost:9092
+        topic: tile38-data
+        group-id: tile38-consumer-group
+        concurrency: 3
+        auto-offset-reset: latest
+      rabbitmq:
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+        queue: tile38-data
+        concurrency: 3
 
 # Dubbo configuration - disabled by default for HTTP-only mode
 dubbo:

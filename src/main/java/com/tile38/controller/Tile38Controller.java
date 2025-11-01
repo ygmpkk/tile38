@@ -1,6 +1,7 @@
 package com.tile38.controller;
 
 import com.tile38.service.Tile38Service;
+import com.tile38.service.persistence.RdbPersistenceService;
 import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
@@ -42,6 +43,9 @@ public class Tile38Controller {
     
     @Autowired
     private DataLoader dataLoader;
+    
+    @Autowired
+    private RdbPersistenceService rdbPersistenceService;
     
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final WKTReader wktReader = new WKTReader(geometryFactory);
@@ -515,6 +519,56 @@ public class Tile38Controller {
         } catch (Exception e) {
             log.error("Error updating KV data", e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * Manually save RDB snapshot
+     * HTTP: POST /api/v1/persistence/rdb/save
+     */
+    @PostMapping("/persistence/rdb/save")
+    public ResponseEntity<Map<String, Object>> saveRdb() {
+        try {
+            boolean success = rdbPersistenceService.saveToRdb();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", success);
+            response.put("message", success ? "RDB saved successfully" : "Failed to save RDB");
+            
+            return success ? ResponseEntity.ok(response) : ResponseEntity.internalServerError().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error saving RDB", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("error", e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * Manually load RDB snapshot
+     * HTTP: POST /api/v1/persistence/rdb/load
+     */
+    @PostMapping("/persistence/rdb/load")
+    public ResponseEntity<Map<String, Object>> loadRdb() {
+        try {
+            boolean success = rdbPersistenceService.loadFromRdb();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", success);
+            response.put("message", success ? "RDB loaded successfully" : "Failed to load RDB");
+            
+            return success ? ResponseEntity.ok(response) : ResponseEntity.internalServerError().body(response);
+            
+        } catch (Exception e) {
+            log.error("Error loading RDB", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("ok", false);
+            response.put("error", e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
         }
     }
     

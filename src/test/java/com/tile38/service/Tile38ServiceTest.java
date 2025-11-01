@@ -4,6 +4,8 @@ import com.tile38.model.Tile38Object;
 import com.tile38.model.SearchResult;
 import com.tile38.model.Bounds;
 import com.tile38.service.impl.Tile38ServiceImpl;
+import com.tile38.service.persistence.RdbPersistenceService;
+import com.tile38.service.persistence.MysqlPersistenceService;
 import com.tile38.repository.SpatialRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +32,12 @@ class Tile38ServiceTest {
     
     @Mock
     private SpatialRepository spatialRepository;
+    
+    @Mock
+    private RdbPersistenceService rdbPersistenceService;
+    
+    @Mock
+    private MysqlPersistenceService mysqlPersistenceService;
     
     @InjectMocks
     private Tile38ServiceImpl tile38Service;

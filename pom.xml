@@ -122,6 +122,13 @@
             <version>8.0.33</version>
         </dependency>
         
+        <!-- Spring Data JPA for easier database operations -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+        
         <!-- MongoDB Java Driver -->
         <dependency>
             <groupId>org.mongodb</groupId>
@@ -134,6 +141,21 @@
             <groupId>io.prestosql</groupId>
             <artifactId>presto-jdbc</artifactId>
             <version>350</version>
+        </dependency>
+
+        <!-- Message Queue dependencies -->
+        <!-- Kafka support -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        
+        <!-- RabbitMQ support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+            <version>${spring.boot.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
