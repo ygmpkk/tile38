@@ -1,6 +1,5 @@
 package com.tile38.config;
 
-import com.tile38.config.PersistenceProperties;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
