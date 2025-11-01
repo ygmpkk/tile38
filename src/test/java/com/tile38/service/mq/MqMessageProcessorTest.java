@@ -288,4 +288,44 @@ public class MqMessageProcessorTest {
         assertNotNull(capturedObject.getExpireAt());
         assertEquals(1735689600000L, capturedObject.getExpireAt().toEpochMilli());
     }
+    
+    @Test
+    public void testProcessSetWithInvalidCoordinateType() {
+        // Message with invalid coordinate type (string instead of number)
+        String messageJson = """
+            {
+              "operation": "SET",
+              "collection": "fleet",
+              "id": "truck1",
+              "geometry": {
+                "type": "Point",
+                "coordinates": ["invalid", 39.9289]
+              }
+            }
+            """;
+        
+        assertThrows(RuntimeException.class, () -> {
+            messageProcessor.processMessage(messageJson);
+        });
+    }
+    
+    @Test
+    public void testProcessSetWithInvalidCoordinateStructure() {
+        // Message with invalid coordinate structure (not a list)
+        String messageJson = """
+            {
+              "operation": "SET",
+              "collection": "fleet",
+              "id": "truck1",
+              "geometry": {
+                "type": "Point",
+                "coordinates": "invalid"
+              }
+            }
+            """;
+        
+        assertThrows(RuntimeException.class, () -> {
+            messageProcessor.processMessage(messageJson);
+        });
+    }
 }

@@ -158,9 +158,15 @@ public class MqMessageProcessor {
      * Parse Point geometry
      */
     private Point parsePoint(Object coordinates) {
+        if (!(coordinates instanceof List)) {
+            throw new IllegalArgumentException("Point coordinates must be a List");
+        }
         List<?> coords = (List<?>) coordinates;
         if (coords.size() < 2) {
             throw new IllegalArgumentException("Point requires at least 2 coordinates");
+        }
+        if (!(coords.get(0) instanceof Number) || !(coords.get(1) instanceof Number)) {
+            throw new IllegalArgumentException("Point coordinates must be numbers");
         }
         double lon = ((Number) coords.get(0)).doubleValue();
         double lat = ((Number) coords.get(1)).doubleValue();
@@ -171,11 +177,28 @@ public class MqMessageProcessor {
      * Parse LineString geometry
      */
     private LineString parseLineString(Object coordinates) {
+        if (!(coordinates instanceof List)) {
+            throw new IllegalArgumentException("LineString coordinates must be a List");
+        }
         List<?> coordsList = (List<?>) coordinates;
+        if (coordsList.isEmpty()) {
+            throw new IllegalArgumentException("LineString must have at least one point");
+        }
+        
         Coordinate[] coords = new Coordinate[coordsList.size()];
         
         for (int i = 0; i < coordsList.size(); i++) {
-            List<?> point = (List<?>) coordsList.get(i);
+            Object pointObj = coordsList.get(i);
+            if (!(pointObj instanceof List)) {
+                throw new IllegalArgumentException("LineString point must be a List");
+            }
+            List<?> point = (List<?>) pointObj;
+            if (point.size() < 2) {
+                throw new IllegalArgumentException("LineString point requires at least 2 coordinates");
+            }
+            if (!(point.get(0) instanceof Number) || !(point.get(1) instanceof Number)) {
+                throw new IllegalArgumentException("LineString coordinates must be numbers");
+            }
             double lon = ((Number) point.get(0)).doubleValue();
             double lat = ((Number) point.get(1)).doubleValue();
             coords[i] = new Coordinate(lon, lat);
@@ -188,13 +211,33 @@ public class MqMessageProcessor {
      * Parse Polygon geometry
      */
     private Polygon parsePolygon(Object coordinates) {
+        if (!(coordinates instanceof List)) {
+            throw new IllegalArgumentException("Polygon coordinates must be a List");
+        }
         List<?> rings = (List<?>) coordinates;
+        if (rings.isEmpty()) {
+            throw new IllegalArgumentException("Polygon must have at least one ring");
+        }
         
         // Exterior ring
-        List<?> exteriorList = (List<?>) rings.get(0);
+        Object exteriorObj = rings.get(0);
+        if (!(exteriorObj instanceof List)) {
+            throw new IllegalArgumentException("Polygon ring must be a List");
+        }
+        List<?> exteriorList = (List<?>) exteriorObj;
         Coordinate[] exteriorCoords = new Coordinate[exteriorList.size()];
         for (int i = 0; i < exteriorList.size(); i++) {
-            List<?> point = (List<?>) exteriorList.get(i);
+            Object pointObj = exteriorList.get(i);
+            if (!(pointObj instanceof List)) {
+                throw new IllegalArgumentException("Polygon point must be a List");
+            }
+            List<?> point = (List<?>) pointObj;
+            if (point.size() < 2) {
+                throw new IllegalArgumentException("Polygon point requires at least 2 coordinates");
+            }
+            if (!(point.get(0) instanceof Number) || !(point.get(1) instanceof Number)) {
+                throw new IllegalArgumentException("Polygon coordinates must be numbers");
+            }
             double lon = ((Number) point.get(0)).doubleValue();
             double lat = ((Number) point.get(1)).doubleValue();
             exteriorCoords[i] = new Coordinate(lon, lat);
@@ -206,10 +249,24 @@ public class MqMessageProcessor {
         if (rings.size() > 1) {
             holes = new LinearRing[rings.size() - 1];
             for (int i = 1; i < rings.size(); i++) {
-                List<?> holeList = (List<?>) rings.get(i);
+                Object holeObj = rings.get(i);
+                if (!(holeObj instanceof List)) {
+                    throw new IllegalArgumentException("Polygon hole must be a List");
+                }
+                List<?> holeList = (List<?>) holeObj;
                 Coordinate[] holeCoords = new Coordinate[holeList.size()];
                 for (int j = 0; j < holeList.size(); j++) {
-                    List<?> point = (List<?>) holeList.get(j);
+                    Object pointObj = holeList.get(j);
+                    if (!(pointObj instanceof List)) {
+                        throw new IllegalArgumentException("Polygon point must be a List");
+                    }
+                    List<?> point = (List<?>) pointObj;
+                    if (point.size() < 2) {
+                        throw new IllegalArgumentException("Polygon point requires at least 2 coordinates");
+                    }
+                    if (!(point.get(0) instanceof Number) || !(point.get(1) instanceof Number)) {
+                        throw new IllegalArgumentException("Polygon coordinates must be numbers");
+                    }
                     double lon = ((Number) point.get(0)).doubleValue();
                     double lat = ((Number) point.get(1)).doubleValue();
                     holeCoords[j] = new Coordinate(lon, lat);
