@@ -39,4 +39,4 @@ application-local.properties
 *.tmp
 *.temp
 .cache/
-target/
+target/data/
